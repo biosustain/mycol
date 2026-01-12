@@ -61,7 +61,9 @@ def main():
     # Load model
     init_model = None if base_model == "scratch" else base_model
     # Note: Use Cellpose 3 logic here (which is what we expect in this environment)
-    cell_model = models.CellposeModel(gpu=torch.cuda.is_available(), model_type=init_model)
+
+    use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
+    cell_model = models.CellposeModel(gpu=use_gpu, model_type=init_model)
     
     model_name = f"{base_model}_finetuned.pt"
 

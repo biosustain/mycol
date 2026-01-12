@@ -32,11 +32,12 @@ def main():
     #setup logger
     _ = io.logger_setup()
 
+    use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
     #load model
     if os.path.exists(weights_path):
-        cell_model = models.CellposeModel(gpu=torch.cuda.is_available(), pretrained_model=weights_path)
+        cell_model = models.CellposeModel(gpu=use_gpu, pretrained_model=weights_path)
     else:
-        cell_model = models.CellposeModel(gpu=torch.cuda.is_available(), model_type=weights_path)
+        cell_model = models.CellposeModel(gpu=use_gpu, model_type=weights_path)
 
     #eval
     masks, flows, styles = cell_model.eval(
