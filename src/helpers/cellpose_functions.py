@@ -129,14 +129,14 @@ def get_cellpose_model():
 
     try:
         model = models.CellposeModel(
-            gpu=core.use_gpu,
+            gpu=core.use_gpu(),
             pretrained_model=model_type,
         )
     except Exception as e:
         # TODO: lowkey digusting
         # fallback to CP3 Proxy if CP4 rejects the model (compatibility error)
         if "CP4" in str(e) or "CP3" in str(e):
-            model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu)
+            model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
         else:
             raise e
 
@@ -213,7 +213,7 @@ def segment_with_cellpose_sam(
     flow_threshold=0.4,
     min_size=0,
     niter=0,
-    use_gpu=core.use_gpu,  # control GPU usage for Cellpose-SAM
+    use_gpu=core.use_gpu(),  # control GPU usage for Cellpose-SAM
 ) -> dict:
     """
     Runs Cellpose-SAM on rec['image'] and overwrites rec['masks'] with a single (H,W)
@@ -258,9 +258,6 @@ def segment_with_cellpose_sam(
 
 
 HERE = Path(__file__).resolve().parent
-
-# worker is in src/
-WORKER_SCRIPT = str((HERE.parent / "segment_with_cellpose_sam_worker.py").resolve())
 
 # training workspace
 TRAINING_PROJECT = str((HERE.parent / "training").resolve())
@@ -345,65 +342,6 @@ class CellposeModel3Proxy:
                     results.append(data["masks"])
 
         return (results, None, None) if is_list else (results[0], None, None)
-
-
-def segment_with_cellpose_sam_v4_bridge(
-    rec: dict,
-    *,
-    channels=(0, 0),
-    diameter=None,
-    cellprob_threshold=-0.2,
-    flow_threshold=0.4,
-    min_size=0,
-    niter=0,
-    use_gpu=True,
-) -> dict:
-    """Call Cellpose-SAM (v4) from fungal_app_env via a worker in cellpose4 env."""
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        in_path = Path(tmpdir) / "input.npz"
-        out_path = Path(tmpdir) / "output.npz"
-
-        kwargs = dict(
-            channels=channels,
-            diameter=diameter,
-            cellprob_threshold=cellprob_threshold,
-            flow_threshold=flow_threshold,
-            min_size=min_size,
-            niter=niter,
-            use_gpu=use_gpu,
-        )
-
-        # Save input record + parameters for the worker
-        np.savez_compressed(in_path, rec=rec, kwargs=kwargs)
-
-        cmd = [sys.executable, WORKER_SCRIPT, str(in_path), str(out_path)]
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(
-                "Cellpose-SAM worker failed\n"
-                f"  return code: {result.returncode}\n"
-                f"  command: {result.args}\n\n"
-                f"--- STDOUT ---\n{result.stdout}\n"
-                f"--- STDERR ---\n{result.stderr}\n"
-            )
-
-        # Load updated record from worker *before* the temp dir is deleted
-        out = np.load(out_path, allow_pickle=True)
-        rec_out = out["rec"].item()
-
-        # mutate the original rec in-place so existing code still works
-        rec.clear()
-        rec.update(rec_out)
-
-    return rec
-
 
 # -----------------------------------------------------#
 # ----------------- CELLPOSE FIGURES ----------------- #
@@ -855,35 +793,25 @@ def check_cellpose_validation_status():
             best_params = data["best_params"].item()
             validation_metrics = data["validation_metrics"].item()
 
+        # TODO: FIX
         try:
-            if optuna_results is not None:
-                if isinstance(optuna_results, np.ndarray):
-                    if optuna_results.ndim == 0:
-                        optuna_results = optuna_results.item()
-                    else:
-                        optuna_results = optuna_results.tolist()
-
-                df = pd.DataFrame(optuna_results)
-
-                if not df.empty and "ap_iou_0.5" in df.columns:
-                    ss["cp_grid_results_df"] = df.sort_values(
-                        by="ap_iou_0.5", ascending=False, na_position="last"
-                    )
-                else:
-                    ss["cp_grid_results_df"] = df
-                    if not df.empty:
-                        print(
-                            "Warning: 'ap_iou_0.5' column missing from Optuna results. Skipping sort."
-                        )
+            if (
+                optuna_results is not None
+                and hasattr(optuna_results, "__len__")
+                and len(optuna_results) > 0
+            ):
+                ss["cp_grid_results_df"] = pd.DataFrame(optuna_results).sort_values(
+                    by="ap_iou_0.5", ascending=False, na_position="last"
+                )
 
                 # set best hyperparameters
-                if best_params:
-                    ss["cp_cellprob_threshold"] = float(best_params.get("cellprob", 0.0))
-                    ss["cp_flow_threshold"] = float(best_params.get("flow_threshold", 0.4))
-                    ss["cp_min_size"] = int(best_params.get("min_size", 15))
-                    ss["cp_niter"] = int(best_params.get("niter", 200))
-        except Exception as e:
-            st.error(f"Error processing Optuna results: {e}")
+                ss["cp_cellprob_threshold"] = float(best_params["cellprob"])
+                ss["cp_flow_threshold"] = float(best_params["flow_threshold"])
+                ss["cp_min_size"] = int(best_params["min_size"])
+                ss["cp_niter"] = int(best_params["niter"])
+        except (TypeError, ValueError):
+            # TODO: handle better?
+            # optuna_results is None or scalar, skip
             pass
 
         ss["cellpose_iou_comparison"] = plot_iou_comparison(
@@ -1075,7 +1003,7 @@ def segment_current_and_refresh_cellpose_sam():
     rec = get_current_rec()
     if rec is not None:
         params = get_cellpose_hparams_from_state()
-        segment_with_cellpose_sam_v4_bridge(rec, **params)
+        segment_with_cellpose_sam(rec, **params)
         st.session_state["edit_canvas_nonce"] += 1
     st.rerun()
 
@@ -1087,7 +1015,7 @@ def batch_segment_current_and_refresh_cellpose_sam():
     params = get_cellpose_hparams_from_state()
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        segment_with_cellpose_sam_v4_bridge(st.session_state.images.get(k), **params)
+        segment_with_cellpose_sam(st.session_state.images.get(k), **params)
         pb.progress(i / n, text=f"Segmented {i}/{n}")
 
 

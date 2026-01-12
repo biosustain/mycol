@@ -490,7 +490,7 @@ def validate_and_compare(images, masks, channels):
         "Validating model... Not long to go! Don't click yet, you will interupt training."
     ):
         base_model = models.CellposeModel(
-            gpu=core.use_gpu, model_type=ss["cp_base_model"]
+            gpu=core.use_gpu(), model_type=ss["cp_base_model"]
         )
 
         hp = dict(
