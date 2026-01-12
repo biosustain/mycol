@@ -95,7 +95,7 @@ def render_densenet_summary_fragment():
     # Pretty, form-like card with rounded edges
     st.dataframe(
         freq_df,
-        width='stretch',
+        width="stretch",
         hide_index=True,
         column_config={
             "Class": st.column_config.TextColumn("Class"),
@@ -121,14 +121,14 @@ def densenet_can_train(
     return n_ok >= min_classes
 
 
-
-
 def render_densenet_train_fragment():
     """Runs the full DenseNet training pipeline when the button is clicked."""
 
     dn_job = ss.get("dn_training_job")
     cp_job = ss.get("cp_training_job")
-    any_training = (dn_job and dn_job.get("status") == "running") or (cp_job and cp_job.get("status") == "running")
+    any_training = (dn_job and dn_job.get("status") == "running") or (
+        cp_job and cp_job.get("status") == "running"
+    )
 
     # Read hyperparameter options from session
     input_size = int(ss.get("dn_input_size"))
@@ -149,7 +149,7 @@ def render_densenet_train_fragment():
     status_container = st.empty()
     with status_container:
         render_densenet_status_fragment()
-    
+
     if dn_job and dn_job.get("status") == "running":
         return
 
@@ -158,11 +158,13 @@ def render_densenet_train_fragment():
     button_disabled = not can_train or other_job_running
 
     if other_job_running:
-        st.warning("⚠️ Cellpose training is currently running. Wait for it to finish before starting DenseNet training.")
+        st.warning(
+            "⚠️ Cellpose training is currently running. Wait for it to finish before starting DenseNet training."
+        )
 
     go = st.button(
         "Fine tune Densenet121",
-        width='stretch',
+        width="stretch",
         type="primary",
         disabled=button_disabled,
     )
@@ -179,7 +181,6 @@ def render_densenet_train_fragment():
         val_split=val_split,
     )
     st.rerun()
-
 
 
 def show_densenet_training_plots():
@@ -202,17 +203,17 @@ def show_densenet_training_plots():
         with col1:
             st.plotly_chart(
                 st.session_state["densenet_training_losses"],
-                width='stretch',
+                width="stretch",
             )
         with col2:
             st.plotly_chart(
                 st.session_state["densenet_training_metrics"],
-                width='stretch',
+                width="stretch",
             )
 
         st.plotly_chart(
             st.session_state["densenet_confusion_matrix"],
-            width='stretch',
+            width="stretch",
         )
 
         st.download_button(
@@ -220,7 +221,7 @@ def show_densenet_training_plots():
             data=ss["dn_zip_bytes"],
             file_name="densenet_training.zip",
             mime="application/zip",
-            width='stretch',
+            width="stretch",
             type="primary",
         )
 
@@ -528,28 +529,36 @@ def validate_and_compare(images, masks, channels):
 
 def render_cellpose_train_fragment():
     """Runs the full Cellpose fine-tuning pipeline when the button is clicked."""
-    
+
     # Check for any active training job
     cp_job = ss.get("cp_training_job")
     dn_job = ss.get("dn_training_job")
-    
+
     # Check for active training/validation jobs
     val_job = ss.get("cp_validation_job")
     status_container = st.empty()
     with status_container:
         render_cellpose_status_fragment()
-    
-    if (cp_job and cp_job.get("status") == "running") or (val_job and val_job.get("status") == "running"):
+
+    if (cp_job and cp_job.get("status") == "running") or (
+        val_job and val_job.get("status") == "running"
+    ):
         return
-    
-    
+
     # Disable if another job is running
     other_job_running = bool(dn_job and dn_job.get("status") == "running")
-    
+
     if other_job_running:
-        st.warning("⚠️ DenseNet training is currently running. Wait for it to finish before starting Cellpose training.")
-    
-    go = st.button("Fine-tune Cellpose", width='stretch', type="primary", disabled=other_job_running)
+        st.warning(
+            "⚠️ DenseNet training is currently running. Wait for it to finish before starting Cellpose training."
+        )
+
+    go = st.button(
+        "Fine-tune Cellpose",
+        width="stretch",
+        type="primary",
+        disabled=other_job_running,
+    )
     if not go:
         return
 
@@ -579,14 +588,14 @@ def show_cellpose_training_plots():
             # plot training losses
             st.plotly_chart(
                 st.session_state["cellpose_training_losses"],
-                width='stretch',
+                width="stretch",
             )
 
             # plot original vs predicted counts
             if "cellpose_original_counts_comparison" in st.session_state:
                 st.plotly_chart(
                     st.session_state["cellpose_original_counts_comparison"],
-                    width='stretch',
+                    width="stretch",
                 )
 
         with col2:
@@ -595,14 +604,14 @@ def show_cellpose_training_plots():
             if "cellpose_iou_comparison" in st.session_state:
                 st.plotly_chart(
                     st.session_state["cellpose_iou_comparison"],
-                    width='stretch',
+                    width="stretch",
                 )
 
             # plot tuned vs predicted counts
             if "cellpose_tuned_counts_comparison" in st.session_state:
                 st.plotly_chart(
                     st.session_state["cellpose_tuned_counts_comparison"],
-                    width='stretch',
+                    width="stretch",
                 )
 
         # display grid search results if applicable
@@ -610,7 +619,7 @@ def show_cellpose_training_plots():
             st.dataframe(
                 st.session_state["cp_grid_results_df"],
                 hide_index=True,
-                width='stretch',
+                width="stretch",
             )
 
         else:
@@ -623,7 +632,7 @@ def show_cellpose_training_plots():
                 data=ss["cp_zip_bytes"],
                 file_name="cellpose_training.zip",
                 mime="application/zip",
-                width='stretch',
+                width="stretch",
                 type="primary",
             )
 
@@ -635,7 +644,12 @@ def render_densenet_status_fragment():
     if not dn_job or dn_job.get("status") != "running":
         return
 
-    from src.helpers.densenet_functions import check_densenet_training_status, cancel_densenet_training, build_densenet_zip_bytes
+    from src.helpers.densenet_functions import (
+        check_densenet_training_status,
+        cancel_densenet_training,
+        build_densenet_zip_bytes,
+    )
+
     status = check_densenet_training_status()
     ss.setdefault("dn_icon_toggle", True)
     icon = "⌛" if ss["dn_icon_toggle"] else "⏳"
@@ -643,20 +657,20 @@ def render_densenet_status_fragment():
 
     if status == "running":
         st.info(f"{icon} DenseNet training in progress...")
-        
+
         log_content = dn_job.get("log_content", "")
         if log_content:
             with st.expander("📄 View Training Log", expanded=False):
                 st.code(log_content, language="text")
         else:
             st.caption("Waiting for training output...")
-        
+
         if st.button("🛑 Cancel Training", type="secondary", key="cancel_dn_frag"):
             cancel_densenet_training()
             st.rerun()
     elif status == "complete":
         st.success("Finalizing DenseNet training...")
-        st.balloons() #cool as f*ck
+        st.balloons()  # cool as f*ck
 
         ss["dn_zip_bytes"] = build_densenet_zip_bytes(dn_job["input_size"])
         ss.pop("dn_training_job", None)
@@ -669,19 +683,19 @@ def render_densenet_status_fragment():
         st.rerun()
 
 
-@st.fragment(run_every=2)
+@st.fragment(run_every=10)
 def render_cellpose_status_fragment():
     """Real-time status and log viewer for Cellpose training and validation"""
     cp_job = st.session_state.get("cp_training_job")
     val_job = st.session_state.get("cp_validation_job")
-    
+
     from src.helpers.cellpose_functions import (
-        check_cellpose_training_status, 
-        cancel_cellpose_training, 
+        check_cellpose_training_status,
+        cancel_cellpose_training,
         start_cellpose_validation,
         check_cellpose_validation_status,
         cancel_cellpose_validation,
-        build_cellpose_zip_bytes
+        build_cellpose_zip_bytes,
     )
 
     ss.setdefault("cp_icon_toggle", True)
@@ -691,31 +705,34 @@ def render_cellpose_status_fragment():
     # Check Training
     if cp_job and cp_job.get("status") == "running":
         status = check_cellpose_training_status()
-        
+
         if status == "running":
             st.info(f"{icon} Cellpose training in progress...")
-            
+
             log_content = cp_job.get("log_content", "")
             if log_content:
                 with st.expander("📄 View Training Log", expanded=False):
                     st.code(log_content, language="text")
             else:
                 st.caption("Waiting for training output...")
-            
+
             if st.button("🛑 Cancel Training", type="secondary", key="cancel_cp_frag"):
                 cancel_cellpose_training()
                 st.rerun()
         elif status == "complete":
-            st.success("Finalizing Cellpose training...") #technically its done but the synchronous parts here are too slow
-        
+            st.success(
+                "Finalizing Cellpose training..."
+            )  # technically its done but the synchronous parts here are too slow
+
             from src.panels.fine_tune_panel import get_train_setup
+
             recs, base_model, epochs, lr, wd, nimg, channels = get_train_setup()
             start_cellpose_validation(
                 recs=recs,
                 base_model=base_model,
                 channels=channels,
                 do_gridsearch=ss.get("cp_do_gridsearch", False),
-                n_trials=ss.get("cp_n_trials", 20)
+                n_trials=ss.get("cp_n_trials", 20),
             )
             ss.pop("cp_training_job", None)
             st.rerun()
@@ -723,25 +740,26 @@ def render_cellpose_status_fragment():
             st.error("❌ Cellpose training failed.")
             with st.expander("Show Error Details"):
                 st.code(cp_job.get("error", "Unknown error"))
-            ss.pop("cp_training_job", None)
-            st.rerun()
+            # ss.pop("cp_training_job", None)
+            # st.rerun()
         return
 
     # Check Validation
     if val_job and val_job.get("status") == "running":
         val_status = check_cellpose_validation_status()
-        
+
         if val_status == "running":
-            st.info("🔬 Running validation...")
-            
+            st.info(f"{icon} Cellpose validation in progress...")
             log_content = val_job.get("log_content", "")
             if log_content:
                 with st.expander("📄 View Validation Log", expanded=False):
                     st.code(log_content, language="text")
             else:
                 st.caption("Waiting for validation output...")
-            
-            if st.button("🛑 Cancel Validation", type="secondary", key="cancel_val_frag"):
+
+            if st.button(
+                "🛑 Cancel Validation", type="secondary", key="cancel_val_frag"
+            ):
                 cancel_cellpose_validation()
                 st.rerun()
         elif val_status == "complete":
@@ -754,5 +772,5 @@ def render_cellpose_status_fragment():
             st.error("❌ Validation failed.")
             with st.expander("Show Error Details"):
                 st.code(val_job.get("error", "Unknown error"))
-            ss.pop("cp_validation_job", None)
-            st.rerun()
+            # ss.pop("cp_validation_job", None)
+            # st.rerun()

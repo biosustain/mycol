@@ -3,8 +3,9 @@ import numpy as np
 import torch
 import os
 from pathlib import Path
-from cellpose import models, train, io
+from cellpose import models, train, io, core
 from sklearn.model_selection import train_test_split
+
 
 def main():
     if len(sys.argv) < 3:
@@ -14,14 +15,18 @@ def main():
     in_path = sys.argv[1]
     out_path = sys.argv[2]
 
-    #load data
+    # load data
     with np.load(in_path, allow_pickle=True) as data:
         images_in = data["images"]
         masks_in = data["masks"]
 
-        #debug prints
-        print(f"DEBUG: loaded images_in type={type(images_in)} shape={getattr(images_in, 'shape', 'N/A')} dtype={getattr(images_in, 'dtype', 'N/A')}")
-        print(f"DEBUG: loaded masks_in type={type(masks_in)} shape={getattr(masks_in, 'shape', 'N/A')} dtype={getattr(masks_in, 'dtype', 'N/A')}")
+        # debug prints
+        print(
+            f"DEBUG: loaded images_in type={type(images_in)} shape={getattr(images_in, 'shape', 'N/A')} dtype={getattr(images_in, 'dtype', 'N/A')}"
+        )
+        print(
+            f"DEBUG: loaded masks_in type={type(masks_in)} shape={getattr(masks_in, 'shape', 'N/A')} dtype={getattr(masks_in, 'dtype', 'N/A')}"
+        )
 
         # Ensure we have a list of numpy arrays with numeric dtypes
         if isinstance(images_in, np.ndarray) and images_in.dtype == object:
@@ -38,9 +43,12 @@ def main():
         else:
             masks = [np.asanyarray(ma).astype(np.uint16) for ma in masks_in]
 
-
-        print(f"DEBUG: processed images len={len(images)} first_type={type(images[0])} first_shape={images[0].shape} first_dtype={images[0].dtype}")
-        print(f"DEBUG: processed masks len={len(masks)} first_type={type(masks[0])} first_shape={masks[0].shape} first_dtype={masks[0].dtype}")
+        print(
+            f"DEBUG: processed images len={len(images)} first_type={type(images[0])} first_shape={images[0].shape} first_dtype={images[0].dtype}"
+        )
+        print(
+            f"DEBUG: processed masks len={len(masks)} first_type={type(masks[0])} first_shape={masks[0].shape} first_dtype={masks[0].dtype}"
+        )
 
         base_model = str(data["base_model"])
         epochs = int(data["epochs"])
@@ -49,8 +57,7 @@ def main():
         nimg_per_epoch = int(data["nimg_per_epoch"])
         channels = data["channels"].tolist()
 
-
-    #split data
+    # split data
     train_images, test_images, train_masks, test_masks = train_test_split(
         images, masks, test_size=0.2, random_state=42, shuffle=True
     )
@@ -64,7 +71,7 @@ def main():
 
     use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
     cell_model = models.CellposeModel(gpu=use_gpu, model_type=init_model)
-    
+
     model_name = f"{base_model}_finetuned.pt"
 
     # Train
@@ -89,7 +96,7 @@ def main():
     # We save the state dict and the losses
     # cell_model.net.state_dict() is a OrderedDict of Tensors
     state_dict = cell_model.net.state_dict()
-    
+
     # Save to a temporary file, then we will read it back in the main app
     # Actually, we can just save it to the output.npz
     np.savez_compressed(
@@ -97,8 +104,9 @@ def main():
         state_dict=state_dict,
         train_losses=train_losses,
         test_losses=test_losses,
-        model_name=model_name
+        model_name=model_name,
     )
+
 
 if __name__ == "__main__":
     main()
