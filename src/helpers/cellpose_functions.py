@@ -855,25 +855,35 @@ def check_cellpose_validation_status():
             best_params = data["best_params"].item()
             validation_metrics = data["validation_metrics"].item()
 
-        # TODO: FIX
         try:
-            if (
-                optuna_results is not None
-                and hasattr(optuna_results, "__len__")
-                and len(optuna_results) > 0
-            ):
-                ss["cp_grid_results_df"] = pd.DataFrame(optuna_results).sort_values(
-                    by="ap_iou_0.5", ascending=False, na_position="last"
-                )
+            if optuna_results is not None:
+                if isinstance(optuna_results, np.ndarray):
+                    if optuna_results.ndim == 0:
+                        optuna_results = optuna_results.item()
+                    else:
+                        optuna_results = optuna_results.tolist()
+
+                df = pd.DataFrame(optuna_results)
+
+                if not df.empty and "ap_iou_0.5" in df.columns:
+                    ss["cp_grid_results_df"] = df.sort_values(
+                        by="ap_iou_0.5", ascending=False, na_position="last"
+                    )
+                else:
+                    ss["cp_grid_results_df"] = df
+                    if not df.empty:
+                        print(
+                            "Warning: 'ap_iou_0.5' column missing from Optuna results. Skipping sort."
+                        )
 
                 # set best hyperparameters
-                ss["cp_cellprob_threshold"] = float(best_params["cellprob"])
-                ss["cp_flow_threshold"] = float(best_params["flow_threshold"])
-                ss["cp_min_size"] = int(best_params["min_size"])
-                ss["cp_niter"] = int(best_params["niter"])
-        except (TypeError, ValueError):
-            # TODO: handle better?
-            # optuna_results is None or scalar, skip
+                if best_params:
+                    ss["cp_cellprob_threshold"] = float(best_params.get("cellprob", 0.0))
+                    ss["cp_flow_threshold"] = float(best_params.get("flow_threshold", 0.4))
+                    ss["cp_min_size"] = int(best_params.get("min_size", 15))
+                    ss["cp_niter"] = int(best_params.get("niter", 200))
+        except Exception as e:
+            st.error(f"Error processing Optuna results: {e}")
             pass
 
         ss["cellpose_iou_comparison"] = plot_iou_comparison(

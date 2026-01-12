@@ -679,8 +679,8 @@ def render_densenet_status_fragment():
         st.error("❌ DenseNet training failed.")
         with st.expander("Show Error Details"):
             st.code(dn_job.get("error", "Unknown error"))
-        ss.pop("dn_training_job", None)
-        st.rerun()
+        #ss.pop("dn_training_job", None)
+        #st.rerun()
 
 
 @st.fragment(run_every=10)
@@ -763,7 +763,7 @@ def render_cellpose_status_fragment():
                 cancel_cellpose_validation()
                 st.rerun()
         elif val_status == "complete":
-            st.success("Finalizing validation...")
+            st.success("Finalizing validation... please stay on this page for now!")
             st.balloons()
             ss["cp_zip_bytes"] = build_cellpose_zip_bytes()
             ss.pop("cp_validation_job", None)
