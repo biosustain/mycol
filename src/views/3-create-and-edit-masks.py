@@ -41,14 +41,16 @@ with st.spinner("Loading Annotator..."):
                 def set_current_from_slider():
                     ok_local = ordered_keys()
                     # slider is 1..len(ok), convert to 0-based index, clamp to range
-                    idx = max(0, min(len(ok_local) - 1, st.session_state.slider_jump - 1))
+                    idx = max(
+                        0, min(len(ok_local) - 1, st.session_state.slider_jump - 1)
+                    )
                     set_current_by_index(idx)
 
                 # --- Navigation buttons & slider ---
                 nav_col1, nav_col2, nav_col3 = st.columns([1, 4, 1])
 
                 with nav_col1:
-                    if st.button("◀", width='stretch'):
+                    if st.button("", width="stretch", shortcut="left"):
                         # move slider one step back, then update current image
                         st.session_state.slider_jump = max(
                             1, st.session_state.slider_jump - 1
@@ -57,7 +59,7 @@ with st.spinner("Loading Annotator..."):
                         st.rerun()
 
                 with nav_col3:
-                    if st.button("▶", width='stretch'):
+                    if st.button("", width="stretch", shortcut="right"):
                         # move slider one step forward, then update current image
                         st.session_state.slider_jump = min(
                             len(ok), st.session_state.slider_jump + 1
