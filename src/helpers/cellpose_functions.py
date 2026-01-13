@@ -271,18 +271,66 @@ def _get_base_path():
         return Path(__file__).resolve().parent
 
 
-HERE = _get_base_path()
+# -----------------------------------------------------------------------------
+# WORKER PATH RESOLUTION
+# -----------------------------------------------------------------------------
 
-if getattr(sys, 'frozen', False):
-    UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
+def _get_portable_paths():
+    """
+    Detect if running in Portable Mode (bundled folder) and return paths.
     
+    Structure in Portable Mode:
+      MyCol/
+        bin/python_worker/ (Embedded Python)
+        src/helpers/cellpose_functions.py (This file)
+    """
+    # Base path of this file: .../src/helpers/cellpose_functions.py
+    here = Path(__file__).resolve()
+    
+    # Check for: .../bin/python_worker/python.exe (Windows)
+    # The relative path from 'here' to 'bin' is: ../../bin
+    # here.parent = helpers
+    # here.parent.parent = src
+    # here.parent.parent.parent = MyCol root
+    
+    root = here.parent.parent.parent
+    
+    # Windows Portable Check
+    win_python = root / "bin" / "python_worker" / "python.exe"
+    if win_python.exists():
+        return str(win_python), str(root / "src" / "training" / "unified_worker.py")
+        
+    # macOS Portable Check (TBD - align with make_dist.sh structure)
+    # For now assume similar relative structure or standard venv-like bin/python
+    mac_python = root / "bin" / "python_worker" / "bin" / "python" 
+    if mac_python.exists():
+        return str(mac_python), str(root / "src" / "training" / "unified_worker.py")
+
+    return None, None
+
+PORTABLE_WORKER_PYTHON, PORTABLE_UNIFIED_WORKER = _get_portable_paths()
+
+if PORTABLE_WORKER_PYTHON:
+    # PORTABLE MODE
+    print(f"[MyCol] Portable mode detected. Worker: {PORTABLE_WORKER_PYTHON}")
+    TRAINING_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "finetune"]
+    INFERENCE_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "inference"]
+    VALIDATION_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "validation"]
+    DENSENET_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "densenet"]
+    TRAINING_PROJECT = None # Not needed, direct python call
+
+elif getattr(sys, 'frozen', False):
+    # PYINSTALLER FROZEN MODE (Legacy/Fallback)
+    HERE = _get_base_path()
+    UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
     TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER, "finetune"]
     INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER, "inference"]
     VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER, "validation"]
     DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER, "densenet"]
-    
-    TRAINING_PROJECT = None 
+    TRAINING_PROJECT = None
 else:
+    # DEVELOPMENT MODE (UV)
+    HERE = Path(__file__).resolve().parent
     TRAINING_PROJECT = str((HERE.parent / "training").resolve())
     UNIFIED_WORKER_PY = str((HERE.parent / "training" / "unified_worker.py").resolve())
     
@@ -340,9 +388,16 @@ class CellposeModel3Proxy:
                 )
 
                 # run worker
-                if getattr(sys, 'frozen', False):
+                if PORTABLE_WORKER_PYTHON:
+                    # Portable Mode: Call bundled python directly
+                    cmd = [PORTABLE_WORKER_PYTHON] + INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
+                elif getattr(sys, 'frozen', False):
+                    # Direct executable call when frozen
+                    # INFERENCE_WORKER_SCRIPT is [exe_path, "inference"]
                     cmd = INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
                 else:
+                    # uv run call in development mode
+                    # INFERENCE_WORKER_SCRIPT is [py_script_path, "inference"]
                     cmd = [
                         "uv",
                         "run",
@@ -568,7 +623,10 @@ def start_cellpose_training(
         channels=np.array(channels),
     )
 
-    if getattr(sys, 'frozen', False):
+    if PORTABLE_WORKER_PYTHON:
+        # Portable Mode
+        cmd = [PORTABLE_WORKER_PYTHON] + TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
+    elif getattr(sys, 'frozen', False):
         # Direct executable call when frozen
         cmd = TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
     else:
@@ -745,7 +803,10 @@ def start_cellpose_validation(
         n_trials=n_trials,
     )
 
-    if getattr(sys, 'frozen', False):
+    if PORTABLE_WORKER_PYTHON:
+        # Portable Mode
+        cmd = [PORTABLE_WORKER_PYTHON] + VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
+    elif getattr(sys, 'frozen', False):
         # Direct executable call when frozen
         cmd = VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
     else:
