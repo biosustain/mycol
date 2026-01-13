@@ -105,6 +105,8 @@ Copy-Item -Path "app.py" -Destination "$DistDir\app.py"
 # Copy .streamlit folder
 if (Test-Path ".streamlit") {
     Copy-Item -Recurse -Path ".streamlit" -Destination "$DistDir\.streamlit"
+    # Ensure toolbarMode is viewer
+    Add-Content -Path "$DistDir\.streamlit\config.toml" -Value "`n[client]`ntoolbarMode = `"viewer`""
 }
 
 # Copy demo_data folder

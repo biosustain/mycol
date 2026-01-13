@@ -78,7 +78,10 @@ cp src/bootstrap.py "$DIST_DIR/bootstrap.py"
 cp app.py "$DIST_DIR/app.py"
 
 # Copy .streamlit and demo_data if they exist
-[ -d ".streamlit" ] && cp -r ".streamlit" "$DIST_DIR/.streamlit"
+if [ -d ".streamlit" ]; then
+    cp -r ".streamlit" "$DIST_DIR/.streamlit"
+    echo '[client]\ntoolbarMode = "viewer"' >> "$DIST_DIR/.streamlit/config.toml"
+fi
 [ -d "demo_data" ] && cp -r "demo_data" "$DIST_DIR/demo_data"
 
 # build launcher
