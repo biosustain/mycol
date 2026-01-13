@@ -98,61 +98,79 @@ def compute_validation_metrics(
     }
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr)
+
+import traceback
+
+def main():
+    try:
+        if len(sys.argv) != 3:
+            print("Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr)
+            sys.exit(1)
+
+        in_path = Path(sys.argv[1])
+        out_path = Path(sys.argv[2])
+
+        with np.load(in_path, allow_pickle=True) as data:
+            images_obj = data["images"]
+            masks_obj = data["masks"]
+            base_model = str(data["base_model"])
+            tuned_model_path = str(data["tuned_model_path"])
+            channels = list(data["channels"])
+            do_gridsearch = bool(data["do_gridsearch"])
+            n_trials = int(data.get("n_trials", 20))
+
+        images = [np.asarray(img, dtype=np.float32) for img in images_obj]  # ew
+        masks = [np.asarray(mask, dtype=np.uint16) for mask in masks_obj]
+
+        print(f"Loaded {len(images)} images and {len(masks)} masks")
+        print(f"Base model: {base_model}")
+        print(f"Tuned model: {tuned_model_path}")
+        print(f"Channels: {channels}")
+        print(f"Do gridsearch: {do_gridsearch}")
+        sys.stdout.flush()
+
+        optuna_results = None
+        best_params = {
+            "cellprob": 0.2,
+            "flow_threshold": 0.4,
+            "niter": 1000,
+            "min_size": 100,
+        }
+
+        if do_gridsearch:
+            print(f"Running Optuna with {n_trials} trials...")
+            sys.stdout.flush()
+            optuna_results, best_params = run_optuna_tuning(
+                images, masks, tuned_model_path, channels, n_trials
+            )
+            print(f"Best params: {best_params}")
+            sys.stdout.flush()
+
+        # Compute validation metrics
+        print("Computing validation metrics...")
+        sys.stdout.flush()
+        validation_metrics = compute_validation_metrics(
+            images, masks, base_model, tuned_model_path, channels, best_params
+        )
+
+        print("Validation complete!")
+
+        # Save results
+        np.savez_compressed(
+            out_path,
+            optuna_results=optuna_results,
+            best_params=best_params,
+            validation_metrics=validation_metrics,
+        )
+
+        print(f"Results saved to {out_path}")
+        sys.stdout.flush()
+
+    except Exception:
+        traceback.print_exc()
+        sys.stdout.flush()
         sys.exit(1)
 
-    in_path = Path(sys.argv[1])
-    out_path = Path(sys.argv[2])
 
-    with np.load(in_path, allow_pickle=True) as data:
-        images_obj = data["images"]
-        masks_obj = data["masks"]
-        base_model = str(data["base_model"])
-        tuned_model_path = str(data["tuned_model_path"])
-        channels = list(data["channels"])
-        do_gridsearch = bool(data["do_gridsearch"])
-        n_trials = int(data.get("n_trials", 20))
-
-    images = [np.asarray(img, dtype=np.float32) for img in images_obj]  # ew
-    masks = [np.asarray(mask, dtype=np.uint16) for mask in masks_obj]
-
-    print(f"Loaded {len(images)} images and {len(masks)} masks")
-    print(f"Base model: {base_model}")
-    print(f"Tuned model: {tuned_model_path}")
-    print(f"Channels: {channels}")
-    print(f"Do gridsearch: {do_gridsearch}")
-
-    optuna_results = None
-    best_params = {
-        "cellprob": 0.2,
-        "flow_threshold": 0.4,
-        "niter": 1000,
-        "min_size": 100,
-    }
-
-    if do_gridsearch:
-        print(f"Running Optuna with {n_trials} trials...")
-        optuna_results, best_params = run_optuna_tuning(
-            images, masks, tuned_model_path, channels, n_trials
-        )
-        print(f"Best params: {best_params}")
-
-    # Compute validation metrics
-    print("Computing validation metrics...")
-    validation_metrics = compute_validation_metrics(
-        images, masks, base_model, tuned_model_path, channels, best_params
-    )
-
-    print("Validation complete!")
-
-    # Save results
-    np.savez_compressed(
-        out_path,
-        optuna_results=optuna_results,
-        best_params=best_params,
-        validation_metrics=validation_metrics,
-    )
-
-    print(f"Results saved to {out_path}")
+if __name__ == "__main__":
+    main()

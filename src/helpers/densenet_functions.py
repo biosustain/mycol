@@ -437,6 +437,11 @@ def check_densenet_training_status():
             job["error"] = f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
             return "failed"
         
+        if not out_path.exists():
+            job["status"] = "failed"
+            job["error"] = f"Training failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
+            return "failed"
+        
         with np.load(out_path, allow_pickle=True) as data:
             model_state = data["model_state"].item()
             history = data["history"].item()

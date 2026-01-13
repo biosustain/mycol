@@ -143,63 +143,76 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
     return history, model.state_dict(), val_loader
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: densenet_worker.py <input.npz> <output.npz>", file=sys.stderr)
-        sys.exit(1)
-    
-    in_path = Path(sys.argv[1])
-    out_path = Path(sys.argv[2])
-    
-    with np.load(in_path, allow_pickle=True) as data:
-        X = data["X"]
-        y = data["y"]
-        classes = data["classes"]
-        batch_size = int(data["batch_size"])
-        epochs = int(data["epochs"])
-        val_split = float(data["val_split"])
-    
-    history, model_state, val_loader = train_densenet(
-        X, y, classes, batch_size, epochs, val_split
-    )
-    
 
-    
-    
-    device = get_device()
-    model = build_densenet(num_classes=len(classes))
-    model.load_state_dict(model_state)
-    model.to(device)
-    model.eval()
-    
-    y_true, y_pred = [], []
-    with torch.no_grad():
-        for inputs, labels in val_loader:
-            inputs = inputs.to(device)
-            outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1)
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(preds.cpu().numpy())
-    
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-    
-    acc = accuracy_score(y_true, y_pred)
-    prec, rec, f1, _ = precision_recall_fscore_support(
-        y_true, y_pred, average="macro", zero_division=0
-    )
-    cm = confusion_matrix(y_true, y_pred, labels=np.arange(len(classes)))
-    
-    np.savez_compressed(
-        out_path,
-        model_state=model_state,
-        history=history,
-        classes=classes,
-        metrics={
-            "accuracy": acc,
-            "precision": prec,
-            "recall": rec,
-            "f1": f1,
-        },
-        confusion_matrix=cm
-    )
+import traceback
+
+def main():
+    try:
+        if len(sys.argv) != 3:
+            print("Usage: densenet_worker.py <input.npz> <output.npz>", file=sys.stderr)
+            sys.exit(1)
+        
+        in_path = Path(sys.argv[1])
+        out_path = Path(sys.argv[2])
+        
+        with np.load(in_path, allow_pickle=True) as data:
+            X = data["X"]
+            y = data["y"]
+            classes = data["classes"]
+            batch_size = int(data["batch_size"])
+            epochs = int(data["epochs"])
+            val_split = float(data["val_split"])
+        
+        history, model_state, val_loader = train_densenet(
+            X, y, classes, batch_size, epochs, val_split
+        )
+        
+        
+        
+        device = get_device()
+        model = build_densenet(num_classes=len(classes))
+        model.load_state_dict(model_state)
+        model.to(device)
+        model.eval()
+        
+        y_true, y_pred = [], []
+        with torch.no_grad():
+            for inputs, labels in val_loader:
+                inputs = inputs.to(device)
+                outputs = model(inputs)
+                preds = torch.argmax(outputs, dim=1)
+                y_true.extend(labels.cpu().numpy())
+                y_pred.extend(preds.cpu().numpy())
+        
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+        
+        acc = accuracy_score(y_true, y_pred)
+        prec, rec, f1, _ = precision_recall_fscore_support(
+            y_true, y_pred, average="macro", zero_division=0
+        )
+        cm = confusion_matrix(y_true, y_pred, labels=np.arange(len(classes)))
+        
+        np.savez_compressed(
+            out_path,
+            model_state=model_state,
+            history=history,
+            classes=classes,
+            metrics={
+                "accuracy": acc,
+                "precision": prec,
+                "recall": rec,
+                "f1": f1,
+            },
+            confusion_matrix=cm
+        )
+        sys.stdout.flush()
+        
+    except Exception:
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

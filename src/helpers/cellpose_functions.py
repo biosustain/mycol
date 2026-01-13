@@ -257,19 +257,39 @@ def segment_with_cellpose_sam(
     return rec
 
 
-HERE = Path(__file__).resolve().parent
+def _get_base_path():
+    """Get base path whether frozen or not.
+    
+    When frozen with PyInstaller, sys._MEIPASS points to the temporary extraction folder.
+    When running as a script, use the current file's directory.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        return Path(sys._MEIPASS)
+    else:
+        # Running as script
+        return Path(__file__).resolve().parent
 
-# training workspace
-TRAINING_PROJECT = str((HERE.parent / "training").resolve())
-TRAINING_WORKER_SCRIPT = str(
-    (HERE.parent / "training" / "finetune_worker.py").resolve()
-)
-INFERENCE_WORKER_SCRIPT = str(
-    (HERE.parent / "training" / "inference_worker.py").resolve()
-)
-VALIDATION_WORKER_SCRIPT = str(
-    (HERE.parent / "training" / "validation_worker.py").resolve()
-)
+
+HERE = _get_base_path()
+
+if getattr(sys, 'frozen', False):
+    UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
+    
+    TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER, "finetune"]
+    INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER, "inference"]
+    VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER, "validation"]
+    DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER, "densenet"]
+    
+    TRAINING_PROJECT = None 
+else:
+    TRAINING_PROJECT = str((HERE.parent / "training").resolve())
+    UNIFIED_WORKER_PY = str((HERE.parent / "training" / "unified_worker.py").resolve())
+    
+    TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "finetune"]
+    INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "inference"]
+    VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "validation"]
+    DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "densenet"]
 
 
 class CellposeModel3Proxy:
@@ -320,21 +340,26 @@ class CellposeModel3Proxy:
                 )
 
                 # run worker
-                cmd = [
-                    "uv",
-                    "run",
-                    "--project",
-                    TRAINING_PROJECT,
-                    "python",
-                    INFERENCE_WORKER_SCRIPT,
-                    str(in_path),
-                    str(out_path),
-                ]
+                if getattr(sys, 'frozen', False):
+                    cmd = INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
+                else:
+                    cmd = [
+                        "uv",
+                        "run",
+                        "--project",
+                        TRAINING_PROJECT,
+                        "python",
+                    ] + INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
 
                 res = subprocess.run(cmd, capture_output=True, text=True)
                 if res.returncode != 0:
                     raise RuntimeError(
                         f"Cellpose 3 Inference Bridge failed:\n{res.stderr}"
+                    )
+
+                if not out_path.exists():
+                    raise RuntimeError(
+                        f"Cellpose 3 Inference Bridge failed: Output file not created.\n{res.stderr}"
                     )
 
                 # Load results
@@ -543,16 +568,18 @@ def start_cellpose_training(
         channels=np.array(channels),
     )
 
-    cmd = [
-        "uv",
-        "run",
-        "--project",
-        TRAINING_PROJECT,
-        "python",
-        TRAINING_WORKER_SCRIPT,
-        str(in_path),
-        str(out_path),
-    ]
+    if getattr(sys, 'frozen', False):
+        # Direct executable call when frozen
+        cmd = TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
+    else:
+        # uv run call in development mode
+        cmd = [
+            "uv",
+            "run",
+            "--project",
+            TRAINING_PROJECT,
+            "python",
+        ] + TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
 
     # open log file for output
     log_file = open(log_path, "w")
@@ -621,10 +648,18 @@ def check_cellpose_training_status():
     tmpdir = job["tmpdir"]
 
     try:
+
         if returncode != 0:
             job["status"] = "failed"
             job["error"] = (
                 f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
+            )
+            return "failed"
+        
+        if not out_path.exists():
+            job["status"] = "failed"
+            job["error"] = (
+                f"Training failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
             )
             return "failed"
 
@@ -710,16 +745,18 @@ def start_cellpose_validation(
         n_trials=n_trials,
     )
 
-    cmd = [
-        "uv",
-        "run",
-        "--project",
-        TRAINING_PROJECT,
-        "python",
-        VALIDATION_WORKER_SCRIPT,
-        str(in_path),
-        str(out_path),
-    ]
+    if getattr(sys, 'frozen', False):
+        # Direct executable call when frozen
+        cmd = VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
+    else:
+        # uv run call in development mode
+        cmd = [
+            "uv",
+            "run",
+            "--project",
+            TRAINING_PROJECT,
+            "python",
+        ] + VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
 
     log_file = open(log_path, "w")
     process = subprocess.Popen(
@@ -788,30 +825,47 @@ def check_cellpose_validation_status():
             )
             return "failed"
 
+        if not out_path.exists():
+            job["status"] = "failed"
+            job["error"] = (
+                f"Validation failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
+            )
+            return "failed"
+
         with np.load(out_path, allow_pickle=True) as data:
             optuna_results = data.get("optuna_results")
             best_params = data["best_params"].item()
             validation_metrics = data["validation_metrics"].item()
 
-        # TODO: FIX
         try:
-            if (
-                optuna_results is not None
-                and hasattr(optuna_results, "__len__")
-                and len(optuna_results) > 0
-            ):
-                ss["cp_grid_results_df"] = pd.DataFrame(optuna_results).sort_values(
-                    by="ap_iou_0.5", ascending=False, na_position="last"
-                )
+            if optuna_results is not None:
+                if isinstance(optuna_results, np.ndarray):
+                    if optuna_results.ndim == 0:
+                        optuna_results = optuna_results.item()
+                    else:
+                        optuna_results = optuna_results.tolist()
+
+                df = pd.DataFrame(optuna_results)
+
+                if not df.empty and "ap_iou_0.5" in df.columns:
+                    ss["cp_grid_results_df"] = df.sort_values(
+                        by="ap_iou_0.5", ascending=False, na_position="last"
+                    )
+                else:
+                    ss["cp_grid_results_df"] = df
+                    if not df.empty:
+                        print(
+                            "Warning: 'ap_iou_0.5' column missing from Optuna results. Skipping sort."
+                        )
 
                 # set best hyperparameters
-                ss["cp_cellprob_threshold"] = float(best_params["cellprob"])
-                ss["cp_flow_threshold"] = float(best_params["flow_threshold"])
-                ss["cp_min_size"] = int(best_params["min_size"])
-                ss["cp_niter"] = int(best_params["niter"])
-        except (TypeError, ValueError):
-            # TODO: handle better?
-            # optuna_results is None or scalar, skip
+                if best_params:
+                    ss["cp_cellprob_threshold"] = float(best_params.get("cellprob", 0.0))
+                    ss["cp_flow_threshold"] = float(best_params.get("flow_threshold", 0.4))
+                    ss["cp_min_size"] = int(best_params.get("min_size", 15))
+                    ss["cp_niter"] = int(best_params.get("niter", 200))
+        except Exception as e:
+            st.error(f"Error processing Optuna results: {e}")
             pass
 
         ss["cellpose_iou_comparison"] = plot_iou_comparison(
