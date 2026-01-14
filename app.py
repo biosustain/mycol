@@ -4,9 +4,18 @@ import streamlit as st
 
 st.set_page_config(page_title="Mycol", page_icon="👨🏼‍🔬", layout="wide")
 
+# Eager load heavy libraries to prevent lag on tab switching
+with st.empty():
+    st.write("### ⏳ Initializing AI Models...")
+    st.caption("Pre-loading PyTorch, Cellpose, and SAM2 for smoother performance.")
+    from src.helpers.preload import eager_load_heavy_libs
+
+    eager_load_heavy_libs()
+
+
 # ------------------ Boot steps ------------------ #
-from boot import configure_tf_cpu_only
-from helpers.state_ops import ensure_global_state
+from src.boot import configure_tf_cpu_only
+from src.helpers.state_ops import ensure_global_state
 
 ensure_global_state()
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
@@ -43,30 +52,25 @@ st.html(
 # ------------------ Define pages ------------------ #
 pages = [
     st.Page(
-        "views/1_home_page.py",
+        "src/views/1-home-page.py",
         title="Welcome to Mycol",
-        icon="🏠",
         default=True,
     ),
     st.Page(
-        "views/2_Upload_data.py",
+        "src/views/2-upload-data.py",
         title="Upload Models and Data",
-        icon="📥",
     ),
     st.Page(
-        "views/3_Create_and_Edit_Masks.py",
+        "src/views/3-create-and-edit-masks.py",
         title="Annotate Images",
-        icon="✏️",
     ),
     st.Page(
-        "views/4_Fine_Tune_Models.py",
+        "src/views/4-fine-tune-models.py",
         title="Train Models",
-        icon="⚙️",
     ),
     st.Page(
-        "views/5_Cell_Metrics.py",
+        "src/views/5-cell-metrics.py",
         title="Visualize Cell Attributes",
-        icon="🔬",
     ),
 ]
 
