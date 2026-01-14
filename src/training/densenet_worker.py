@@ -95,6 +95,9 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
     patience_counter = 0
     best_model_state = None
     
+    print(f"Starting DenseNet training for {epochs} epochs...")
+    sys.stdout.flush()
+
     for epoch in range(epochs):
 
         model.train()
@@ -127,15 +130,21 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
         epoch_val_loss = val_loss / len(val_ds)
         history["val_loss"].append(epoch_val_loss)
         
+        print(f"Epoch {epoch+1}/{epochs} - Loss: {epoch_loss:.4f} - Val Loss: {epoch_val_loss:.4f}")
+        sys.stdout.flush()
     
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
             best_model_state = model.state_dict()
             patience_counter = 0
+            print(f"  -> Validation loss improved to {best_val_loss:.4f}")
         else:
             patience_counter += 1
             if patience_counter >= patience:
+                print(f"Early stopping at epoch {epoch+1}")
                 break
+        
+        sys.stdout.flush()
 
     if best_model_state:
         model.load_state_dict(best_model_state)
