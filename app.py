@@ -9,6 +9,7 @@ with st.empty():
     st.write("### ⏳ Initializing AI Models...")
     st.caption("Pre-loading PyTorch, Cellpose, and SAM2 for smoother performance.")
     from src.helpers.preload import eager_load_heavy_libs
+
     eager_load_heavy_libs()
 
 
@@ -53,28 +54,23 @@ pages = [
     st.Page(
         "src/views/1-home-page.py",
         title="Welcome to Mycol",
-        icon="🏠",
         default=True,
     ),
     st.Page(
         "src/views/2-upload-data.py",
         title="Upload Models and Data",
-        icon="📥",
     ),
     st.Page(
         "src/views/3-create-and-edit-masks.py",
         title="Annotate Images",
-        icon="✏️",
     ),
     st.Page(
         "src/views/4-fine-tune-models.py",
         title="Train Models",
-        icon="⚙️",
     ),
     st.Page(
         "src/views/5-cell-metrics.py",
         title="Visualize Cell Attributes",
-        icon="🔬",
     ),
 ]
 
