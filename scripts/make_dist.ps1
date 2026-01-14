@@ -121,13 +121,22 @@ Write-Host "[6/6] Building Native Launcher (Rust)..." -ForegroundColor Yellow
 if (Get-Command cargo -ErrorAction SilentlyContinue) {
     Push-Location "tools\launcher"
     Write-Host "  - Compiling launcher..." -ForegroundColor Gray
+    cargo build
     cargo build --release
     Pop-Location
     
-    $LauncherSrc = "tools\launcher\target\release\launcher.exe"
-    if (Test-Path $LauncherSrc) {
-        Copy-Item -Path $LauncherSrc -Destination "$DistDir\MyCol.exe"
-        Write-Host "  - Launcher copied to MyCol.exe" -ForegroundColor Gray
+    $LauncherSrcRelease = "tools\launcher\target\release\launcher.exe"
+    if (Test-Path $LauncherSrcRelease) {
+        Copy-Item -Path $LauncherSrcRelease -Destination "$DistDir\mycol.exe"
+        Write-Host "  - Launcher copied to mycol.exe" -ForegroundColor Gray
+    } else {
+        Write-Error "Launcher compilation failed or output not found."
+    }
+
+    $LauncherSrcDebug = "tools\launcher\target\debug\launcher.exe"
+    if (Test-Path $LauncherSrcDebug) {
+        Copy-Item -Path $LauncherSrcDebug -Destination "$DistDir\mycol_debug.exe"
+        Write-Host "  - Launcher copied to mycol_debug.exe" -ForegroundColor Gray
     } else {
         Write-Error "Launcher compilation failed or output not found."
     }

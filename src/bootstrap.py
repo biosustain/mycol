@@ -53,16 +53,18 @@ def main():
     
     try:
         import webview
-    except ImportError:
+        print("[Bootstrap] Opening WebView...")
+        window = webview.create_window('Mycol', f'http://localhost:{server_port}')
+        webview.start()
+    except ImportError or RuntimeError:
         print("Warning: pywebview not found. Opening system browser...")
         import webbrowser
         webbrowser.open(f"http://localhost:{server_port}")
         process.wait()
         return
 
-    print("[Bootstrap] Opening WebView...")
-    window = webview.create_window('Mycol', f'http://localhost:{server_port}')
-    webview.start()
+
+    
     
     print("[Bootstrap] Cleaning up...")
     process.terminate()
