@@ -107,9 +107,9 @@ with st.spinner("Loading Annotator..."):
                 st.session_state["show_image"] = show_image_toggle
 
             # Tabs for editing and classifying masks
-            listTabs = ["Segment Cells", "Classify Cells"]
-            whitespace = 9
-            editing_tab, classifying_tab = st.tabs(["Segment Cells", "Classify Cells"])
+            editing_tab, classifying_tab = st.tabs(
+                ["Segmentation Controls", "Classification Controls"]
+            )
             with editing_tab:
                 mask_editing_panel.render_segment_sidebar(key_ns="edit_side")
             with classifying_tab:

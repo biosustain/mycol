@@ -27,14 +27,23 @@ from src.helpers.upload_download_functions import (
 # ---------- Rendering functions ----------
 
 
+def _mode_display_text() -> str:
+    """Return the current mode text, with class name if in Assign class mode."""
+    mode = st.session_state["interaction_mode"]
+    if mode == "Assign class":
+        cls = st.session_state.get("side_current_class", "No label")
+        return f"{mode} ({cls})"
+    return mode
+
+
 def render_segment_sidebar(*, key_ns: str = "side"):
     with st.container(border=True):
-        st.subheader("Segmentation controls:")
+        st.info(f"Current Mode: *{_mode_display_text()}*")
 
         # render cellpose controls
         with st.popover(
             "Predict masks for image",
-            width='stretch',
+            width="stretch",
             help="Segment cells using the loaded Cellpose model.",
             type="primary",
         ):
@@ -51,7 +60,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 
                     if st.button(
                         "Generate",
-                        width='stretch',
+                        width="stretch",
                         key="segment_image_SAM",
                     ):
                         segment_current_and_refresh_cellpose_sam()
@@ -59,7 +68,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                 with col2:
                     if st.button(
                         "Batch generate",
-                        width='stretch',
+                        width="stretch",
                         key="batch_segment_image_sam",
                         help="Segment all uploaded images with Cellpose.",
                     ):
@@ -71,7 +80,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 
                     if st.button(
                         "Generate",
-                        width='stretch',
+                        width="stretch",
                         key="segment_image",
                         help="Segment this image with Cellpose.",
                         disabled=st.session_state["cellpose_model_bytes"] == None,
@@ -80,7 +89,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                 with col2:
                     if st.button(
                         "Batch generate",
-                        width='stretch',
+                        width="stretch",
                         key="batch_segment_image",
                         help="Segment all uploaded images with Cellpose.",
                         disabled=st.session_state["cellpose_model_bytes"] == None,
@@ -97,7 +106,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
         # render SAM2 controls
         with st.popover(
             "Predict masks from boxes",
-            width='stretch',
+            width="stretch",
             help="Draw boxes and click segment to use SAM2 to segment individual cells.",
             type="primary",
         ):
@@ -110,16 +119,14 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 def render_classify_sidebar(*, key_ns: str = "side"):
 
     with st.container(border=True):
-        st.markdown("### Classification controls:")
+        st.info(f"Current Mode: *{_mode_display_text()}*")
 
-        with st.popover(
-            label="Manage Labels", width='stretch', type="primary"
-        ):
+        with st.popover(label="Manage Labels", width="stretch", type="primary"):
             class_manage_fragment(key_ns)  # add/delete/rename
 
         # Action buttons to classify cells with Densenet
         with st.popover(
-            "Classify cells with Densenet", width='stretch', type="primary"
+            "Classify cells with Densenet", width="stretch", type="primary"
         ):
 
             classify_actions_fragment()
@@ -141,9 +148,7 @@ def render_download_button():
     ok = ordered_keys() if images else []
 
     with st.container(border=True):
-        with st.popover(
-            label="Download options", width='stretch', type="primary"
-        ):
+        with st.popover(label="Download options", width="stretch", type="primary"):
             include_overlay = st.checkbox(
                 "Include colored mask overlays", True, key="dl_include_overlay"
             )
@@ -167,7 +172,7 @@ def render_download_button():
             # 🔹 Only build the dataset when the user actually clicks the button
             if st.button(
                 "Prepare annotated images for download",
-                width='stretch',
+                width="stretch",
                 type="primary",
             ):
                 mz = build_masks_images_zip(
@@ -183,6 +188,6 @@ def render_download_button():
                     mz,
                     "masks_and_images.zip",
                     "application/zip",
-                    width='stretch',
+                    width="stretch",
                     type="primary",
                 )

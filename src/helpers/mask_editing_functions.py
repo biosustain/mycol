@@ -668,7 +668,7 @@ def render_display_and_interact_fragment(key_ns="edit", scale=1.5):
             base_img=base_img,
             disp_w=disp_w,
         )
-    elif mode == "Click Assign":
+    elif mode == "Assign class":
         _handle_assign_class_mode(
             base_img=base_img,
             disp_w=disp_w,

@@ -229,7 +229,7 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
     def _select():
         # pick this class and switch the main panel to Assign class mode
         st.session_state["pending_class"] = name
-        st.session_state["interaction_mode"] = "Click Assign"
+        st.session_state["interaction_mode"] = "Assign class"
 
     def _assign_all():
         # assign ALL masks in the current image to this class
