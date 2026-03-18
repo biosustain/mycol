@@ -78,33 +78,25 @@ with st.spinner("Loading Annotator..."):
                         on_change=set_current_from_slider,
                     )
 
-            # --- Toggles for overlay and normalization ---
-            inner_col1, inner_col2, inner_col3 = st.columns([4, 5, 4])
-            with inner_col1:
-                # toggle to show/hide masks overlay
-                show_overlay_toggle = st.toggle(
-                    "Masks",
-                    key="show_overlay_w",
-                    value=st.session_state.get("show_overlay", True),
+            # --- Segmented control for overlay and normalization ---
+            _view_options = ["Masks", "Normalize", "Image"]
+            _default_views = [
+                opt for opt in _view_options
+                if st.session_state.get(
+                    {"Masks": "show_overlay", "Normalize": "show_normalized", "Image": "show_image"}[opt], True
                 )
-                st.session_state["show_overlay"] = show_overlay_toggle
-
-            with inner_col2:
-                # toggle to normalize background image
-                normalize_image_toggle = st.toggle(
-                    "Normalize",
-                    key="show_normalized_w",
-                    value=st.session_state.get("show_normalized", True),
-                )
-                st.session_state["show_normalized"] = normalize_image_toggle
-
-            with inner_col3:
-                show_image_toggle = st.toggle(
-                    "Image",
-                    key="show_image_w",
-                    value=st.session_state.get("show_image", True),
-                )
-                st.session_state["show_image"] = show_image_toggle
+            ]
+            _selected_views = st.segmented_control(
+                "View options",
+                options=_view_options,
+                default=_default_views,
+                selection_mode="multi",
+                width="stretch",
+                key="view_options_w",
+            )
+            st.session_state["show_overlay"] = "Masks" in _selected_views
+            st.session_state["show_normalized"] = "Normalize" in _selected_views
+            st.session_state["show_image"] = "Image" in _selected_views
 
             # Tabs for editing and classifying masks
             editing_tab, classifying_tab = st.tabs(
