@@ -249,8 +249,9 @@ def create_new_record_with_image(uploaded_file):
     try:
         # load image and convert to RGB
         img_np = np.array(Image.open(uploaded_file).convert("RGB"), dtype=np.uint8)
-        # images are always resized to 512x512
-        img_np = resize_with_aspect_ratio(img_np, patch_size=512)
+        # optionally resize images to 512x512
+        if st.session_state.get("resize_on_upload", True):
+            img_np = resize_with_aspect_ratio(img_np, patch_size=512)
     except (UnidentifiedImageError, Exception):
         raise
 
