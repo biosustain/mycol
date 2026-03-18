@@ -72,12 +72,13 @@ def render_plotting_options():
             m for m in default_metrics if m in metric_options
         ] or metric_options
 
-        st.pills(
+        st.segmented_control(
             "Choose cell descriptors to compare",
             options=metric_options,
             default="area",
             selection_mode="multi",
             key="analysis_metrics",
+            width='stretch',
         )
 
     # render the download button for cell metrics
