@@ -127,7 +127,9 @@ def cached_image_mask_overlay(
     )
 
 
-def create_image_display(rec, scale):
+def create_image_display(rec, max_display_width=768):
+    # Scale to fit within max_display_width while preserving aspect ratio
+    scale = min(max_display_width / rec["W"], max_display_width / rec["H"])
     disp_w, disp_h = int(rec["W"] * scale), int(rec["H"] * scale)
 
     mask = rec.get("masks")
@@ -627,7 +629,7 @@ def render_mask_tools_fragment(key_ns="side"):
 
 
 @st.fragment
-def render_display_and_interact_fragment(key_ns="edit", scale=1.5):
+def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     """Render main image display and interaction fragment."""
 
     # get current record and verify that images are uploaded
@@ -642,7 +644,7 @@ def render_display_and_interact_fragment(key_ns="edit", scale=1.5):
         rec_for_disp = dict(rec)
         rec_for_disp["image"] = im
 
-    base_img, display_for_ui, disp_w, disp_h = create_image_display(rec_for_disp, scale)
+    base_img, display_for_ui, disp_w, disp_h = create_image_display(rec_for_disp, max_display_width)
     st.session_state["disp_w"] = disp_w
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)

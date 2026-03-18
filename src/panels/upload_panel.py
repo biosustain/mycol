@@ -43,13 +43,24 @@ def render_main():
                 help="Unrecognised mask formats or extensions or masks without a paired image will be ignored.",
             )
 
-            # allow user to specify mask suffix (default "_masks")
-            mask_suffix = st.text_input(
-                "Mask file names must match uploaded image an name plus this suffix",
-                value=ss.get("mask_suffix", "_masks"),
-                key="mask_suffix_input",
-            )
-            ss["mask_suffix"] = mask_suffix.strip() or "_masks"
+            # allow user to specify mask suffix and toggle resizing
+            suffix_col, resize_col = st.columns([2, 1])
+            with suffix_col:
+                mask_suffix = st.text_input(
+                    "Mask suffix",
+                    value=ss.get("mask_suffix", "_masks"),
+                    key="mask_suffix_input",
+                    help="Mask file names must match uploaded image name plus this suffix",
+                )
+                ss["mask_suffix"] = mask_suffix.strip() or "_masks"
+            with resize_col:
+                resize_on_upload = st.checkbox(
+                    "Resize (512x512)",
+                    value=ss.get("resize_on_upload", True),
+                    key="resize_on_upload_checkbox",
+                    help="Resize images & masks on upload to 512x512",
+                )
+                ss["resize_on_upload"] = resize_on_upload
 
             if files:
                 ss["skipped_files"] = process_uploads(files, mask_suffix) or []

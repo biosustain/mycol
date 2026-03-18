@@ -136,7 +136,7 @@ def render_classify_sidebar(*, key_ns: str = "side"):
 
 def render_main(*, key_ns: str = "edit"):
 
-    render_display_and_interact_fragment(key_ns=key_ns, scale=1.5)
+    render_display_and_interact_fragment(key_ns=key_ns, max_display_width=768)
 
 
 def render_download_button():
