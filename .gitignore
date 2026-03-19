@@ -1,6 +1,7 @@
 # Ignore a whole folder
 cellpose_training/
 models/
+measurement_test_images/
 
 # Ignore a specific file
 
