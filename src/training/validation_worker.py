@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from pathlib import Path
-from cellpose import models, metrics, core
+from cellpose import models, metrics
 import optuna
 import torch
 
@@ -57,7 +57,7 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
 
 
 def compute_validation_metrics(
-    images, masks, base_model_type, tuned_model_path, channels, best_params
+    images, masks, image_names, base_model_type, tuned_model_path, channels, best_params
 ):
     """Compute IoU and count comparison metrics"""
     # Load models
@@ -95,16 +95,19 @@ def compute_validation_metrics(
         "gt_counts": gt_counts,
         "base_counts": base_counts,
         "tuned_counts": tuned_counts,
+        "image_names": image_names,
     }
-
 
 
 import traceback
 
+
 def main():
     try:
         if len(sys.argv) != 3:
-            print("Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr)
+            print(
+                "Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr
+            )
             sys.exit(1)
 
         in_path = Path(sys.argv[1])
@@ -118,9 +121,15 @@ def main():
             channels = list(data["channels"])
             do_gridsearch = bool(data["do_gridsearch"])
             n_trials = int(data.get("n_trials", 20))
+            image_names_obj = data["image_names"] if "image_names" in data else None
 
         images = [np.asarray(img, dtype=np.float32) for img in images_obj]  # ew
         masks = [np.asarray(mask, dtype=np.uint16) for mask in masks_obj]
+        image_names = (
+            [str(n) for n in image_names_obj]
+            if image_names_obj is not None
+            else [f"Image {i}" for i in range(len(images))]
+        )
 
         print(f"Loaded {len(images)} images and {len(masks)} masks")
         print(f"Base model: {base_model}")
@@ -150,7 +159,13 @@ def main():
         print("Computing validation metrics...")
         sys.stdout.flush()
         validation_metrics = compute_validation_metrics(
-            images, masks, base_model, tuned_model_path, channels, best_params
+            images,
+            masks,
+            image_names,
+            base_model,
+            tuned_model_path,
+            channels,
+            best_params,
         )
 
         print("Validation complete!")

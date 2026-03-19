@@ -4,15 +4,11 @@ import pandas as pd
 import streamlit as st
 
 from cellpose import models, metrics, core
-import torch
-import io as IO
 import optuna
 
 from src.helpers.state_ops import ordered_keys, plot_loss_curve
 from src.helpers.densenet_functions import (
     load_labeled_patches,
-    finetune_densenet,
-    evaluate_fine_tuned_densenet,
     build_densenet_zip_bytes,
     start_densenet_training,
     check_densenet_training_status,
@@ -126,7 +122,7 @@ def render_densenet_train_fragment():
 
     dn_job = ss.get("dn_training_job")
     cp_job = ss.get("cp_training_job")
-    any_training = (dn_job and dn_job.get("status") == "running") or (
+    (dn_job and dn_job.get("status") == "running") or (
         cp_job and cp_job.get("status") == "running"
     )
 
@@ -232,19 +228,6 @@ def show_densenet_training_plots():
 def render_cellpose_options(key_ns="train_cellpose"):
     st.header("Fine-tune a Cellpose segmenter")
 
-    # --- show dataset stats ---
-    def is_mask(m):
-        return isinstance(m, np.ndarray) and m.ndim == 2 and m.any()
-
-    n_images, n_masks = len(ordered_keys()), 0
-    for k in ordered_keys():
-        rec = st.session_state["images"][k]
-        m = rec["masks"]
-        has = is_mask(m)
-        n = int(len(np.unique(m)) - 1) if has else 0
-        n_masks += n
-    st.info(f"Training set: {n_masks} cell masks across {n_images} images.")
-
     # --- show training options ---
     c1, c2, c3 = st.columns(3)
 
@@ -254,6 +237,7 @@ def render_cellpose_options(key_ns="train_cellpose"):
     ss.setdefault("cp_learning_rate", 0.1)
     ss.setdefault("cp_weight_decay", 1e-4)
     ss.setdefault("cp_batch_size", 32)
+    ss.setdefault("cp_min_cells_per_image", 5)
 
     ss["cp_base_model"] = c1.selectbox(
         "Base model",
@@ -287,6 +271,16 @@ def render_cellpose_options(key_ns="train_cellpose"):
         format="%.8f",  # more decimals prevents snapping to 0
         key="cp_weight_decay_input",
         help="Weight decay over the last epochs of training.",
+    )
+
+    ss["cp_min_cells_per_image"] = c2.number_input(
+        "Min cells per image",
+        min_value=1,
+        max_value=10000,
+        value=int(ss["cp_min_cells_per_image"]),
+        step=1,
+        key="cp_min_cells_per_image_input",
+        help="Images with fewer than this many annotated cells are excluded from training. Cellpose default is 5.",
     )
 
     ss["cp_batch_size"] = c2.selectbox(
@@ -344,16 +338,49 @@ def render_cellpose_options(key_ns="train_cellpose"):
                     help="Number of hyperparameter combinations to try during optimisation. More trials may yield better results but take longer.",
                 )
 
+    # --- show dataset stats filtered by min_cells_per_image ---
+    def is_mask(m):
+        return isinstance(m, np.ndarray) and m.ndim == 2 and m.any()
+
+    min_cells = int(ss["cp_min_cells_per_image"])
+    n_pass_images, n_pass_masks = 0, 0
+    n_fail_images = 0
+    for k in ordered_keys():
+        rec = st.session_state["images"][k]
+        m = rec["masks"]
+        n = int(len(np.unique(m)) - 1) if is_mask(m) else 0
+        if n >= min_cells:
+            n_pass_images += 1
+            n_pass_masks += n
+        else:
+            n_fail_images += 1
+
+    info_col1, info_col2 = st.columns(2)
+    info_col1.info(
+        f"Training set: {n_pass_masks} cell masks across {n_pass_images} images "
+        f"(≥ {min_cells} cells per image)."
+    )
+    if n_fail_images > 0:
+        info_col2.info(
+            f"{n_fail_images} image{'s' if n_fail_images != 1 else ''} excluded "
+            f"(fewer than {min_cells} annotated cells)."
+        )
+
 
 def get_train_setup():
-    recs = {k: st.session_state["images"][k] for k in ordered_keys()}
+    min_cells = int(ss.get("cp_min_cells_per_image", 5))
+    recs = {
+        k: st.session_state["images"][k]
+        for k in ordered_keys()
+        if int(len(np.unique(st.session_state["images"][k]["masks"])) - 1) >= min_cells
+    }
     base_model = ss.get("cp_base_model")
     epochs = int(ss.get("cp_max_epoch"))
     lr = float(ss.get("cp_learning_rate"))
     wd = float(ss.get("cp_weight_decay"))
     nimg = int(ss.get("cp_batch_size"))
     channels = [ss.get("cp_training_ch1"), ss.get("cp_training_ch2")]
-    return recs, base_model, epochs, lr, wd, nimg, channels
+    return recs, base_model, epochs, lr, wd, nimg, channels, min_cells
 
 
 def finetune_cellpose_button_function(
@@ -383,6 +410,7 @@ def finetune_cellpose_button_function(
 @st.cache_data(show_spinner=False)
 def prepare_eval_data(recs, max_n=40):
     """returns a random subset of data on which to perform hyperparameter tuning"""
+    names = [rec.get("name", f"Image {i}") for i, rec in enumerate(recs.values())]
     masks = [rec["masks"] for rec in recs.values()]
     images = [rec["image"] for rec in recs.values()]
     N = len(images)
@@ -392,7 +420,8 @@ def prepare_eval_data(recs, max_n=40):
         idx = rng.choice(N, size=sample_n, replace=False)
         images = [images[i] for i in idx]
         masks = [masks[i] for i in idx]
-    return images, masks
+        names = [names[i] for i in idx]
+    return images, masks, names
 
 
 def set_cp_hparams(src):
@@ -563,8 +592,10 @@ def render_cellpose_train_fragment():
         return
 
     # Start async training
-    recs, base_model, epochs, lr, wd, nimg, channels = get_train_setup()
-    start_cellpose_training(recs, base_model, epochs, lr, wd, nimg, channels)
+    recs, base_model, epochs, lr, wd, nimg, channels, min_cells = get_train_setup()
+    start_cellpose_training(
+        recs, base_model, epochs, lr, wd, nimg, channels, min_train_masks=min_cells
+    )
     st.rerun()
 
 
@@ -644,11 +675,6 @@ def render_densenet_status_fragment():
     if not dn_job or dn_job.get("status") != "running":
         return
 
-    from src.helpers.densenet_functions import (
-        check_densenet_training_status,
-        cancel_densenet_training,
-        build_densenet_zip_bytes,
-    )
 
     status = check_densenet_training_status()
     ss.setdefault("dn_icon_toggle", True)
@@ -665,7 +691,9 @@ def render_densenet_status_fragment():
         else:
             st.caption("Waiting for training output...")
 
-        if st.button("🛑 Cancel Training", type="secondary", key="cancel_dn_frag"):
+        if st.button(
+            "Cancel Training", type="primary", key="cancel_dn_frag", width="stretch"
+        ):
             cancel_densenet_training()
             st.rerun()
     elif status == "complete":
@@ -679,8 +707,8 @@ def render_densenet_status_fragment():
         st.error("❌ DenseNet training failed.")
         with st.expander("Show Error Details"):
             st.code(dn_job.get("error", "Unknown error"))
-        #ss.pop("dn_training_job", None)
-        #st.rerun()
+        # ss.pop("dn_training_job", None)
+        # st.rerun()
 
 
 @st.fragment(run_every=10)
@@ -690,11 +718,6 @@ def render_cellpose_status_fragment():
     val_job = st.session_state.get("cp_validation_job")
 
     from src.helpers.cellpose_functions import (
-        check_cellpose_training_status,
-        cancel_cellpose_training,
-        start_cellpose_validation,
-        check_cellpose_validation_status,
-        cancel_cellpose_validation,
         build_cellpose_zip_bytes,
     )
 
@@ -716,7 +739,9 @@ def render_cellpose_status_fragment():
             else:
                 st.caption("Waiting for training output...")
 
-            if st.button("🛑 Cancel Training", type="secondary", key="cancel_cp_frag"):
+            if st.button(
+                "Cancel Training", type="primary", key="cancel_cp_frag", width="stretch"
+            ):
                 cancel_cellpose_training()
                 st.rerun()
         elif status == "complete":
@@ -726,7 +751,7 @@ def render_cellpose_status_fragment():
 
             from src.panels.fine_tune_panel import get_train_setup
 
-            recs, base_model, epochs, lr, wd, nimg, channels = get_train_setup()
+            recs, base_model, epochs, lr, wd, nimg, channels, _ = get_train_setup()
             start_cellpose_validation(
                 recs=recs,
                 base_model=base_model,
@@ -758,7 +783,10 @@ def render_cellpose_status_fragment():
                 st.caption("Waiting for validation output...")
 
             if st.button(
-                "🛑 Cancel Validation", type="secondary", key="cancel_val_frag"
+                "Cancel Validation",
+                type="primary",
+                key="cancel_val_frag",
+                width="stretch",
             ):
                 cancel_cellpose_validation()
                 st.rerun()

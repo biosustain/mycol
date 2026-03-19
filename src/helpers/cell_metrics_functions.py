@@ -31,7 +31,7 @@ def _scale_col(df: pd.DataFrame, col: str):
     convert = st.session_state.get("convert_to_distance", False)
     if pixel_size and pixel_size > 0 and convert:
         if col in _AREA_COLS:
-            vals = vals * (pixel_size ** 2)
+            vals = vals * (pixel_size**2)
         elif col in _DIST_COLS:
             vals = vals * pixel_size
 
@@ -346,7 +346,7 @@ def build_analysis_df(records):
                     shape_metrics[col] *= pixel_scale
             for col in _AREA_COLS:
                 if col in shape_metrics:
-                    shape_metrics[col] *= pixel_scale ** 2
+                    shape_metrics[col] *= pixel_scale**2
 
             row = {
                 "image": rec["name"],
@@ -383,7 +383,7 @@ def apply_pixel_scaling(df: pd.DataFrame, pixel_size) -> pd.DataFrame:
             df[col] = df[col] * pixel_size
     for col in _AREA_COLS:
         if col in df.columns:
-            df[col] = df[col] * (pixel_size ** 2)
+            df[col] = df[col] * (pixel_size**2)
 
     return df
 

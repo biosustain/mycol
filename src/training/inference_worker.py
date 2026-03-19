@@ -2,12 +2,11 @@ import sys
 import numpy as np
 import torch
 import os
-from pathlib import Path
 from cellpose import models, io
 
 
-
 import traceback
+
 
 def main():
     try:
@@ -40,7 +39,9 @@ def main():
         use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
         # load model
         if os.path.exists(weights_path):
-            cell_model = models.CellposeModel(gpu=use_gpu, pretrained_model=weights_path)
+            cell_model = models.CellposeModel(
+                gpu=use_gpu, pretrained_model=weights_path
+            )
         else:
             cell_model = models.CellposeModel(gpu=use_gpu, model_type=weights_path)
 

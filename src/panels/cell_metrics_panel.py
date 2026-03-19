@@ -27,7 +27,7 @@ def render_plotting_options():
             st.session_state.analysis_plot_type = plot_type
 
         # toggle overlay of datapoints in the plots
-        overlay_points = inner_col2.toggle(
+        inner_col2.toggle(
             "Overlay datapoints",
             value=st.session_state.get("overlay_datapoints", False),
             key="overlay_datapoints",
@@ -78,9 +78,7 @@ def render_plotting_options():
 
         # Metrics multiselect (single instance)
         metric_options = [
-            col
-            for col in df.columns
-            if col not in ["image", "mask #", "mask label"]
+            col for col in df.columns if col not in ["image", "mask #", "mask label"]
         ]
         default_metrics = st.session_state.get("analysis_metrics", metric_options)
         default_metrics = [
