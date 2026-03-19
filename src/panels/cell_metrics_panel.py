@@ -38,9 +38,6 @@ def render_plotting_options():
         with st.popover(label="Descriptor Information", width='stretch'):
             shape_metric_help()
 
-    if col1.button("Generate Plots", width='stretch', type="primary"):
-        render_plotting_main()
-
     with col2:
         # build the analysis dataframe
         df = build_analysis_df(st.session_state["images"])
@@ -65,7 +62,7 @@ def render_plotting_options():
 
         # Metrics multiselect (single instance)
         metric_options = [
-            col for col in df.columns if col not in ["image", "mask #", "mask label"]
+            col for col in df.columns if col not in ["image", "mask #", "mask label", "_pixel_scale"]
         ]
         default_metrics = st.session_state.get("analysis_metrics", metric_options)
         default_metrics = [
@@ -81,8 +78,11 @@ def render_plotting_options():
             width='stretch',
         )
 
-    # render the download button for cell metrics
-    col1.download_button(
+    btn_col1, btn_col2 = st.columns(2)
+    if btn_col1.button("Generate Plots", width='stretch', type="primary"):
+        render_plotting_main()
+
+    btn_col2.download_button(
         "Download table of cell descriptors",
         data=build_cell_metrics_csv(
             tuple(st.session_state.get("analysis_labels") or ())
