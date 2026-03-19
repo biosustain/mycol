@@ -1,14 +1,12 @@
 import sys
 import numpy as np
 import torch
-import os
-from pathlib import Path
-from cellpose import models, train, io, core
+from cellpose import models, train, io
 from sklearn.model_selection import train_test_split
 
 
-
 import traceback
+
 
 def main():
     try:
@@ -60,7 +58,9 @@ def main():
             weight_decay = float(data["weight_decay"])
             nimg_per_epoch = int(data["nimg_per_epoch"])
             channels = data["channels"].tolist()
-            min_train_masks = int(data["min_train_masks"]) if "min_train_masks" in data else 5
+            min_train_masks = (
+                int(data["min_train_masks"]) if "min_train_masks" in data else 5
+            )
 
         # split data
         train_images, test_images, train_masks, test_masks = train_test_split(

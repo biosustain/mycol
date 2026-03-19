@@ -203,14 +203,22 @@ def plot_loss_curve(train_losses, test_losses):
     epochs = list(range(1, len(train_losses) + 1))
     fig = go.Figure()
     fig.add_scatter(
-        x=epochs, y=train_losses, mode="lines+markers", name="train",
-        line=dict(color="#D3E4F4", width=2), marker=dict(color="#D3E4F4", size=6),
+        x=epochs,
+        y=train_losses,
+        mode="lines+markers",
+        name="train",
+        line=dict(color="#D3E4F4", width=2),
+        marker=dict(color="#D3E4F4", size=6),
     )
 
     e_val = list(range(1, len(test_losses) + 1))
     fig.add_scatter(
-        x=e_val, y=test_losses, mode="lines+markers", name="val",
-        line=dict(color="#004280", width=2), marker=dict(color="#004280", size=6),
+        x=e_val,
+        y=test_losses,
+        mode="lines+markers",
+        name="val",
+        line=dict(color="#004280", width=2),
+        marker=dict(color="#004280", size=6),
     )
     fig.update_layout(
         title="Training vs. Validation Loss",

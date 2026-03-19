@@ -10,10 +10,10 @@ from zipfile import ZIP_DEFLATED
 from PIL import ImageDraw
 import pandas as pd
 from PIL import UnidentifiedImageError
-import os
-import tempfile
-import hashlib
-from src.helpers.classifying_functions import classes_map_from_labels, create_colour_palette
+from src.helpers.classifying_functions import (
+    classes_map_from_labels,
+    create_colour_palette,
+)
 from src.helpers.mask_editing_functions import create_image_mask_overlay
 from src.helpers.densenet_functions import resize_with_aspect_ratio
 
@@ -25,7 +25,7 @@ from src.helpers.state_ops import (
     reset_global_state,
 )
 
-from src.helpers.state_ops import ordered_keys, get_current_rec, normalize_image
+from src.helpers.state_ops import normalize_image
 
 ss = st.session_state
 
@@ -33,8 +33,6 @@ ss = st.session_state
 # ---------- UPLOAD FUNCTIONS ----------
 # --------------------------------------
 
-from pathlib import Path
-import io
 
 ss = st.session_state
 
@@ -88,26 +86,27 @@ def load_demo_data():
     skipped = process_uploads(file_objs, DEMO_MASK_SUFFIX) or []
     ss["skipped_files"] = skipped
 
-    #TODO: FIX, INJECT DUMMY LABELS FOR DEMO TRAINING
+    # TODO: FIX, INJECT DUMMY LABELS FOR DEMO TRAINING
     demo_classes = ["Demo Class A", "Demo Class B"]
     ss["all_classes"] = ["No label"] + demo_classes
-    
-    rng = np.random.default_rng(42)
-    
+
+    np.random.default_rng(42)
+
     for k in ordered_keys():
         rec = ss.images[k]
         masks = rec.get("masks")
-        if masks is None: continue
-        
+        if masks is None:
+            continue
+
         cell_ids = [i for i in np.unique(masks) if i != 0]
-        
+
         new_labels = {}
         for cid in cell_ids:
-            lbl = demo_classes[cid % 2] 
+            lbl = demo_classes[cid % 2]
             new_labels[cid] = lbl
-            
+
         rec["labels"] = new_labels
-    
+
     # close the file handles now that everything is loaded
     for f in file_objs:
         try:
@@ -129,12 +128,12 @@ def load_demo_data():
 
         try:
             state_dict = torch.load(densenet_path, map_location="cpu")
-            
+
             num_classes = 2
             if "classifier.2.weight" in state_dict:
                 num_classes = state_dict["classifier.2.weight"].shape[0]
             elif "classifier.weight" in state_dict:
-                 num_classes = state_dict["classifier.weight"].shape[0]
+                num_classes = state_dict["classifier.weight"].shape[0]
 
             model = build_densenet(num_classes=num_classes)
             model.load_state_dict(state_dict)
@@ -310,12 +309,12 @@ def render_images_form():
             pd.DataFrame(rows, index=ok),
             hide_index=True,
             height=580,
-            width='stretch',
+            width="stretch",
             column_config={"Remove": st.column_config.CheckboxColumn()},
             disabled=["Image", "Masks Present", "Number of Masks", "Number of Labels"],
         )
         # handle removals
-        if st.form_submit_button("Remove selected images", width='stretch'):
+        if st.form_submit_button("Remove selected images", width="stretch"):
             for k in edited.loc[edited["Remove"]].index:
                 ss.images.pop(k, None)
             ks = sorted(ss.images)

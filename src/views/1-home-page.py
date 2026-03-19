@@ -1,6 +1,7 @@
 from pathlib import Path
 import base64
 import streamlit as st
+
 # ---------- Config ----------
 SVG_DIR = Path("src/intro_images")
 HELP_DIR = Path("src/help_texts")
@@ -42,21 +43,21 @@ def prev_index(i: int, n: int) -> int:
 def get_text_for(svg_path: str) -> str:
     """Return text for the given SVG path using mapping to markdown files."""
     p = Path(svg_path)
-    
+
     # 1. Try explicit mapping
     md_name = TEXT_MAPPING.get(p.name) or TEXT_MAPPING.get(p.stem)
-    
+
     if md_name:
         md_path = HELP_DIR / md_name
         if md_path.exists():
             return md_path.read_text(encoding="utf-8")
-            
+
     # 2. Try sidecar in SVG dir (fallback)
     for ext in TEXT_SIDECAREXT:
         sc = p.with_suffix(ext)
         if sc.exists():
             return sc.read_text(encoding="utf-8")
-            
+
     return "No help text found."
 
 
@@ -100,10 +101,10 @@ with st.spinner("Loading Home Page..."):
 
             # then buttons (visually below text, but still inside bordered container)
             col_a, col_b = st.columns(2)
-            if col_a.button("⟵ Prev", width='stretch'):
+            if col_a.button("⟵ Prev", width="stretch"):
                 st.session_state.idx = prev_index(st.session_state.idx, len(files))
                 st.rerun()
-            if col_b.button("Next ⟶", width='stretch'):
+            if col_b.button("Next ⟶", width="stretch"):
                 st.session_state.idx = next_index(st.session_state.idx, len(files))
                 st.rerun()
 

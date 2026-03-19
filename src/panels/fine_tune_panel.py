@@ -4,15 +4,11 @@ import pandas as pd
 import streamlit as st
 
 from cellpose import models, metrics, core
-import torch
-import io as IO
 import optuna
 
 from src.helpers.state_ops import ordered_keys, plot_loss_curve
 from src.helpers.densenet_functions import (
     load_labeled_patches,
-    finetune_densenet,
-    evaluate_fine_tuned_densenet,
     build_densenet_zip_bytes,
     start_densenet_training,
     check_densenet_training_status,
@@ -126,7 +122,7 @@ def render_densenet_train_fragment():
 
     dn_job = ss.get("dn_training_job")
     cp_job = ss.get("cp_training_job")
-    any_training = (dn_job and dn_job.get("status") == "running") or (
+    (dn_job and dn_job.get("status") == "running") or (
         cp_job and cp_job.get("status") == "running"
     )
 
@@ -597,7 +593,9 @@ def render_cellpose_train_fragment():
 
     # Start async training
     recs, base_model, epochs, lr, wd, nimg, channels, min_cells = get_train_setup()
-    start_cellpose_training(recs, base_model, epochs, lr, wd, nimg, channels, min_train_masks=min_cells)
+    start_cellpose_training(
+        recs, base_model, epochs, lr, wd, nimg, channels, min_train_masks=min_cells
+    )
     st.rerun()
 
 
@@ -677,11 +675,6 @@ def render_densenet_status_fragment():
     if not dn_job or dn_job.get("status") != "running":
         return
 
-    from src.helpers.densenet_functions import (
-        check_densenet_training_status,
-        cancel_densenet_training,
-        build_densenet_zip_bytes,
-    )
 
     status = check_densenet_training_status()
     ss.setdefault("dn_icon_toggle", True)
@@ -698,7 +691,9 @@ def render_densenet_status_fragment():
         else:
             st.caption("Waiting for training output...")
 
-        if st.button("Cancel Training", type="primary", key="cancel_dn_frag", width="stretch"):
+        if st.button(
+            "Cancel Training", type="primary", key="cancel_dn_frag", width="stretch"
+        ):
             cancel_densenet_training()
             st.rerun()
     elif status == "complete":
@@ -712,8 +707,8 @@ def render_densenet_status_fragment():
         st.error("❌ DenseNet training failed.")
         with st.expander("Show Error Details"):
             st.code(dn_job.get("error", "Unknown error"))
-        #ss.pop("dn_training_job", None)
-        #st.rerun()
+        # ss.pop("dn_training_job", None)
+        # st.rerun()
 
 
 @st.fragment(run_every=10)
@@ -723,11 +718,6 @@ def render_cellpose_status_fragment():
     val_job = st.session_state.get("cp_validation_job")
 
     from src.helpers.cellpose_functions import (
-        check_cellpose_training_status,
-        cancel_cellpose_training,
-        start_cellpose_validation,
-        check_cellpose_validation_status,
-        cancel_cellpose_validation,
         build_cellpose_zip_bytes,
     )
 
@@ -749,7 +739,9 @@ def render_cellpose_status_fragment():
             else:
                 st.caption("Waiting for training output...")
 
-            if st.button("Cancel Training", type="primary", key="cancel_cp_frag", width="stretch"):
+            if st.button(
+                "Cancel Training", type="primary", key="cancel_cp_frag", width="stretch"
+            ):
                 cancel_cellpose_training()
                 st.rerun()
         elif status == "complete":
@@ -790,7 +782,12 @@ def render_cellpose_status_fragment():
             else:
                 st.caption("Waiting for validation output...")
 
-            if st.button("Cancel Validation", type="primary", key="cancel_val_frag", width="stretch"):
+            if st.button(
+                "Cancel Validation",
+                type="primary",
+                key="cancel_val_frag",
+                width="stretch",
+            ):
                 cancel_cellpose_validation()
                 st.rerun()
         elif val_status == "complete":

@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from pathlib import Path
-from cellpose import models, metrics, core
+from cellpose import models, metrics
 import optuna
 import torch
 
@@ -99,13 +99,15 @@ def compute_validation_metrics(
     }
 
 
-
 import traceback
+
 
 def main():
     try:
         if len(sys.argv) != 3:
-            print("Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr)
+            print(
+                "Usage: validation_worker.py <input.npz> <output.npz>", file=sys.stderr
+            )
             sys.exit(1)
 
         in_path = Path(sys.argv[1])
@@ -123,7 +125,11 @@ def main():
 
         images = [np.asarray(img, dtype=np.float32) for img in images_obj]  # ew
         masks = [np.asarray(mask, dtype=np.uint16) for mask in masks_obj]
-        image_names = [str(n) for n in image_names_obj] if image_names_obj is not None else [f"Image {i}" for i in range(len(images))]
+        image_names = (
+            [str(n) for n in image_names_obj]
+            if image_names_obj is not None
+            else [f"Image {i}" for i in range(len(images))]
+        )
 
         print(f"Loaded {len(images)} images and {len(masks)} masks")
         print(f"Base model: {base_model}")
@@ -153,7 +159,13 @@ def main():
         print("Computing validation metrics...")
         sys.stdout.flush()
         validation_metrics = compute_validation_metrics(
-            images, masks, image_names, base_model, tuned_model_path, channels, best_params
+            images,
+            masks,
+            image_names,
+            base_model,
+            tuned_model_path,
+            channels,
+            best_params,
         )
 
         print("Validation complete!")

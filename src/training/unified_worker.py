@@ -8,6 +8,7 @@ import inference_worker
 import validation_worker
 import densenet_worker
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: unified_worker <mode> <args...>")
@@ -28,6 +29,7 @@ def main():
     else:
         print(f"Unknown mode: {mode}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

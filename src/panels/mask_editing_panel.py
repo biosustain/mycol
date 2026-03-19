@@ -83,7 +83,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                         width="stretch",
                         key="segment_image",
                         help="Segment this image with Cellpose.",
-                        disabled=st.session_state["cellpose_model_bytes"] == None,
+                        disabled=st.session_state["cellpose_model_bytes"] is None,
                     ):
                         segment_current_and_refresh()
                 with col2:
@@ -92,7 +92,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                         width="stretch",
                         key="batch_segment_image",
                         help="Segment all uploaded images with Cellpose.",
-                        disabled=st.session_state["cellpose_model_bytes"] == None,
+                        disabled=st.session_state["cellpose_model_bytes"] is None,
                     ):
                         batch_segment_and_refresh()
 

@@ -6,11 +6,10 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import cv2
-from cellpose import core, io, models, train, metrics
+from cellpose import core, models, metrics
 import torch
 from PIL import Image
 import io as IO
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error
 import zipfile
 from src.helpers.state_ops import (
@@ -21,7 +20,6 @@ from src.helpers.state_ops import (
     plot_loss_curve,
 )
 from pathlib import Path
-import plotly.io as pio
 import plotly.graph_objects as go
 import subprocess
 import time
@@ -151,7 +149,6 @@ def get_tuned_model():
     Returns a CellposeModel3Proxy loaded with the fine-tuned weights
     --> ensures architecture consistency (training is cp3)
     """
-    ss = st.session_state
     weights_path = get_cellpose_weights()
     if not weights_path:
         raise RuntimeError("No fine-tuned model weights found in session state.")
@@ -714,7 +711,7 @@ def check_cellpose_training_status():
                 content = f.read()
                 if content:
                     job["log_content"] = content
-        except Exception as e:
+        except Exception:
             # TODO: handle this better
             pass
 

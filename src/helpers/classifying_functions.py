@@ -110,7 +110,6 @@ def rename_class_everywhere(old_name: str, new_name: str):
     all_classes = ss.setdefault("all_classes", ["No label"])
 
     # Track whether target already exists (merge)
-    target_exists = new_name in all_classes
 
     # Update labels in every image record)
     changed_labels = 0
@@ -241,7 +240,7 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
     c3.button(
         "All",
         key=f"{key}_assign_all",
-        width='stretch',
+        width="stretch",
         on_click=_assign_all,
         help="Set all masks in this image to this class",
     )
@@ -250,7 +249,7 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
     c4.button(
         "Click",
         key=f"{key}_select",
-        width='stretch',
+        width="stretch",
         on_click=_select,
         help="Click masks to label cells",
     )
@@ -294,13 +293,13 @@ def classify_actions_fragment():
     # buttons to classify masks in current image or batch classify all images
     col1, col2 = st.columns(2)
     with col1:
-        help = densenet_help(st.session_state["densenet_model"] == None, needs_mapping)
+        help = densenet_help(st.session_state["densenet_model"] is None, needs_mapping)
         # classify masks in the current image
         if st.button(
             "Classify",
-            width='stretch',
+            width="stretch",
             help=help,
-            disabled=(st.session_state["densenet_model"] == None) or needs_mapping,
+            disabled=(st.session_state["densenet_model"] is None) or needs_mapping,
         ):
             classify_cells_with_densenet(rec)
             st.rerun()
@@ -309,9 +308,9 @@ def classify_actions_fragment():
         if st.button(
             "Batch classify",
             key="btn_batch_classify_cellpose",
-            width='stretch',
+            width="stretch",
             help=help,
-            disabled=st.session_state["densenet_model"] == None or needs_mapping,
+            disabled=st.session_state["densenet_model"] is None or needs_mapping,
         ):
             batch_classify()
             st.rerun()
@@ -347,7 +346,7 @@ def class_selection_fragment():
         ss["side_current_class"] = pc
     ss.setdefault("side_current_class", ss["all_classes"][0])
 
-    rec = get_current_rec()
+    get_current_rec()
     labels = ss.setdefault("all_classes", ["No label"])
 
     # Unlabeled row

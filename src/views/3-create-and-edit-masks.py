@@ -81,9 +81,15 @@ with st.spinner("Loading Annotator..."):
             # --- Segmented control for overlay and normalization ---
             _view_options = ["Masks", "Normalize", "Image"]
             _default_views = [
-                opt for opt in _view_options
+                opt
+                for opt in _view_options
                 if st.session_state.get(
-                    {"Masks": "show_overlay", "Normalize": "show_normalized", "Image": "show_image"}[opt], True
+                    {
+                        "Masks": "show_overlay",
+                        "Normalize": "show_normalized",
+                        "Image": "show_image",
+                    }[opt],
+                    True,
                 )
             ]
             _selected_views = st.segmented_control(

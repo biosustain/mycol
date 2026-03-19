@@ -8,7 +8,10 @@ import streamlit as st
 from PIL import Image, ImageDraw
 
 from src.helpers.state_ops import get_current_rec
-from src.helpers.classifying_functions import classes_map_from_labels, create_colour_palette
+from src.helpers.classifying_functions import (
+    classes_map_from_labels,
+    create_colour_palette,
+)
 from src.helpers.state_ops import normalize_image
 from src.helpers.sam2_functions import (
     segment_with_sam2,
@@ -533,7 +536,7 @@ def render_box_tools_fragment(key_ns="side"):
     # button to set mode to draw boxes on the image
     if c1.button(
         "Draw box",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_draw_boxes",
         help="Click and drag boxes around cells",
     ):
@@ -542,7 +545,7 @@ def render_box_tools_fragment(key_ns="side"):
     # button to clear all boxes from the current image
     if c2.button(
         "Clear boxes",
-        width='stretch',
+        width="stretch",
         key="clear_boxes_button",
         help="Remove all boxes",
     ):
@@ -551,7 +554,7 @@ def render_box_tools_fragment(key_ns="side"):
     # button to segment with SAM2 the current boxes
     if st.button(
         "Generate masks from boxes",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_predict",
         help="Use SAM2 to segment cells in boxes",
     ):
@@ -574,7 +577,7 @@ def render_mask_tools_fragment(key_ns="side"):
     # button to set mode to draw masks on the image
     if c1.button(
         "Draw mask",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_draw_masks",
         help="Click and hold to draw masks",
     ):
@@ -584,7 +587,7 @@ def render_mask_tools_fragment(key_ns="side"):
     # button to set mode to remove masks by clicking on them
     if c2.button(
         "Remove mask",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_remove_masks",
         help="Click masks to remove them",
     ):
@@ -597,7 +600,7 @@ def render_mask_tools_fragment(key_ns="side"):
     # button to clear all masks from the current image
     if c1.button(
         "Clear masks",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_clear_masks",
         help="Remove all masks from image",
     ):
@@ -610,7 +613,7 @@ def render_mask_tools_fragment(key_ns="side"):
     # button to remove the last added mask
     if c2.button(
         "Undo mask",
-        width='stretch',
+        width="stretch",
         key=f"{key_ns}_undo_mask",
         help="Remove last mask",
     ):
@@ -644,7 +647,9 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
         rec_for_disp = dict(rec)
         rec_for_disp["image"] = im
 
-    base_img, display_for_ui, disp_w, disp_h = create_image_display(rec_for_disp, max_display_width)
+    base_img, display_for_ui, disp_w, disp_h = create_image_display(
+        rec_for_disp, max_display_width
+    )
     st.session_state["disp_w"] = disp_w
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)
