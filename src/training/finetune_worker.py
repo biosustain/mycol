@@ -60,6 +60,7 @@ def main():
             weight_decay = float(data["weight_decay"])
             nimg_per_epoch = int(data["nimg_per_epoch"])
             channels = data["channels"].tolist()
+            min_train_masks = int(data["min_train_masks"]) if "min_train_masks" in data else 5
 
         # split data
         train_images, test_images, train_masks, test_masks = train_test_split(
@@ -95,6 +96,7 @@ def main():
             nimg_per_epoch=nimg_per_epoch,
             model_name=model_name,
             save_path=None,
+            min_train_masks=min_train_masks,
         )
 
         # Save results

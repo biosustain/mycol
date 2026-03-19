@@ -594,6 +594,7 @@ def start_cellpose_training(
     weight_decay=0.0001,
     nimg_per_epoch=32,
     channels=[0, 0],
+    min_train_masks=5,
 ):
     """Starts Cellpose fine-tuning asynchronously using cp3 worker bridge"""
 
@@ -621,6 +622,7 @@ def start_cellpose_training(
         weight_decay=weight_decay,
         nimg_per_epoch=nimg_per_epoch,
         channels=np.array(channels),
+        min_train_masks=min_train_masks,
     )
 
     if PORTABLE_WORKER_PYTHON:
