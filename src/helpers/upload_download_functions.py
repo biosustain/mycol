@@ -249,6 +249,7 @@ def create_new_record_with_image(uploaded_file):
     try:
         # load image and convert to RGB
         img_np = np.array(Image.open(uploaded_file).convert("RGB"), dtype=np.uint8)
+        orig_H, orig_W = img_np.shape[:2]
         # optionally resize images to 512x512
         if st.session_state.get("resize_on_upload", True):
             img_np = resize_with_aspect_ratio(img_np, patch_size=512)
@@ -266,6 +267,8 @@ def create_new_record_with_image(uploaded_file):
         "image": img_np,
         "H": H,
         "W": W,
+        "orig_H": orig_H,
+        "orig_W": orig_W,
         "masks": np.zeros((H, W), dtype=np.uint16),
         "labels": {},
         "boxes": [],

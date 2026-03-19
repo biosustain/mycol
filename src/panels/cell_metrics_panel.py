@@ -14,19 +14,17 @@ from src.helpers.help_panels import shape_metric_help
 def render_plotting_options():
     col1, col2 = st.columns([2, 5])
     with col1:
-        inner_col1, inner_col2 = st.columns(2)
+        inner_col1, inner_col2 = st.columns(2, vertical_alignment="center")
         # choose plot type
-        plot_type = inner_col1.radio(
+        plot_type = inner_col1.pills(
             "Plot type",
             ["Violin", "Bar"],
-            horizontal=True,
-            index=(
-                0
-                if st.session_state.get("analysis_plot_type", "Violin") == "Violin"
-                else 1
-            ),
+            default=st.session_state.get("analysis_plot_type", "Violin"),
+            selection_mode="single",
+            width="stretch",
         )
-        st.session_state.analysis_plot_type = plot_type
+        if plot_type:
+            st.session_state.analysis_plot_type = plot_type
 
         # toggle overlay of datapoints in the plots
         overlay_points = inner_col2.toggle(
@@ -35,8 +33,26 @@ def render_plotting_options():
             key="overlay_datapoints",
         )
 
-        with st.popover(label="Descriptor Information", width='stretch'):
+        with st.popover(label="Descriptor Information", width="stretch"):
             shape_metric_help()
+
+        # pixel-to-distance conversion
+        chk_col, px_col = st.columns([2, 2], vertical_alignment="center")
+        chk_col.checkbox(
+            "Convert pixels to distance",
+            value=st.session_state.get("convert_to_distance", False),
+            key="convert_to_distance",
+            help="Apply pixel size to convert measurements to physical units.",
+        )
+        if st.session_state.get("convert_to_distance"):
+            pixel_size = px_col.number_input(
+                "Pixel size",
+                min_value=0.0,
+                value=st.session_state.get("pixel_size", 1.0),
+                key="pixel_size_input",
+                help="Physical size of one pixel.",
+            )
+            st.session_state["pixel_size"] = pixel_size
 
     with col2:
         # build the analysis dataframe
@@ -62,7 +78,9 @@ def render_plotting_options():
 
         # Metrics multiselect (single instance)
         metric_options = [
-            col for col in df.columns if col not in ["image", "mask #", "mask label", "_pixel_scale"]
+            col
+            for col in df.columns
+            if col not in ["image", "mask #", "mask label"]
         ]
         default_metrics = st.session_state.get("analysis_metrics", metric_options)
         default_metrics = [
@@ -75,11 +93,11 @@ def render_plotting_options():
             default="area",
             selection_mode="multi",
             key="analysis_metrics",
-            width='stretch',
+            width="stretch",
         )
 
     btn_col1, btn_col2 = st.columns(2)
-    if btn_col1.button("Generate Plots", width='stretch', type="primary"):
+    if btn_col1.button("Generate Plots", width="stretch", type="primary"):
         render_plotting_main()
 
     btn_col2.download_button(
@@ -89,7 +107,7 @@ def render_plotting_options():
         ),
         file_name="cell_metrics.csv",
         mime="text/csv",
-        width='stretch',
+        width="stretch",
         key="dl_cell_metrics_csv",
         type="primary",
     )
@@ -123,6 +141,7 @@ def render_plotting_main():
     ptype = st.session_state.get("analysis_plot_type", "Violin")
     for col in metrics:
         fname, fig = (plot_violin if ptype == "Violin" else plot_bar)(df_filt, col)
-        st.header(fname)
-        st.plotly_chart(fig, width='stretch')
+        title = "Cell " + col.replace("_", " ").title()
+        st.header(title)
+        st.plotly_chart(fig, width="stretch")
         st.session_state[fname] = fig
