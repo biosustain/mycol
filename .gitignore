@@ -245,3 +245,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+notebooks/measurement_test.ipynb
