@@ -414,6 +414,7 @@ def finetune_cellpose_button_function(
 @st.cache_data(show_spinner=False)
 def prepare_eval_data(recs, max_n=40):
     """returns a random subset of data on which to perform hyperparameter tuning"""
+    names = [rec.get("name", f"Image {i}") for i, rec in enumerate(recs.values())]
     masks = [rec["masks"] for rec in recs.values()]
     images = [rec["image"] for rec in recs.values()]
     N = len(images)
@@ -423,7 +424,8 @@ def prepare_eval_data(recs, max_n=40):
         idx = rng.choice(N, size=sample_n, replace=False)
         images = [images[i] for i in idx]
         masks = [masks[i] for i in idx]
-    return images, masks
+        names = [names[i] for i in idx]
+    return images, masks, names
 
 
 def set_cp_hparams(src):

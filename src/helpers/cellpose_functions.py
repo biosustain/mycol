@@ -259,11 +259,11 @@ def segment_with_cellpose_sam(
 
 def _get_base_path():
     """Get base path whether frozen or not.
-    
+
     When frozen with PyInstaller, sys._MEIPASS points to the temporary extraction folder.
     When running as a script, use the current file's directory.
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # Running as compiled executable
         return Path(sys._MEIPASS)
     else:
@@ -275,10 +275,11 @@ def _get_base_path():
 # WORKER PATH RESOLUTION
 # -----------------------------------------------------------------------------
 
+
 def _get_portable_paths():
     """
     Detect if running in Portable Mode (bundled folder) and return paths.
-    
+
     Structure in Portable Mode:
       MyCol/
         bin/python_worker/ (Embedded Python)
@@ -286,27 +287,28 @@ def _get_portable_paths():
     """
     # Base path of this file: .../src/helpers/cellpose_functions.py
     here = Path(__file__).resolve()
-    
+
     # Check for: .../bin/python_worker/python.exe (Windows)
     # The relative path from 'here' to 'bin' is: ../../bin
     # here.parent = helpers
     # here.parent.parent = src
     # here.parent.parent.parent = MyCol root
-    
+
     root = here.parent.parent.parent
-    
+
     # Windows Portable Check
     win_python = root / "bin" / "python_worker" / "python.exe"
     if win_python.exists():
         return str(win_python), str(root / "src" / "training" / "unified_worker.py")
-        
+
     # macOS Portable Check (TBD - align with make_dist.sh structure)
     # For now assume similar relative structure or standard venv-like bin/python
-    mac_python = root / "bin" / "python_worker" / "bin" / "python" 
+    mac_python = root / "bin" / "python_worker" / "bin" / "python"
     if mac_python.exists():
         return str(mac_python), str(root / "src" / "training" / "unified_worker.py")
 
     return None, None
+
 
 PORTABLE_WORKER_PYTHON, PORTABLE_UNIFIED_WORKER = _get_portable_paths()
 
@@ -317,9 +319,9 @@ if PORTABLE_WORKER_PYTHON:
     INFERENCE_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "inference"]
     VALIDATION_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "validation"]
     DENSENET_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "densenet"]
-    TRAINING_PROJECT = None # Not needed, direct python call
+    TRAINING_PROJECT = None  # Not needed, direct python call
 
-elif getattr(sys, 'frozen', False):
+elif getattr(sys, "frozen", False):
     # PYINSTALLER FROZEN MODE (Legacy/Fallback)
     HERE = _get_base_path()
     UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
@@ -333,7 +335,7 @@ else:
     HERE = Path(__file__).resolve().parent
     TRAINING_PROJECT = str((HERE.parent / "training").resolve())
     UNIFIED_WORKER_PY = str((HERE.parent / "training" / "unified_worker.py").resolve())
-    
+
     TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "finetune"]
     INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "inference"]
     VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "validation"]
@@ -390,21 +392,29 @@ class CellposeModel3Proxy:
                 # run worker
                 if PORTABLE_WORKER_PYTHON:
                     # Portable Mode: Call bundled python directly
-                    cmd = [PORTABLE_WORKER_PYTHON] + INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
-                elif getattr(sys, 'frozen', False):
+                    cmd = (
+                        [PORTABLE_WORKER_PYTHON]
+                        + INFERENCE_WORKER_SCRIPT
+                        + [str(in_path), str(out_path)]
+                    )
+                elif getattr(sys, "frozen", False):
                     # Direct executable call when frozen
                     # INFERENCE_WORKER_SCRIPT is [exe_path, "inference"]
                     cmd = INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
                 else:
                     # uv run call in development mode
                     # INFERENCE_WORKER_SCRIPT is [py_script_path, "inference"]
-                    cmd = [
-                        "uv",
-                        "run",
-                        "--project",
-                        TRAINING_PROJECT,
-                        "python",
-                    ] + INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
+                    cmd = (
+                        [
+                            "uv",
+                            "run",
+                            "--project",
+                            TRAINING_PROJECT,
+                            "python",
+                        ]
+                        + INFERENCE_WORKER_SCRIPT
+                        + [str(in_path), str(out_path)]
+                    )
 
                 res = subprocess.run(cmd, capture_output=True, text=True)
                 if res.returncode != 0:
@@ -422,6 +432,7 @@ class CellposeModel3Proxy:
                     results.append(data["masks"])
 
         return (results, None, None) if is_list else (results[0], None, None)
+
 
 # -----------------------------------------------------#
 # ----------------- CELLPOSE FIGURES ----------------- #
@@ -454,7 +465,7 @@ def compute_prediction_ious(images, masks, model, channels):
     return ious
 
 
-def plot_iou_comparison(base_ious, tuned_ious):
+def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
     """Plots a bar chart comparing mean IoU of base and fine-tuned Cellpose models with error bars."""
 
     # prepare data
@@ -465,6 +476,9 @@ def plot_iou_comparison(base_ious, tuned_ious):
         np.std(base_ious, ddof=1) if len(base_ious) > 1 else 0.0,
         np.std(tuned_ious, ddof=1) if len(tuned_ious) > 1 else 0.0,
     ]
+    names = (
+        image_names if image_names else [f"Image {i}" for i in range(len(base_ious))]
+    )
 
     # create figure
     fig = go.Figure(layout=dict(barcornerradius=10))
@@ -489,6 +503,8 @@ def plot_iou_comparison(base_ious, tuned_ious):
         y=base_ious,
         mode="markers",
         marker=dict(color="#004280", size=6),
+        text=names,
+        hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
     fig.add_scatter(
         x=(
@@ -497,6 +513,8 @@ def plot_iou_comparison(base_ious, tuned_ious):
         y=tuned_ious,
         mode="markers",
         marker=dict(color="#004280", size=6),
+        text=names,
+        hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
 
     # layout settings
@@ -514,11 +532,14 @@ def plot_iou_comparison(base_ious, tuned_ious):
     return fig
 
 
-def plot_pred_vs_true_counts(gt_counts, base_counts, title):
+def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
     """Plots predicted vs true counts scatter plot with R² and MAE annotations."""
 
     # determine plot limits
     lim = max(1, max(gt_counts + base_counts))
+    names = (
+        image_names if image_names else [f"Image {i}" for i in range(len(gt_counts))]
+    )
 
     # create figure
     fig = go.Figure()
@@ -528,6 +549,8 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title):
         mode="markers",
         marker=dict(size=8, opacity=0.85, color="#004280"),
         name="Original",
+        text=names,
+        hovertemplate="%{text}<br>True: %{x}<br>Predicted: %{y}<extra></extra>",
     )
     fig.add_scatter(
         x=[0, lim],
@@ -627,19 +650,27 @@ def start_cellpose_training(
 
     if PORTABLE_WORKER_PYTHON:
         # Portable Mode
-        cmd = [PORTABLE_WORKER_PYTHON] + TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
-    elif getattr(sys, 'frozen', False):
+        cmd = (
+            [PORTABLE_WORKER_PYTHON]
+            + TRAINING_WORKER_SCRIPT
+            + [str(in_path), str(out_path)]
+        )
+    elif getattr(sys, "frozen", False):
         # Direct executable call when frozen
         cmd = TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
     else:
         # uv run call in development mode
-        cmd = [
-            "uv",
-            "run",
-            "--project",
-            TRAINING_PROJECT,
-            "python",
-        ] + TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
+        cmd = (
+            [
+                "uv",
+                "run",
+                "--project",
+                TRAINING_PROJECT,
+                "python",
+            ]
+            + TRAINING_WORKER_SCRIPT
+            + [str(in_path), str(out_path)]
+        )
 
     # open log file for output
     log_file = open(log_path, "w")
@@ -715,7 +746,7 @@ def check_cellpose_training_status():
                 f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
             )
             return "failed"
-        
+
         if not out_path.exists():
             job["status"] = "failed"
             job["error"] = (
@@ -787,7 +818,7 @@ def start_cellpose_validation(
 
     from src.panels.fine_tune_panel import prepare_eval_data  # TODO: move up maybe?
 
-    images, masks = prepare_eval_data(recs)
+    images, masks, image_names = prepare_eval_data(recs)
 
     tmpdir = tempfile.mkdtemp(prefix="cellpose_validation_")
     in_path = Path(tmpdir) / "input.npz"
@@ -798,6 +829,7 @@ def start_cellpose_validation(
         in_path,
         images=np.array(images, dtype=object),
         masks=np.array(masks, dtype=object),
+        image_names=np.array(image_names, dtype=object),
         base_model=base_model,
         tuned_model_path=model_path,
         channels=np.array(channels),
@@ -807,19 +839,27 @@ def start_cellpose_validation(
 
     if PORTABLE_WORKER_PYTHON:
         # Portable Mode
-        cmd = [PORTABLE_WORKER_PYTHON] + VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
-    elif getattr(sys, 'frozen', False):
+        cmd = (
+            [PORTABLE_WORKER_PYTHON]
+            + VALIDATION_WORKER_SCRIPT
+            + [str(in_path), str(out_path)]
+        )
+    elif getattr(sys, "frozen", False):
         # Direct executable call when frozen
         cmd = VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
     else:
         # uv run call in development mode
-        cmd = [
-            "uv",
-            "run",
-            "--project",
-            TRAINING_PROJECT,
-            "python",
-        ] + VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
+        cmd = (
+            [
+                "uv",
+                "run",
+                "--project",
+                TRAINING_PROJECT,
+                "python",
+            ]
+            + VALIDATION_WORKER_SCRIPT
+            + [str(in_path), str(out_path)]
+        )
 
     log_file = open(log_path, "w")
     process = subprocess.Popen(
@@ -923,26 +963,35 @@ def check_cellpose_validation_status():
 
                 # set best hyperparameters
                 if best_params:
-                    ss["cp_cellprob_threshold"] = float(best_params.get("cellprob", 0.0))
-                    ss["cp_flow_threshold"] = float(best_params.get("flow_threshold", 0.4))
+                    ss["cp_cellprob_threshold"] = float(
+                        best_params.get("cellprob", 0.0)
+                    )
+                    ss["cp_flow_threshold"] = float(
+                        best_params.get("flow_threshold", 0.4)
+                    )
                     ss["cp_min_size"] = int(best_params.get("min_size", 15))
                     ss["cp_niter"] = int(best_params.get("niter", 200))
         except Exception as e:
             st.error(f"Error processing Optuna results: {e}")
             pass
 
+        image_names = validation_metrics.get("image_names", [])
         ss["cellpose_iou_comparison"] = plot_iou_comparison(
-            validation_metrics["base_ious"], validation_metrics["tuned_ious"]
+            validation_metrics["base_ious"],
+            validation_metrics["tuned_ious"],
+            image_names=image_names,
         )
         ss["cellpose_original_counts_comparison"] = plot_pred_vs_true_counts(
             validation_metrics["gt_counts"],
             validation_metrics["base_counts"],
             title="Base Model Predictions",
+            image_names=image_names,
         )
         ss["cellpose_tuned_counts_comparison"] = plot_pred_vs_true_counts(
             validation_metrics["gt_counts"],
             validation_metrics["tuned_counts"],
             title="Tuned Model Predictions",
+            image_names=image_names,
         )
 
         # build zip like before
