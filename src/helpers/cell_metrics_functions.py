@@ -18,6 +18,26 @@ def hex_for_plot_label(label: str) -> str:
     return color_hex_for(label)
 
 
+def _scale_col(df: pd.DataFrame, col: str):
+    """
+    Return (scaled_series, axis_label) for `col`, applying pixel scaling from
+    session state if pixel_size is set. Accounts for per-image resize scale stored
+    in the '_pixel_scale' column. Dimensionless metrics are returned as-is.
+    """
+    pixel_size = st.session_state.get("pixel_size")
+    vals = df[col].copy()
+    label = col.replace("_", " ").title()
+
+    convert = st.session_state.get("convert_to_distance", False)
+    if pixel_size and pixel_size > 0 and convert:
+        if col in _AREA_COLS:
+            vals = vals * (pixel_size ** 2)
+        elif col in _DIST_COLS:
+            vals = vals * pixel_size
+
+    return vals, label
+
+
 def plot_violin(df: pd.DataFrame, value_col: str):
     """
     Create a violin plot of `value_col` grouped by mask label.
@@ -27,6 +47,10 @@ def plot_violin(df: pd.DataFrame, value_col: str):
 
     # use mask colors
     color_map = {lab: hex_for_plot_label(lab) for lab in order}
+
+    scaled_col, y_label = _scale_col(df, value_col)
+    df = df.copy()
+    df[value_col] = scaled_col
 
     show_points = bool(st.session_state.get("overlay_datapoints", False))
     fig = go.Figure()
@@ -92,7 +116,7 @@ def plot_violin(df: pd.DataFrame, value_col: str):
     fig.update_layout(
         violinmode="overlay",
         xaxis_title="Label",
-        yaxis_title=value_col.replace("_", " ").title(),
+        yaxis_title=y_label,
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=40, r=40, t=40, b=40),
@@ -111,9 +135,12 @@ def plot_bar(df: pd.DataFrame, value_col: str):
     with error bars showing standard deviation. Shows data points if `overlay_datapoints` is set
     in session state."""
 
+    df = df.copy()
+    scaled_col, title_y = _scale_col(df, value_col)
+    df[value_col] = scaled_col
+
     df["label"] = df["mask label"].replace("No label", None).fillna("Unlabelled")
     order = sorted(df["label"].unique(), key=lambda x: (x != "Unlabelled", str(x)))
-    title_y = value_col.replace("_", " ").title()
 
     # numeric x positions and colors
     xpos = np.arange(len(order), dtype=float)
@@ -133,7 +160,7 @@ def plot_bar(df: pd.DataFrame, value_col: str):
         error_y=dict(type="data", array=sds, visible=True),
         opacity=0.9,
         showlegend=False,
-        hovertemplate="<b>%{x}</b><br>" + title_y + ": %{y:.2f}<extra></extra>",
+        hovertemplate=f"<b>%{{x}}</b><br>{title_y}: %{{y:.2f}}<extra></extra>",
     )
 
     # add jittered data points if requested
@@ -290,13 +317,7 @@ def mask_shape_metrics(prop):
 def build_analysis_df(records):
     """
     Build a DataFrame with per-mask metrics for all images in session state.
-
-    Columns (existing):
-        image, mask #, mask label, mask area, mask perimeter, max edge-to-edge
-
-    New columns (from mask_shape_metrics):
-        circularity, roundness, aspect ratio, elongation,
-        solidity, extent, eccentricity, compactness, chord / major axis
+    Always returns raw pixel values with original column names.
     """
 
     rows = []
@@ -308,13 +329,24 @@ def build_analysis_df(records):
         if not inst.any():
             continue
 
+        # per-image resize scale: how many original pixels = 1 stored pixel
+        orig_H = rec.get("orig_H", rec["H"])
+        orig_W = rec.get("orig_W", rec["W"])
+        pixel_scale = max(orig_H, orig_W) / max(rec["H"], rec["W"])
+
         labdict = rec.get("labels", {})  # dict {instance_id -> class/None}
         for prop in regionprops(inst):  # prop.label is the instance id
             iid = int(prop.label)
             cls = labdict.get(iid)
 
-            # compute shape metrics
+            # compute shape metrics and normalise to original-pixel units
             shape_metrics = mask_shape_metrics(prop)
+            for col in _DIST_COLS:
+                if col in shape_metrics:
+                    shape_metrics[col] *= pixel_scale
+            for col in _AREA_COLS:
+                if col in shape_metrics:
+                    shape_metrics[col] *= pixel_scale ** 2
 
             row = {
                 "image": rec["name"],
@@ -330,6 +362,32 @@ def build_analysis_df(records):
     return pd.DataFrame(rows)
 
 
+# Columns that represent distances (multiply by pixel_size)
+_DIST_COLS = {"perimeter", "major axis length", "minor axis length"}
+# Columns that represent areas (multiply by pixel_size²)
+_AREA_COLS = {"area"}
+
+
+def apply_pixel_scaling(df: pd.DataFrame, pixel_size) -> pd.DataFrame:
+    """
+    Return a copy of df with distance/area columns scaled to physical units.
+    Dimensionless metrics (circularity, roundness, etc.) are left unchanged.
+    """
+    convert = st.session_state.get("convert_to_distance", False)
+    if not pixel_size or pixel_size <= 0 or df.empty or not convert:
+        return df.drop(columns=["_pixel_scale"], errors="ignore")
+
+    df = df.copy()
+    for col in _DIST_COLS:
+        if col in df.columns:
+            df[col] = df[col] * pixel_size
+    for col in _AREA_COLS:
+        if col in df.columns:
+            df[col] = df[col] * (pixel_size ** 2)
+
+    return df
+
+
 # --- FUNCTIONS FOR DOWNLOADING CLASS CHARACTERISTICS PLOTS
 
 
@@ -341,5 +399,8 @@ def build_cell_metrics_csv(labels_selected):
 
     if df.empty:
         return ""
+
+    pixel_size = st.session_state.get("pixel_size")
+    df = apply_pixel_scaling(df, pixel_size)
 
     return df.to_csv(index=False)

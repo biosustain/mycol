@@ -44,7 +44,7 @@ def render_main():
             )
 
             # allow user to specify mask suffix and toggle resizing
-            suffix_col, resize_col = st.columns([2, 1])
+            suffix_col, resize_col = st.columns([2, 1], vertical_alignment="center")
             with suffix_col:
                 mask_suffix = st.text_input(
                     "Mask suffix",
@@ -58,7 +58,9 @@ def render_main():
                     "Resize (512x512)",
                     value=ss.get("resize_on_upload", True),
                     key="resize_on_upload_checkbox",
-                    help="Resize images & masks on upload to 512x512",
+                    help="Resize images & masks **while uploading** to 512x512. Recommended for large images, "
+                    "but may cause quality loss. Calculated cell properties will still be correct for the "
+                    "original (pre-resize) image.",
                 )
                 ss["resize_on_upload"] = resize_on_upload
 
@@ -67,7 +69,7 @@ def render_main():
                 ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
                 st.rerun()
 
-            if st.button("Use demo data", type="primary"):
+            if st.button("Use demo data", type="primary", width="stretch"):
                 load_demo_data()
 
     with col2:
@@ -90,7 +92,7 @@ def render_main():
             st.info(f"Loaded model: {cellpose_model}")
 
             # button to remove the currently loaded model
-            if st.button("Clear Cellpose model", width='stretch'):
+            if st.button("Clear Cellpose model", width="stretch"):
                 ss["cellpose_model_bytes"] = None
                 ss["cellpose_model_name"] = None
                 ss["train_losses"] = []
@@ -102,9 +104,7 @@ def render_main():
             st.subheader("Upload Densenet classifier")
             densenet_file = st.file_uploader(
                 " ",
-                type=[
-                    "pth", "pt"
-                ],  #PyTorch formats instead
+                type=["pth", "pt"],  # PyTorch formats instead
                 key="upload_densenet_ckpt",
                 help="Uploading a Densenet121 model is optional.",
             )
@@ -119,21 +119,20 @@ def render_main():
 
                 import torch
                 from src.helpers.densenet_functions import build_densenet
-                
+
                 try:
                     state_dict = torch.load(path, map_location="cpu")
-                    num_classes = 2 #TODO FIX
+                    num_classes = 2  # TODO FIX
                     if "classifier.2.weight" in state_dict:
                         num_classes = state_dict["classifier.2.weight"].shape[0]
-                    
+
                     model = build_densenet(num_classes=num_classes)
                     model.load_state_dict(state_dict)
                     model.eval()
-                    
+
                 except Exception as e:
                     st.error(f"Failed to load PyTorch model: {e}")
                     model = None
-
 
                 ss["densenet_model"] = model
                 ss["densenet_model_path"] = path
@@ -144,7 +143,7 @@ def render_main():
             st.info(f"Loaded model: {densenet_model}")
 
             # button to remove the currently loaded model
-            if st.button("Clear DenseNet-121 model", width='stretch'):
+            if st.button("Clear DenseNet-121 model", width="stretch"):
                 ss["densenet_model"] = None
                 ss["densenet_ckpt_name"] = None
 
