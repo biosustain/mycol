@@ -57,7 +57,7 @@ def convert_cellpose_mask_to_single_array(mask_output, H, W):
     # handle empty mask case
     if mask_output is None or mask_output.size == 0:
         inst = np.zeros((H, W), dtype=np.uint8)
-        K = 0
+        return inst
     # handle standard case
     else:
         a = np.asarray(mask_output)
