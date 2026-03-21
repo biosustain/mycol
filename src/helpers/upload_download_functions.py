@@ -350,6 +350,14 @@ def render_images_form():
         if st.form_submit_button("Remove selected images", width="stretch"):
             for k in edited.loc[edited["Remove"]].index:
                 ss.images.pop(k, None)
+
+            # simplest/cleanest: rebuild mapping from current records only
+            ss.name_to_key = {
+                rec.get("name"): key
+                for key, rec in ss.images.items()
+                if rec.get("name")
+            }
+
             ks = sorted(ss.images)
             ss.current_key = ks[0] if ks else None
             st.rerun()
