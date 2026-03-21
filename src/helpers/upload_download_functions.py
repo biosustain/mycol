@@ -200,6 +200,30 @@ def process_uploads(files, mask_suffix):
     return skipped
 
 
+def _resize_label_with_aspect_ratio(
+    mask: np.ndarray, target_h: int, target_w: int
+) -> np.ndarray:
+    """
+    Resize an instance-label mask to (target_h, target_w) without geometric distortion.
+    Uses nearest-neighbor interpolation and center padding to preserve label ids.
+    """
+    h, w = mask.shape[:2]
+    if (h, w) == (target_h, target_w):
+        return mask.astype(np.uint16, copy=False)
+
+    scale = min(target_h / h, target_w / w)
+    nw = max(1, int(round(w * scale)))
+    nh = max(1, int(round(h * scale)))
+
+    resized = np.array(
+        Image.fromarray(mask).resize((nw, nh), resample=Image.NEAREST), dtype=np.uint16
+    )
+    canvas = np.zeros((target_h, target_w), dtype=np.uint16)
+    y0, x0 = (target_h - nh) // 2, (target_w - nw) // 2
+    canvas[y0 : y0 + nh, x0 : x0 + nw] = resized
+    return canvas
+
+
 def load_npy_mask(file, rec):
     """Read Cellpose *_seg.npy and return a (H,W) label matrix with 0 background, 1..N instances."""
     file = file.read()
@@ -208,13 +232,16 @@ def load_npy_mask(file, rec):
     mask = arr["masks"].astype(np.uint16)
     H, W = rec["H"], rec["W"]
     if mask.shape != (H, W):
-        # resize if needed
-        from PIL import Image
-
-        mask = np.array(
-            Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
-            dtype=np.uint16,
-        )
+        orig_h = rec.get("orig_H", H)
+        orig_w = rec.get("orig_W", W)
+        if (orig_h, orig_w) != (H, W):
+            # mirror image upload geometry: aspect-ratio resize + centered padding
+            mask = _resize_label_with_aspect_ratio(mask, H, W)
+        else:
+            mask = np.array(
+                Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
+                dtype=np.uint16,
+            )
     return mask
 
 
@@ -225,10 +252,16 @@ def load_tif_mask(file, rec):
 
     H, W = rec["H"], rec["W"]
     if mask.shape != (H, W):
-        mask = np.array(
-            Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
-            dtype=np.uint16,
-        )
+        orig_h = rec.get("orig_H", H)
+        orig_w = rec.get("orig_W", W)
+        if (orig_h, orig_w) != (H, W):
+            # mirror image upload geometry: aspect-ratio resize + centered padding
+            mask = _resize_label_with_aspect_ratio(mask, H, W)
+        else:
+            mask = np.array(
+                Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
+                dtype=np.uint16,
+            )
     return mask
 
 
