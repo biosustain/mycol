@@ -1067,7 +1067,10 @@ def build_cellpose_zip_bytes():
 
     ok = ordered_keys()
     ss = st.session_state
-    n_masks = sum((int(len(np.unique(ss["images"][k])) - 1)) for k in ok)
+    n_masks = sum(
+        int(len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16)))) - 1)
+        for k in ok
+    )
 
     # extract training parameters
     params = dict(
