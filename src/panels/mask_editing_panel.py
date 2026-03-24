@@ -16,8 +16,6 @@ from src.helpers.classifying_functions import (
 from src.helpers.cellpose_functions import (
     segment_current_and_refresh,
     batch_segment_and_refresh,
-    segment_current_and_refresh_cellpose_sam,
-    batch_segment_current_and_refresh_cellpose_sam,
 )
 
 from src.helpers.upload_download_functions import (
@@ -49,52 +47,34 @@ def render_segment_sidebar(*, key_ns: str = "side"):
         ):
 
             model_family = st.selectbox(
-                "Select model", ["Cellpose4", "Fine-tuned Model"]
+                "Select model", ["Cyto3", "Cyto2", "Fine-tuned Model"]
             )
+
+            model_type_map = {"Cyto3": "cyto3", "Cyto2": "cyto2", "Fine-tuned Model": None}
+            model_type = model_type_map[model_family]
+            disabled = model_type is None and st.session_state["cellpose_model_bytes"] is None
 
             col1, col2 = st.columns(2)
 
-            if model_family == "Cellpose4":
+            with col1:
+                if st.button(
+                    "Generate",
+                    width="stretch",
+                    key="segment_image",
+                    help="Segment this image with Cellpose.",
+                    disabled=disabled,
+                ):
+                    segment_current_and_refresh(model_type)
 
-                with col1:
-
-                    if st.button(
-                        "Generate",
-                        width="stretch",
-                        key="segment_image_SAM",
-                    ):
-                        segment_current_and_refresh_cellpose_sam()
-
-                with col2:
-                    if st.button(
-                        "Batch generate",
-                        width="stretch",
-                        key="batch_segment_image_sam",
-                        help="Segment all uploaded images with Cellpose.",
-                    ):
-                        batch_segment_current_and_refresh_cellpose_sam()
-
-            else:
-
-                with col1:
-
-                    if st.button(
-                        "Generate",
-                        width="stretch",
-                        key="segment_image",
-                        help="Segment this image with Cellpose.",
-                        disabled=st.session_state["cellpose_model_bytes"] is None,
-                    ):
-                        segment_current_and_refresh()
-                with col2:
-                    if st.button(
-                        "Batch generate",
-                        width="stretch",
-                        key="batch_segment_image",
-                        help="Segment all uploaded images with Cellpose.",
-                        disabled=st.session_state["cellpose_model_bytes"] is None,
-                    ):
-                        batch_segment_and_refresh()
+            with col2:
+                if st.button(
+                    "Batch generate",
+                    width="stretch",
+                    key="batch_segment_image",
+                    help="Segment all uploaded images with Cellpose.",
+                    disabled=disabled,
+                ):
+                    batch_segment_and_refresh(model_type)
 
             st.caption("Change hyperparameters to increase accuracy:")
 
