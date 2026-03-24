@@ -142,7 +142,7 @@ def get_tuned_model():
     if not weights_path:
         raise RuntimeError("No fine-tuned model weights found in session state.")
 
-    return CellposeModel3Proxy(pretrained_model=weights_path, gpu=core.use_gpu)
+    return CellposeModel3Proxy(pretrained_model=weights_path, gpu=core.use_gpu())
 
 
 def segment_with_cellpose(
@@ -255,7 +255,6 @@ if PORTABLE_WORKER_PYTHON:
     # PORTABLE MODE
     print(f"[MyCol] Portable mode detected. Worker: {PORTABLE_WORKER_PYTHON}")
     TRAINING_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "finetune"]
-    INFERENCE_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "inference"]
     VALIDATION_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "validation"]
     DENSENET_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "densenet"]
     TRAINING_PROJECT = None  # Not needed, direct python call
@@ -265,7 +264,6 @@ elif getattr(sys, "frozen", False):
     HERE = _get_base_path()
     UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
     TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER, "finetune"]
-    INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER, "inference"]
     VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER, "validation"]
     DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER, "densenet"]
     TRAINING_PROJECT = None
@@ -276,7 +274,6 @@ else:
     UNIFIED_WORKER_PY = str((HERE.parent / "training" / "unified_worker.py").resolve())
 
     TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "finetune"]
-    INFERENCE_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "inference"]
     VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "validation"]
     DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "densenet"]
 
@@ -287,9 +284,10 @@ class CellposeModel3Proxy:
     def __init__(self, pretrained_model, gpu=True):
         self.pretrained_model = pretrained_model
         self.gpu = gpu
-        # PC4-style attributes for compatibility
+        # attributes for API compatibility
         self.device = torch.device(
-            "cuda" if gpu and torch.cuda.is_available() else "cpu"
+            "mps" if torch.backends.mps.is_available() else
+            "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.net = type("obj", (object,), {"device": self.device})()
 
@@ -304,73 +302,26 @@ class CellposeModel3Proxy:
         niter=200,
         **kwargs,
     ):
-        """Runs evaluation using the CP3 worker bridge."""
-        # handle multiple images (list) vs single image
+        from cellpose import models as cp_models, io
+
         is_list = isinstance(x, (list, tuple))
         images = x if is_list else [x]
 
-        results = []
-        for img in images:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                in_path = Path(tmpdir) / "input.npz"
-                out_path = Path(tmpdir) / "output.npz"
+        _ = io.logger_setup()
+        cell_model = cp_models.CellposeModel(
+            gpu=self.gpu, pretrained_model=self.pretrained_model
+        )
+        masks, flows, styles = cell_model.eval(
+            images,
+            channels=channels if channels is not None else [0, 0],
+            diameter=diameter,
+            cellprob_threshold=cellprob_threshold,
+            flow_threshold=flow_threshold,
+            min_size=min_size,
+            niter=niter,
+        )
 
-                # save input
-                np.savez_compressed(
-                    in_path,
-                    image=np.ascontiguousarray(img),
-                    weights_path=self.pretrained_model,
-                    channels=np.array(channels if channels is not None else [0, 0]),
-                    diameter=diameter if diameter is not None else 0.0,
-                    cellprob_threshold=cellprob_threshold,
-                    flow_threshold=flow_threshold,
-                    min_size=min_size,
-                    niter=niter,
-                )
-
-                # run worker
-                if PORTABLE_WORKER_PYTHON:
-                    # Portable Mode: Call bundled python directly
-                    cmd = (
-                        [PORTABLE_WORKER_PYTHON]
-                        + INFERENCE_WORKER_SCRIPT
-                        + [str(in_path), str(out_path)]
-                    )
-                elif getattr(sys, "frozen", False):
-                    # Direct executable call when frozen
-                    # INFERENCE_WORKER_SCRIPT is [exe_path, "inference"]
-                    cmd = INFERENCE_WORKER_SCRIPT + [str(in_path), str(out_path)]
-                else:
-                    # uv run call in development mode
-                    # INFERENCE_WORKER_SCRIPT is [py_script_path, "inference"]
-                    cmd = (
-                        [
-                            "uv",
-                            "run",
-                            "--project",
-                            TRAINING_PROJECT,
-                            "python",
-                        ]
-                        + INFERENCE_WORKER_SCRIPT
-                        + [str(in_path), str(out_path)]
-                    )
-
-                res = subprocess.run(cmd, capture_output=True, text=True)
-                if res.returncode != 0:
-                    raise RuntimeError(
-                        f"Cellpose 3 Inference Bridge failed:\n{res.stderr}"
-                    )
-
-                if not out_path.exists():
-                    raise RuntimeError(
-                        f"Cellpose 3 Inference Bridge failed: Output file not created.\n{res.stderr}"
-                    )
-
-                # Load results
-                with np.load(out_path, allow_pickle=True) as data:
-                    results.append(data["masks"])
-
-        return (results, None, None) if is_list else (results[0], None, None)
+        return (masks, flows, styles) if is_list else (masks[0], flows, styles)
 
 
 # -----------------------------------------------------#
