@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import cv2
-from cellpose import core, models, metrics
+from cellpose import core, metrics
 import torch
 from PIL import Image
 import io as IO
@@ -125,18 +125,7 @@ def get_cellpose_model():
     if weights_path:
         model_type = weights_path
 
-    try:
-        model = models.CellposeModel(
-            gpu=core.use_gpu(),
-            pretrained_model=model_type,
-        )
-    except Exception as e:
-        # TODO: lowkey digusting
-        # fallback to CP3 Proxy if CP4 rejects the model (compatibility error)
-        if "CP4" in str(e) or "CP3" in str(e):
-            model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
-        else:
-            raise e
+    model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
 
     ss["cellpose_model_obj"] = model
     ss["cellpose_model_tag"] = tag
@@ -550,8 +539,7 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
 def load_base_cellpose_model(base_model: str):
     """Loads a base Cellpose model for fine-tuning."""
     init_model = None if base_model == "scratch" else base_model
-    cell_model = models.CellposeModel(gpu=core.use_gpu, model_type=init_model)
-    return cell_model
+    return CellposeModel3Proxy(pretrained_model=init_model, gpu=core.use_gpu())
 
 
 
