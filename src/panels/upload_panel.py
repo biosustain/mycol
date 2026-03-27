@@ -10,6 +10,9 @@ from src.helpers.upload_download_functions import (
 import os
 import tempfile
 import hashlib
+import pandas as pd
+import zipfile
+import io
 
 
 def render_main():
@@ -74,29 +77,71 @@ def render_main():
 
     with col2:
         with st.container(border=True, height=350):
-            # ---- Cellpose model (custom weights) ----
-            st.subheader("Upload Cellpose model")
-            cellpose_file = st.file_uploader(
-                " ",
-                # Cellpose custom models are commonly .npy; allow pt/pth just in case
-                type=["pt", "pth"],
-                key="upload_cellpose_model",
-                help="Uploading a Cellpose model is optional.",
-            )
-            if cellpose_file is not None:
-                ss["cellpose_model_bytes"] = cellpose_file.read()
-                ss["cellpose_model_name"] = cellpose_file.name
+            cp_col, hp_col = st.columns(2)
 
-            # display the currently loaded model
-            cellpose_model = ss.get("cellpose_model_name") or "—"
-            st.info(f"Loaded model: {cellpose_model}")
+            with cp_col:
+                # ---- Cellpose model (custom weights) ----
+                st.subheader("Upload Cellpose model")
+                cellpose_file = st.file_uploader(
+                    " ",
+                    # Cellpose custom models are commonly .npy; allow pt/pth just in case
+                    type=["pt", "pth"],
+                    key="upload_cellpose_model",
+                    help="Uploading a Cellpose model is optional.",
+                )
+                if cellpose_file is not None:
+                    ss["cellpose_model_bytes"] = cellpose_file.read()
+                    ss["cellpose_model_name"] = cellpose_file.name
 
-            # button to remove the currently loaded model
-            if st.button("Clear Cellpose model", width="stretch"):
-                ss["cellpose_model_bytes"] = None
-                ss["cellpose_model_name"] = None
-                ss["train_losses"] = []
-                ss["test_losses"] = []
+                # display the currently loaded model
+                cellpose_model = ss.get("cellpose_model_name") or "—"
+                st.info(f"Loaded model: {cellpose_model}")
+
+                # button to remove the currently loaded model
+                if st.button("Clear Cellpose model", width="stretch"):
+                    ss["cellpose_model_bytes"] = None
+                    ss["cellpose_model_name"] = None
+                    ss["train_losses"] = []
+                    ss["test_losses"] = []
+
+            with hp_col:
+                # ---- Hyperparameter optimisation results ----
+                st.subheader("Upload HP results")
+                hp_file = st.file_uploader(
+                    " ",
+                    type=["zip"],
+                    key="upload_hp_df",
+                    help="Upload the ZIP downloaded after Cellpose hyperparameter tuning. "
+                    "The top row of hyperparameter_search.csv will be applied.",
+                )
+                if hp_file is not None:
+                    try:
+                        with zipfile.ZipFile(io.BytesIO(hp_file.read())) as zf:
+                            if "hyperparameter_search.csv" not in zf.namelist():
+                                st.error("No hyperparameter_search.csv found in zip.")
+                            else:
+                                with zf.open("hyperparameter_search.csv") as f:
+                                    hp_df = pd.read_csv(f)
+
+                                required_cols = {"cellprob", "flow_threshold", "niter", "min_size"}
+                                if required_cols.issubset(hp_df.columns):
+                                    best = hp_df.iloc[0]
+                                    ss["cp_cellprob_threshold"] = float(best["cellprob"])
+                                    ss["cp_flow_threshold"] = float(best["flow_threshold"])
+                                    ss["cp_min_size"] = int(best["min_size"])
+                                    ss["cp_niter"] = int(best["niter"])
+                                    ss["cp_grid_results_df"] = hp_df
+                                    st.success(
+                                        f"HP set: cellprob={best['cellprob']:.2f}, "
+                                        f"flow={best['flow_threshold']:.2f}, "
+                                        f"min_size={int(best['min_size'])}, "
+                                        f"niter={int(best['niter'])}"
+                                    )
+                                else:
+                                    missing = required_cols - set(hp_df.columns)
+                                    st.error(f"Missing columns: {', '.join(missing)}")
+                    except Exception as e:
+                        st.error(f"Failed to load HP file: {e}")
 
     with col3:
         # ---- DenseNet-121 classifier ----
