@@ -21,7 +21,7 @@ def ensure_global_state() -> None:
     ss.setdefault("densenet_ckpt_name", None)
     ss.setdefault("side_new_label", "")
     ss.setdefault("show_overlay", True)
-    st.session_state.setdefault("show_normalized", False)
+    st.session_state.setdefault("show_normalized", True)
     ss.setdefault("interaction_mode", "Remove mask")
     ss.setdefault("side_interaction_mode", "Draw box")
     ss.setdefault("skipped_files", [])
@@ -92,7 +92,7 @@ def reset_global_state() -> None:
     ss["densenet_ckpt_name"] = None
     ss["side_new_label"] = ""
     ss["show_overlay"] = True
-    ss["show_normalized"] = False
+    ss["show_normalized"] = True
     ss["interaction_mode"] = "Remove mask"
     ss["side_interaction_mode"] = "Draw box"
     ss["skipped_files"] = []
