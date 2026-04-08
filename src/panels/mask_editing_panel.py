@@ -18,10 +18,6 @@ from src.helpers.cellpose_functions import (
     batch_segment_and_refresh,
 )
 
-from src.helpers.upload_download_functions import (
-    build_masks_images_zip,
-)
-
 # ---------- Rendering functions ----------
 
 
@@ -117,57 +113,3 @@ def render_classify_sidebar(*, key_ns: str = "side"):
 def render_main(*, key_ns: str = "edit"):
 
     render_display_and_interact_fragment(key_ns=key_ns, max_display_width=768)
-
-
-def render_download_button():
-    if not ordered_keys():
-        st.info("Upload data and label masks first.")
-        return False
-
-    images = st.session_state.get("images", {})
-    ok = ordered_keys() if images else []
-
-    with st.container(border=True):
-        with st.popover(label="Download options", width="stretch", type="primary"):
-            include_overlay = st.checkbox(
-                "Include colored mask overlays", True, key="dl_include_overlay"
-            )
-            include_counts = st.checkbox(
-                "Overlay per-image class counts", False, key="dl_include_counts"
-            )
-            st.checkbox(
-                "Normalize downloaded images", False, key="dl_normalize_download"
-            )
-
-            include_patches = st.checkbox(
-                "Include cell patch images", False, key="dl_include_patches"
-            )
-
-            include_summary = st.checkbox(
-                "Include table of per image cell counts",
-                True,
-                key="dl_include_summary",
-            )
-
-            # 🔹 Only build the dataset when the user actually clicks the button
-            if st.button(
-                "Prepare annotated images for download",
-                width="stretch",
-                type="primary",
-            ):
-                mz = build_masks_images_zip(
-                    images,
-                    ok,
-                    include_overlay,
-                    include_counts,
-                    include_patches,
-                    include_summary,
-                )
-                st.download_button(
-                    "Download dataset",
-                    mz,
-                    "masks_and_images.zip",
-                    "application/zip",
-                    width="stretch",
-                    type="primary",
-                )

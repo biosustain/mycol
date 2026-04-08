@@ -72,6 +72,10 @@ pages = [
         "src/views/5-cell-metrics.py",
         title="Visualize Cell Attributes",
     ),
+    st.Page(
+        "src/views/6-downloads.py",
+        title="Downloads",
+    ),
 ]
 
 # ------------------ TOP navigation ------------------ #

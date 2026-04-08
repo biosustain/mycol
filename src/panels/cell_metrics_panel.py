@@ -8,7 +8,6 @@ from src.helpers.cell_metrics_functions import (
     build_analysis_df,
     plot_violin,
     plot_bar,
-    build_cell_metrics_csv,
 )
 from src.helpers.help_panels import shape_metric_help
 from src.helpers.state_ops import ordered_keys
@@ -182,21 +181,8 @@ def render_plotting_options():
             width="stretch",
         )
 
-    btn_col1, btn_col2 = st.columns(2)
-    if btn_col1.button("Generate Plots", width="stretch", type="primary"):
+    if st.button("Generate Plots", width="stretch", type="primary"):
         render_plotting_main()
-
-    btn_col2.download_button(
-        "Download table of cell descriptors",
-        data=build_cell_metrics_csv(
-            tuple(st.session_state.get("analysis_labels") or ())
-        ),
-        file_name="cell_metrics.csv",
-        mime="text/csv",
-        width="stretch",
-        key="dl_cell_metrics_csv",
-        type="primary",
-    )
 
 
 def render_plotting_main():

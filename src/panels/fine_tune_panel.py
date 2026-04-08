@@ -213,15 +213,6 @@ def show_densenet_training_plots():
             width="stretch",
         )
 
-        st.download_button(
-            "Download fine-tuned DenseNet model, dataset and training metrics",
-            data=ss["dn_zip_bytes"],
-            file_name="densenet_training.zip",
-            mime="application/zip",
-            width="stretch",
-            type="primary",
-        )
-
 
 # ========== Cellpose: options + training ==========
 
@@ -656,17 +647,6 @@ def show_cellpose_training_plots():
 
         else:
             st.info("No hyperparameter tuning performed.")
-
-        # button for downloading fine-tuned model, training data and training stats in a zip file
-        if "cp_zip_bytes" in ss:
-            st.download_button(
-                "Download Cellpose model, dataset and training metrics (ZIP)",
-                data=ss["cp_zip_bytes"],
-                file_name="cellpose_training.zip",
-                mime="application/zip",
-                width="stretch",
-                type="primary",
-            )
 
 
 @st.fragment(run_every=2)

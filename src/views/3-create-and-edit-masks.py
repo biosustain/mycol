@@ -113,8 +113,6 @@ with st.spinner("Loading Annotator..."):
             with classifying_tab:
                 mask_editing_panel.render_classify_sidebar(key_ns="classify_side")
 
-            mask_editing_panel.render_download_button()
-
     # Page main content
     with col2:
         mask_editing_panel.render_main(key_ns="edit")
