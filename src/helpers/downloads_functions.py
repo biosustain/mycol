@@ -11,7 +11,6 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from src.helpers.upload_download_functions import build_masks_images_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
-from src.helpers.state_ops import ordered_keys
 
 ss = st.session_state
 
@@ -131,11 +130,3 @@ def build_session_zip(images, ok) -> bytes:
         )
 
     return buf.getvalue()
-
-
-def option_row(label, default, key, caption, disabled=False, on_change=None):
-    c1, c2 = st.columns([1, 2], vertical_alignment="center")
-    with c1:
-        st.checkbox(label, default, key=key, on_change=on_change, disabled=disabled)
-    with c2:
-        st.caption(caption)

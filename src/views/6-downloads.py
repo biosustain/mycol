@@ -1,6 +1,7 @@
 import streamlit as st
 from src.helpers.state_ops import ordered_keys, require_images
-from src.helpers.downloads_functions import build_download_zip, build_session_zip, option_row
+from src.helpers.downloads_functions import build_download_zip, build_session_zip
+from src.panels.downloads_panel import option_row
 
 ss = st.session_state
 images = ss.get("images", {})
