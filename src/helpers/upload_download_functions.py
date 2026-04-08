@@ -1,6 +1,7 @@
 # helpers/image_io.py
 from PIL import Image
 import io
+import json
 import os
 import tempfile
 import hashlib
@@ -40,117 +41,19 @@ ss = st.session_state
 ss = st.session_state
 
 
-class DemoUploadedFile(io.BytesIO):
-    """
-    Mimics Streamlit's UploadedFile using only the basename of a file path.
-    """
-
-    def __init__(self, file_path: Path):
-        self._path = Path(file_path)
-        super().__init__(self._path.read_bytes())
-
-    @property
-    def name(self):
-        return self._path.name
-
-
 def load_demo_data():
-    """Load demo images, masks, Cellpose model and Densenet model into session_state."""
-
-    DEMO_MASK_SUFFIX = "_masks"
-
-    reset_global_state()
-
-    # ---------- locate demo_data folder ----------
-    demo_root = Path("demo_data")  # project-relative, like intro_images
-    images_dir = demo_root / "images"
-    masks_dir = demo_root / "masks"
-
-    # ---------- prepare image & mask 'uploaded' files ----------
-    image_exts = {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
-    mask_exts = {".tif", ".tiff", ".npy"}
-
-    file_objs = []
-
-    # images
-    for p in sorted(images_dir.iterdir()):
-        if p.suffix.lower() in image_exts:
-            file_objs.append(DemoUploadedFile(p))  # behaves enough like st.UploadedFile
-
-    # masks
-    for p in sorted(masks_dir.iterdir()):
-        if p.suffix.lower() in mask_exts:
-            file_objs.append(DemoUploadedFile(p))
-
-    # use the same suffix that matches demo masks
-    ss["mask_suffix"] = DEMO_MASK_SUFFIX
-
-    # process images + masks through existing pipeline
-    skipped = process_uploads(file_objs, DEMO_MASK_SUFFIX) or []
-    ss["skipped_files"] = skipped
-
-    # TODO: FIX, INJECT DUMMY LABELS FOR DEMO TRAINING
-    demo_classes = ["Demo Class A", "Demo Class B"]
-    ss["all_classes"] = ["No label"] + demo_classes
-
-    np.random.default_rng(42)
-
-    for k in ordered_keys():
-        rec = ss.images[k]
-        masks = rec.get("masks")
-        if masks is None:
-            continue
-
-        cell_ids = [i for i in np.unique(masks) if i != 0]
-
-        new_labels = {}
-        for cid in cell_ids:
-            lbl = demo_classes[cid % 2]
-            new_labels[cid] = lbl
-
-        rec["labels"] = new_labels
-
-    # close the file handles now that everything is loaded
-    for f in file_objs:
-        try:
-            f.close()
-        except Exception:
-            pass
-
-    # ---------- load Cellpose model from disk ----------
-    cellpose_path = demo_root / "cellpose_model.pt"
-    if cellpose_path.exists():
-        ss["cellpose_model_bytes"] = cellpose_path.read_bytes()
-        ss["cellpose_model_name"] = cellpose_path.name
-
-    # ---------- load Densenet model from disk ----------
-    densenet_path = demo_root / "densenet_demo.pth"
-    if densenet_path.exists():
-        import torch
-        from src.helpers.densenet_functions import build_densenet
-
-        try:
-            state_dict = torch.load(densenet_path, map_location="cpu")
-
-            num_classes = 2
-            if "classifier.2.weight" in state_dict:
-                num_classes = state_dict["classifier.2.weight"].shape[0]
-            elif "classifier.weight" in state_dict:
-                num_classes = state_dict["classifier.weight"].shape[0]
-
-            model = build_densenet(num_classes=num_classes)
-            model.load_state_dict(state_dict)
-            model.eval()
-
-            ss["densenet_model"] = model
-            ss["densenet_model_path"] = str(densenet_path)
-            ss["densenet_ckpt_name"] = densenet_path.name
-        except Exception as e:
-            st.warning(f"Could not load demo DenseNet model: {e}")
-
-    # ---------- notify + refresh UI ----------
-    st.toast("Demo data loaded.")
-    st.rerun()
+    """Restore the bundled example_session.zip through the normal session-restore pipeline."""
+    app_dir = Path(__file__).parent.parent.parent  # repo root (where app.py lives)
+    session_path = app_dir / "example_session.zip"
+    if not session_path.exists():
+        st.error(f"Demo session file not found: {session_path}")
+        return
+    err = restore_session(session_path.read_bytes())
+    if err:
+        st.error(f"Could not load demo data: {err}")
+    else:
+        ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
+        st.rerun()
 
 
 def restore_session(zip_bytes: bytes) -> str | None:
@@ -199,6 +102,17 @@ def restore_session(zip_bytes: bytes) -> str | None:
             rec["masks"] = mask
             rec["labels"] = {int(i): None for i in np.unique(mask) if i != 0}
 
+        # ── Per-image metadata (orig dimensions, boxes) ───────────────────────
+        if "image_metadata.json" in names:
+            image_metadata = json.loads(zf.read("image_metadata.json").decode())
+            for k, rec in ss["images"].items():
+                name = Path(rec["name"]).stem
+                m = image_metadata.get(name, {})
+                rec["orig_H"] = m.get("orig_H", rec["H"])
+                rec["orig_W"] = m.get("orig_W", rec["W"])
+                rec["boxes"] = m.get("boxes", [])
+                rec["boxes_display"] = m.get("boxes_display", [])
+
         # ── Labels (from cell_metrics.csv) ────────────────────────────────────
         if "cell_metrics.csv" in names:
             df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
@@ -222,7 +136,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             p = dict(zip(df["parameter"], df["value"]))
             ss["cp_ch1"] = _cast(p.get("channel_1"), int, 0)
             ss["cp_ch2"] = _cast(p.get("channel_2"), int, 0)
-            ss["cp_diameter"] = _cast(p.get("diameter"), float, 0)
+            ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
             ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
             ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
             ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
@@ -268,6 +182,17 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["densenet_model"] = model
             ss["densenet_model_path"] = path
             ss["densenet_ckpt_name"] = "densenet_model.pth"
+
+        # ── DenseNet class map ────────────────────────────────────────────────
+        if "densenet_class_map.csv" in names:
+            df = pd.read_csv(io.StringIO(zf.read("densenet_class_map.csv").decode()))
+            if {"class_index", "class_name"}.issubset(df.columns):
+                ss["densenet_class_map"] = {
+                    int(row["class_index"]): (
+                        None if pd.isna(row["class_name"]) else str(row["class_name"])
+                    )
+                    for _, row in df.iterrows()
+                }
 
         ok = ordered_keys()
         if ok:

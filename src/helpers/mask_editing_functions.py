@@ -471,7 +471,7 @@ def render_cellpose_hyperparameters_fragment():
     diam_val = st.number_input(
         "Mean cell diameter (pixels)",
         min_value=0,
-        value=st.session_state.get("cp_diameter", 0),
+        value=int(st.session_state.get("cp_diameter", 0)),
         step=1,
         help="Leave as 0 for Cellpose to estimate diameter, or set a manual value.",
         key="w_cp_diameter",

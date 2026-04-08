@@ -196,18 +196,32 @@ def render_main():
         # status
         st.divider()
         status_col2, status_col3 = st.columns(2)
+
+        def _model_status_box(label: str, name: str | None) -> None:
+            if name:
+                st.markdown(
+                    f"""<div style="background:rgba(33,195,84,0.12);border-left:4px solid #21c354;border-radius:0 8px 8px 0;padding:14px 18px;">
+                    <p style="margin:0;font-size:1rem;color:#21c354;font-weight:600;letter-spacing:0.05em;">MODEL LOADED</p>
+                    <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">{label}</p>
+                    <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;word-break:break-all;">{name}</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f"""<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
+                    <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NOT UPLOADED</p>
+                    <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">{label}</p>
+                    <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;">Optional upload</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+
         with status_col2:
-            cellpose_name = ss.get("cellpose_model_name")
-            if cellpose_name:
-                st.success(f"Cellpose: {cellpose_name}")
-            else:
-                st.warning("No Cellpose model uploaded.")
+            _model_status_box("Cellpose", ss.get("cellpose_model_name"))
         with status_col3:
-            densenet_name = ss.get("densenet_ckpt_name")
-            if densenet_name:
-                st.success(f"DenseNet: {densenet_name}")
-            else:
-                st.warning("No DenseNet model uploaded.")
+            _model_status_box("DenseNet", ss.get("densenet_ckpt_name"))
+        st.write("")
 
         # ---- Summary table: image–mask pairs ----
 

@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import tempfile
 import streamlit as st
@@ -176,7 +177,8 @@ def _build_session_zip() -> bytes:
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
 
-        # Images and masks
+        # Images, masks and per-image metadata
+        image_metadata = {}
         for k in ok:
             rec = images[k]
             name = Path(rec.get("name", str(k))).stem
@@ -192,6 +194,15 @@ def _build_session_zip() -> bytes:
                 mbuf = io.BytesIO()
                 tiff.imwrite(mbuf, mask.astype(np.uint16))
                 zf.writestr(f"masks/{name}.tif", mbuf.getvalue())
+
+            image_metadata[name] = {
+                "orig_H": rec.get("orig_H", rec["H"]),
+                "orig_W": rec.get("orig_W", rec["W"]),
+                "boxes": rec.get("boxes", []),
+                "boxes_display": rec.get("boxes_display", []),
+            }
+
+        zf.writestr("image_metadata.json", json.dumps(image_metadata))
 
         # Cellpose training hyperparameters
         cp_training_params = {
@@ -243,6 +254,16 @@ def _build_session_zip() -> bytes:
             with open(tmp_path, "rb") as f:
                 zf.writestr("densenet_model.pth", f.read())
             os.remove(tmp_path)
+
+        # DenseNet class map
+        densenet_class_map = ss.get("densenet_class_map")
+        if densenet_class_map:
+            zf.writestr(
+                "densenet_class_map.csv",
+                pd.DataFrame(
+                    [{"class_index": k, "class_name": v} for k, v in densenet_class_map.items()]
+                ).to_csv(index=False),
+            )
 
         # Cell metrics
         zf.writestr(
