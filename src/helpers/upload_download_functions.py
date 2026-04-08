@@ -1,6 +1,9 @@
 # helpers/image_io.py
 from PIL import Image
 import io
+import os
+import tempfile
+import hashlib
 import numpy as np
 import tifffile as tiff
 import streamlit as st
@@ -148,6 +151,129 @@ def load_demo_data():
     # ---------- notify + refresh UI ----------
     st.toast("Demo data loaded.")
     st.rerun()
+
+
+def restore_session(zip_bytes: bytes) -> str | None:
+    """Restore a saved session zip into session state. Returns an error string or None on success."""
+    from src.helpers.state_ops import reset_global_state, set_current_by_index, ordered_keys
+
+    def _cast(v, t, default):
+        try:
+            return default if pd.isna(v) else t(v)
+        except (ValueError, TypeError):
+            return default
+
+    with ZipFile(io.BytesIO(zip_bytes)) as zf:
+        names = set(zf.namelist())
+        reset_global_state()
+
+        # ── Images ───────────────────────────────────────────────────────────
+        for entry in sorted(n for n in names if n.startswith("images/") and not n.endswith("/")):
+            fname = Path(entry).name
+            img_np = np.array(Image.open(io.BytesIO(zf.read(entry))).convert("RGB"), dtype=np.uint8)
+            H, W = img_np.shape[:2]
+            k = ss["next_ord"]
+            ss["next_ord"] += 1
+            ss["images"][k] = {
+                "name": fname, "id": k,
+                "image": img_np, "H": H, "W": W, "orig_H": H, "orig_W": W,
+                "masks": np.zeros((H, W), dtype=np.uint16),
+                "labels": {}, "boxes": [], "last_click_xy": None,
+                "canvas": {"closed_json": None, "processed_count": 0},
+            }
+            ss["name_to_key"][fname] = k
+
+        # ── Masks ─────────────────────────────────────────────────────────────
+        stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
+        for entry in sorted(n for n in names if n.startswith("masks/") and not n.endswith("/")):
+            k = stem_to_key.get(Path(entry).stem)
+            if k is None:
+                continue
+            rec = ss["images"][k]
+            mask = tiff.imread(io.BytesIO(zf.read(entry))).astype(np.uint16)
+            if mask.shape != (rec["H"], rec["W"]):
+                mask = np.array(
+                    Image.fromarray(mask).resize((rec["W"], rec["H"]), resample=Image.NEAREST),
+                    dtype=np.uint16,
+                )
+            rec["masks"] = mask
+            rec["labels"] = {int(i): None for i in np.unique(mask) if i != 0}
+
+        # ── Labels (from cell_metrics.csv) ────────────────────────────────────
+        if "cell_metrics.csv" in names:
+            df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
+            if {"image", "mask #", "mask label"}.issubset(df.columns):
+                all_labels = set()
+                for _, row in df.iterrows():
+                    k = stem_to_key.get(Path(str(row["image"])).stem)
+                    if k is None:
+                        continue
+                    label = str(row["mask label"])
+                    label = None if label in ("Unlabelled", "No label", "nan") else label
+                    ss["images"][k]["labels"][int(row["mask #"])] = label
+                    if label:
+                        all_labels.add(label)
+                if all_labels:
+                    ss["all_classes"] = ["No label"] + sorted(all_labels)
+
+        # ── Cellpose inference hyperparameters ────────────────────────────────
+        if "cellpose_inference_hyperparameters.csv" in names:
+            df = pd.read_csv(io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode()))
+            p = dict(zip(df["parameter"], df["value"]))
+            ss["cp_ch1"] = _cast(p.get("channel_1"), int, 0)
+            ss["cp_ch2"] = _cast(p.get("channel_2"), int, 0)
+            ss["cp_diameter"] = _cast(p.get("diameter"), float, 0)
+            ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
+            ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
+            ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
+            ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+
+        # ── Cellpose training hyperparameters ─────────────────────────────────
+        if "cellpose_training_hyperparameters.csv" in names:
+            df = pd.read_csv(io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode()))
+            p = dict(zip(df["parameter"], df["value"]))
+            ss["cp_base_model"] = _cast(p.get("base_model"), str, "Cyto3")
+            ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
+            ss["cp_learning_rate"] = _cast(p.get("learning_rate"), float, 0.01)
+            ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
+            ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
+            ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
+
+        # ── Cellpose model ────────────────────────────────────────────────────
+        if "cellpose_model.pt" in names:
+            ss["cellpose_model_bytes"] = zf.read("cellpose_model.pt")
+            ss["cellpose_model_name"] = "cellpose_model.pt"
+
+        # ── DenseNet model ────────────────────────────────────────────────────
+        if "densenet_model.pth" in names:
+            import torch
+            from src.helpers.densenet_functions import build_densenet
+
+            data = zf.read("densenet_model.pth")
+            path = os.path.join(
+                tempfile.gettempdir(), f"model_{hashlib.sha1(data).hexdigest()[:12]}.pth"
+            )
+            if not os.path.exists(path):
+                with open(path, "wb") as f:
+                    f.write(data)
+            state_dict = torch.load(path, map_location="cpu")
+            num_classes = 2
+            if "classifier.2.weight" in state_dict:
+                num_classes = state_dict["classifier.2.weight"].shape[0]
+            elif "classifier.weight" in state_dict:
+                num_classes = state_dict["classifier.weight"].shape[0]
+            model = build_densenet(num_classes=num_classes)
+            model.load_state_dict(state_dict)
+            model.eval()
+            ss["densenet_model"] = model
+            ss["densenet_model_path"] = path
+            ss["densenet_ckpt_name"] = "densenet_model.pth"
+
+        ok = ordered_keys()
+        if ok:
+            set_current_by_index(len(ok) - 1)
+
+    return None
 
 
 def process_uploads(files, mask_suffix):
