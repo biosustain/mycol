@@ -11,7 +11,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from src.helpers.upload_download_functions import build_masks_images_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
-from src.helpers.state_ops import ordered_keys
+from src.helpers.state_ops import ordered_keys, require_images
 
 ss = st.session_state
 images = ss.get("images", {})
@@ -31,11 +31,9 @@ def _invalidate_session():
     ss.pop("_session_bytes", None)
 
 
-st.header("Download annotated images, cell metrics, and trained models")
+require_images()
 
-if not has_images and not has_cellpose and not has_densenet:
-    st.info("Upload data and train models first.")
-    st.stop()
+st.header("Download annotated images, cell metrics, and trained models")
 
 
 # ── Options ───────────────────────────────────────────────────────────────────
@@ -261,7 +259,10 @@ def _build_session_zip() -> bytes:
             zf.writestr(
                 "densenet_class_map.csv",
                 pd.DataFrame(
-                    [{"class_index": k, "class_name": v} for k, v in densenet_class_map.items()]
+                    [
+                        {"class_index": k, "class_name": v}
+                        for k, v in densenet_class_map.items()
+                    ]
                 ).to_csv(index=False),
             )
 
