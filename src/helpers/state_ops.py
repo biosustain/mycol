@@ -32,7 +32,7 @@ def ensure_global_state() -> None:
     ss.setdefault("disp_w", 0)
 
     # cellpose model training defaults
-    ss.setdefault("cyto_to_train", "Cyto3")
+    ss.setdefault("cyto_to_train", "cyto3")
     ss.setdefault("train_losses", [])
     ss.setdefault("test_losses", [])
     ss.setdefault("cp_training_ch1", 0)
@@ -103,7 +103,7 @@ def reset_global_state() -> None:
     ss["disp_w"] = 0
 
     # --- Cellpose model training defaults ---
-    ss["cyto_to_train"] = "Cyto3"
+    ss["cyto_to_train"] = "cyto3"
     ss["train_losses"] = []
     ss["test_losses"] = []
     ss["cp_training_ch1"] = 0

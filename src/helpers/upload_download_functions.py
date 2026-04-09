@@ -146,7 +146,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
         if "cellpose_training_hyperparameters.csv" in names:
             df = pd.read_csv(io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode()))
             p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_base_model"] = _cast(p.get("base_model"), str, "Cyto3")
+            ss["cp_base_model"] = _cast(p.get("base_model"), str, "cyto3")
             ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
             ss["cp_learning_rate"] = _cast(p.get("learning_rate"), float, 0.01)
             ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
