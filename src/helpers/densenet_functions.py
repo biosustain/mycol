@@ -200,12 +200,7 @@ def classify_cells_with_densenet(rec: dict) -> None:
 
     patches, keep_ids = generate_patches_with_ids(rec)
 
-    patches_np = [normalize_image(patch) for patch in patches]
-
-    X_list = []
-    for p in patches_np:
-        p_chw = np.transpose(p, (2, 0, 1))
-        X_list.append(torch.tensor(p_chw, dtype=torch.float32))
+    X_list = [patch_to_tensor(p) for p in patches]
 
     if not X_list:
         return
@@ -266,19 +261,24 @@ class CellDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        img = self.X[idx]
-        img = np.transpose(img, (2, 0, 1))  # (3, 64, 64)
-
-        tensor = torch.tensor(img, dtype=torch.float32)
-
-        if tensor.max() > 1.0:
-            tensor = tensor / 255.0
+        tensor = patch_to_tensor(self.X[idx])
 
         if self.transform:
             tensor = self.transform(tensor)
 
         label = torch.tensor(self.y[idx], dtype=torch.long)
         return tensor, label
+
+
+def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
+    """Convert a preprocessed HWC uint8 patch to a normalised CHW float32 tensor in [0, 1].
+
+    This is the single authoritative preprocessing step that must be called
+    identically by both the training pipeline and the inference pipeline.
+    """
+    patch = normalize_image(patch)                        # scale mean → 127.5, clip to [0,255], uint8
+    chw = np.transpose(patch, (2, 0, 1))                  # HWC → CHW
+    return torch.tensor(chw, dtype=torch.float32) / 255.0 # [0,255] → [0,1]
 
 
 # -------------------------------
@@ -327,7 +327,6 @@ def load_labeled_patches(patch_size: int = 64):
             patch = generate_cell_patch(
                 image=img, mask=(M == iid), patch_size=patch_size
             )
-            patch = normalize_image(patch)
 
             X.append(patch)
             y.append(name_to_idx[cname])

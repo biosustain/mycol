@@ -52,13 +52,9 @@ st.html(
 # ------------------ Define pages ------------------ #
 pages = [
     st.Page(
-        "src/views/1-home-page.py",
-        title="Welcome to Mycol",
-        default=True,
-    ),
-    st.Page(
         "src/views/2-upload-data.py",
         title="Upload Models and Data",
+        default=True,
     ),
     st.Page(
         "src/views/3-create-and-edit-masks.py",
@@ -71,6 +67,10 @@ pages = [
     st.Page(
         "src/views/5-cell-metrics.py",
         title="Visualize Cell Attributes",
+    ),
+    st.Page(
+        "src/views/6-downloads.py",
+        title="Downloads",
     ),
 ]
 

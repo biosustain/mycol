@@ -1,12 +1,8 @@
 import streamlit as st
 from src.panels import mask_editing_panel
-from src.helpers.state_ops import ordered_keys, set_current_by_index
+from src.helpers.state_ops import ordered_keys, set_current_by_index, require_images
 
-
-# Warning if no images have been uploaded yet
-if st.session_state["images"] == {}:
-    st.warning("⚠️ Please upload an image on the 'Upload Models and Data' tab first.")
-    st.stop()
+require_images()
 
 with st.spinner("Loading Annotator..."):
     col1, col2 = st.columns([2, 5])
@@ -112,8 +108,6 @@ with st.spinner("Loading Annotator..."):
                 mask_editing_panel.render_segment_sidebar(key_ns="edit_side")
             with classifying_tab:
                 mask_editing_panel.render_classify_sidebar(key_ns="classify_side")
-
-            mask_editing_panel.render_download_button()
 
     # Page main content
     with col2:

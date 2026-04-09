@@ -197,6 +197,8 @@ def add_data_points_to_plot(plot, order, sub, value_col, xpos):
 
     # jittered points per category (optional)
     traces = [plot]
+    if not st.session_state.get("overlay_datapoints", False):
+        return traces
     for i, lab in enumerate(order):
         idx = sub["label"] == lab
         ys = sub.loc[idx, value_col].to_numpy()

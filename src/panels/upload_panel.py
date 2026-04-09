@@ -6,10 +6,12 @@ from src.helpers.upload_download_functions import (
     process_uploads,
     render_images_form,
     load_demo_data,
+    restore_session,
 )
 import os
 import tempfile
 import hashlib
+import pandas as pd
 
 
 def render_main():
@@ -25,137 +27,206 @@ def render_main():
             duration="infinite",
         )
 
-    # ---------- Layout: 3 columns ----------
-    col1, col2, col3 = st.columns([1, 1, 1])
+    IMAGE_EXTS = {".tif", ".tiff", ".npy", ".png", ".jpg", ".jpeg"}
+    MODEL_EXTS = {".pt", ".pth"}
 
-    with col1:
-        # ---- single uploader: images & masks ----
+    with st.container(border=True):
+        st.subheader("Upload Images, Masks and Models")
+        st.caption(
+            "Upload images (.tif, .png, .jpg), to begin analysis. Optionally, masks,"
+            "segmentation models and classification models can also be uploaded or a previous "
+            "session zip file can be uploaded to restore your session."
+            "Masks must share the image filename plus a suffix (default: _masks)."
+        )
 
-        with st.container(border=True, height=350):
-            st.subheader("Upload images & masks")
+        up_key = f"u_all_{ss.get('uploader_nonce', 0)}"
+        files = st.file_uploader(
+            " ",
+            type=[
+                "tif",
+                "tiff",
+                "npy",
+                "png",
+                "jpg",
+                "jpeg",
+                "pt",
+                "pth",
+                "csv",
+                "zip",
+            ],
+            accept_multiple_files=True,
+            key=up_key,
+            help="Images and masks are paired by filename. "
+            "Model type is detected from file contents. "
+            "Unrecognised masks or masks without a paired image will be ignored.",
+        )
 
-            up_key = f"u_all_np_{ss.get('uploader_nonce', 0)}"
-            files = st.file_uploader(
-                " ",
-                type=["tif", "tiff", "npy", "png", "jpg", "jpeg"],
-                accept_multiple_files=True,
-                key=up_key,
-                help="Unrecognised mask formats or extensions or masks without a paired image will be ignored.",
+        # options row
+        suffix_col, resize_col, demo_col = st.columns(
+            [2, 1, 1], vertical_alignment="bottom"
+        )
+        with suffix_col:
+            mask_suffix = st.text_input(
+                "Mask suffix",
+                value=ss.get("mask_suffix", "_masks"),
+                key="mask_suffix_input",
+                help="Mask file names must match uploaded image name plus this suffix",
             )
-
-            # allow user to specify mask suffix and toggle resizing
-            suffix_col, resize_col = st.columns([2, 1], vertical_alignment="center")
-            with suffix_col:
-                mask_suffix = st.text_input(
-                    "Mask suffix",
-                    value=ss.get("mask_suffix", "_masks"),
-                    key="mask_suffix_input",
-                    help="Mask file names must match uploaded image name plus this suffix",
-                )
-                ss["mask_suffix"] = mask_suffix.strip() or "_masks"
-            with resize_col:
-                resize_on_upload = st.checkbox(
-                    "Resize (512x512)",
-                    value=ss.get("resize_on_upload", True),
-                    key="resize_on_upload_checkbox",
-                    help="Resize images & masks **while uploading** to 512x512. Recommended for large images, "
-                    "but may cause quality loss. Calculated cell properties will still be correct for the "
-                    "original (pre-resize) image.",
-                )
-                ss["resize_on_upload"] = resize_on_upload
-
-            if files:
-                ss["skipped_files"] = process_uploads(files, mask_suffix) or []
-                ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
-                st.rerun()
-
+            ss["mask_suffix"] = mask_suffix.strip() or "_masks"
+        with resize_col:
+            resize_on_upload = st.checkbox(
+                "Resize (512x512)",
+                value=ss.get("resize_on_upload", True),
+                key="resize_on_upload_checkbox",
+                help="Resize images & masks while uploading to 512x512. Recommended for large images, "
+                "but may cause quality loss. Calculated cell properties will still be correct for the "
+                "original (pre-resize) image.",
+            )
+            ss["resize_on_upload"] = resize_on_upload
+        with demo_col:
             if st.button("Use demo data", type="primary", width="stretch"):
                 load_demo_data()
 
-    with col2:
-        with st.container(border=True, height=350):
-            # ---- Cellpose model (custom weights) ----
-            st.subheader("Upload Cellpose model")
-            cellpose_file = st.file_uploader(
-                " ",
-                # Cellpose custom models are commonly .npy; allow pt/pth just in case
-                type=["pt", "pth"],
-                key="upload_cellpose_model",
-                help="Uploading a Cellpose model is optional.",
-            )
-            if cellpose_file is not None:
-                ss["cellpose_model_bytes"] = cellpose_file.read()
-                ss["cellpose_model_name"] = cellpose_file.name
+        if files:
+            import torch
+            from src.helpers.densenet_functions import build_densenet
 
-            # display the currently loaded model
-            cellpose_model = ss.get("cellpose_model_name") or "—"
-            st.info(f"Loaded model: {cellpose_model}")
+            zip_files = [f for f in files if f.name.lower().endswith(".zip")]
+            image_files = [
+                f for f in files if os.path.splitext(f.name)[1].lower() in IMAGE_EXTS
+            ]
+            model_files = [
+                f
+                for f in files
+                if os.path.splitext(f.name)[1].lower() in MODEL_EXTS
+                or f.name.lower().endswith(".csv")
+            ]
 
-            # button to remove the currently loaded model
-            if st.button("Clear Cellpose model", width="stretch"):
-                ss["cellpose_model_bytes"] = None
-                ss["cellpose_model_name"] = None
-                ss["train_losses"] = []
-                ss["test_losses"] = []
+            for zf in zip_files:
+                err = restore_session(zf.read())
+                if err:
+                    ss["_model_error"] = err
+                else:
+                    ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
+                    st.rerun()
 
-    with col3:
-        # ---- DenseNet-121 classifier ----
-        with st.container(border=True, height=350):
-            st.subheader("Upload Densenet classifier")
-            densenet_file = st.file_uploader(
-                " ",
-                type=["pth", "pt"],  # PyTorch formats instead
-                key="upload_densenet_ckpt",
-                help="Uploading a Densenet121 model is optional.",
-            )
-            if densenet_file is not None:
-                data = densenet_file.read()
-                ext = os.path.splitext(densenet_file.name)[1].lower() or ".pth"
-                h = hashlib.sha1(data).hexdigest()[:12]
-                path = os.path.join(tempfile.gettempdir(), f"densenet_{h}{ext}")
-                if not os.path.exists(path):
-                    with open(path, "wb") as f:
-                        f.write(data)
+            if image_files:
+                ss["skipped_files"] = process_uploads(image_files, mask_suffix) or []
 
-                import torch
-                from src.helpers.densenet_functions import build_densenet
+            for model_file in model_files:
+                if model_file.name.lower().endswith(".csv"):
+                    # treat as Cellpose hyperparameter results
+                    try:
+                        hp_df = pd.read_csv(model_file)
+                        required_cols = {
+                            "cellprob",
+                            "flow_threshold",
+                            "niter",
+                            "min_size",
+                        }
+                        if required_cols.issubset(hp_df.columns):
+                            best = hp_df.iloc[0]
+                            ss["cp_cellprob_threshold"] = float(best["cellprob"])
+                            ss["cp_flow_threshold"] = float(best["flow_threshold"])
+                            ss["cp_min_size"] = int(best["min_size"])
+                            ss["cp_niter"] = int(best["niter"])
+                            ss["cp_grid_results_df"] = hp_df
+                            ss["_model_toast"] = (
+                                f"HP set: cellprob={best['cellprob']:.2f}, "
+                                f"flow={best['flow_threshold']:.2f}, "
+                                f"min_size={int(best['min_size'])}, "
+                                f"niter={int(best['niter'])}"
+                            )
+                        else:
+                            missing = required_cols - set(hp_df.columns)
+                            ss["_model_error"] = (
+                                f"Missing columns: {', '.join(missing)}"
+                            )
+                    except Exception as e:
+                        ss["_model_error"] = f"Failed to load HP CSV: {e}"
+                else:
+                    # auto-detect Cellpose vs DenseNet from state dict keys
+                    data = model_file.read()
+                    ext = os.path.splitext(model_file.name)[1].lower() or ".pth"
+                    h = hashlib.sha1(data).hexdigest()[:12]
+                    path = os.path.join(tempfile.gettempdir(), f"model_{h}{ext}")
+                    if not os.path.exists(path):
+                        with open(path, "wb") as f:
+                            f.write(data)
+                    try:
+                        state_dict = torch.load(path, map_location="cpu")
+                        if "features.conv0.weight" in state_dict:
+                            # DenseNet-121
+                            num_classes = 2
+                            if "classifier.2.weight" in state_dict:
+                                num_classes = state_dict["classifier.2.weight"].shape[0]
+                            elif "classifier.weight" in state_dict:
+                                num_classes = state_dict["classifier.weight"].shape[0]
+                            model = build_densenet(num_classes=num_classes)
+                            model.load_state_dict(state_dict)
+                            model.eval()
+                            ss["densenet_model"] = model
+                            ss["densenet_model_path"] = path
+                            ss["densenet_ckpt_name"] = model_file.name
+                            ss["_model_toast"] = (
+                                f"Loaded DenseNet model: {model_file.name}"
+                            )
+                        elif any(k.startswith("downsample.") for k in state_dict):
+                            # Cellpose UNet
+                            ss["cellpose_model_bytes"] = data
+                            ss["cellpose_model_name"] = model_file.name
+                            ss["_model_toast"] = (
+                                f"Loaded Cellpose model: {model_file.name}"
+                            )
+                        else:
+                            ss["_model_error"] = (
+                                f"Could not identify model type for: {model_file.name}"
+                            )
+                    except Exception as e:
+                        ss["_model_error"] = f"Failed to load model: {e}"
 
-                try:
-                    state_dict = torch.load(path, map_location="cpu")
-                    num_classes = 2  # TODO FIX
-                    if "classifier.2.weight" in state_dict:
-                        num_classes = state_dict["classifier.2.weight"].shape[0]
+            ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
+            st.rerun()
 
-                    model = build_densenet(num_classes=num_classes)
-                    model.load_state_dict(state_dict)
-                    model.eval()
+        if toast_msg := ss.pop("_model_toast", None):
+            st.toast(toast_msg, duration="infinite")
+        if error_msg := ss.pop("_model_error", None):
+            st.error(error_msg)
 
-                except Exception as e:
-                    st.error(f"Failed to load PyTorch model: {e}")
-                    model = None
+        # status
+        st.divider()
+        status_col2, status_col3 = st.columns(2)
 
-                ss["densenet_model"] = model
-                ss["densenet_model_path"] = path
-                ss["densenet_ckpt_name"] = densenet_file.name
+        def _model_status_box(label: str, name: str | None) -> None:
+            if name:
+                st.markdown(
+                    f"""<div style="background:rgba(33,195,84,0.12);border-left:4px solid #21c354;border-radius:0 8px 8px 0;padding:14px 18px;">
+                    <p style="margin:0;font-size:1rem;color:#21c354;font-weight:600;letter-spacing:0.05em;">MODEL LOADED</p>
+                    <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">{label}</p>
+                    <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;word-break:break-all;">{name}</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f"""<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
+                    <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NOT UPLOADED</p>
+                    <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">{label}</p>
+                    <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;">Optional upload</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
 
-            # display the currently loaded model
-            densenet_model = ss.get("densenet_ckpt_name") or "—"
-            st.info(f"Loaded model: {densenet_model}")
+        with status_col2:
+            _model_status_box("Cellpose", ss.get("cellpose_model_name"))
+        with status_col3:
+            _model_status_box("DenseNet", ss.get("densenet_ckpt_name"))
+        st.write("")
 
-            # button to remove the currently loaded model
-            if st.button("Clear DenseNet-121 model", width="stretch"):
-                ss["densenet_model"] = None
-                ss["densenet_ckpt_name"] = None
+        # ---- Summary table: image–mask pairs ----
 
-    # ---- Status panel ----
-    st.divider()
-
-    # ---- Summary table: image–mask pairs ----
-    num_images = len(st.session_state["images"].keys())
-    st.subheader(f"Images and Masks ({num_images})")
-
-    ok = ordered_keys()
-    if not ok:
-        st.info("No images uploaded yet.")
-    else:
-        render_images_form()
+        ok = ordered_keys()
+        if not ok:
+            st.info("No images uploaded yet.")
+        else:
+            render_images_form()

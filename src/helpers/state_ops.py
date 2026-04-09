@@ -21,7 +21,7 @@ def ensure_global_state() -> None:
     ss.setdefault("densenet_ckpt_name", None)
     ss.setdefault("side_new_label", "")
     ss.setdefault("show_overlay", True)
-    st.session_state.setdefault("show_normalized", False)
+    st.session_state.setdefault("show_normalized", True)
     ss.setdefault("interaction_mode", "Remove mask")
     ss.setdefault("side_interaction_mode", "Draw box")
     ss.setdefault("skipped_files", [])
@@ -32,7 +32,7 @@ def ensure_global_state() -> None:
     ss.setdefault("disp_w", 0)
 
     # cellpose model training defaults
-    ss.setdefault("cyto_to_train", "Cyto3")
+    ss.setdefault("cyto_to_train", "cyto3")
     ss.setdefault("train_losses", [])
     ss.setdefault("test_losses", [])
     ss.setdefault("cp_training_ch1", 0)
@@ -92,7 +92,7 @@ def reset_global_state() -> None:
     ss["densenet_ckpt_name"] = None
     ss["side_new_label"] = ""
     ss["show_overlay"] = True
-    ss["show_normalized"] = False
+    ss["show_normalized"] = True
     ss["interaction_mode"] = "Remove mask"
     ss["side_interaction_mode"] = "Draw box"
     ss["skipped_files"] = []
@@ -103,7 +103,7 @@ def reset_global_state() -> None:
     ss["disp_w"] = 0
 
     # --- Cellpose model training defaults ---
-    ss["cyto_to_train"] = "Cyto3"
+    ss["cyto_to_train"] = "cyto3"
     ss["train_losses"] = []
     ss["test_losses"] = []
     ss["cp_training_ch1"] = 0
@@ -149,6 +149,20 @@ def stem(p: str) -> str:
 
 def ordered_keys():
     return sorted(st.session_state.images.keys())
+
+
+def require_images():
+    """Stop the page with a warning if no images have been uploaded yet."""
+    if not st.session_state["images"]:
+        st.markdown(
+            """<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
+            <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NO IMAGES UPLOADED</p>
+            <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">Upload data first</p>
+            <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;">Please upload images on the 'Upload Models and Data' tab.</p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        st.stop()
 
 
 def get_current_rec():
@@ -211,10 +225,13 @@ def plot_loss_curve(train_losses, test_losses):
         marker=dict(color="#D3E4F4", size=6),
     )
 
-    e_val = list(range(1, len(test_losses) + 1))
+    # Cellpose only evaluates validation loss every 10 epochs; skip zero entries
+    val_pairs = [(i + 1, v) for i, v in enumerate(test_losses) if v != 0]
+    e_val = [p[0] for p in val_pairs]
+    val_scores = [p[1] for p in val_pairs]
     fig.add_scatter(
         x=e_val,
-        y=test_losses,
+        y=val_scores,
         mode="lines+markers",
         name="val",
         line=dict(color="#004280", width=2),

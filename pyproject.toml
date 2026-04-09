@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "streamlit==1.52.2",
-    "cellpose>=4.0.0",
+    "cellpose>=3.0.0,<4.0.0",
     "torch>=2.5.1",
     "torchvision>=0.20.1",
     "opencv-python-headless",  # Lighter than opencv-python
@@ -24,6 +24,7 @@ dependencies = [
     "huggingface_hub==1.1.2",
     "kaleido",
     "pywebview>=6.1",
+    "streamlit-aggrid>=1.2.1.post2",
 ]
 
 [[tool.uv.index]]

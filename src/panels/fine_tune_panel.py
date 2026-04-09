@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from cellpose import models, metrics, core
+from cellpose import metrics, core
 import optuna
 
 from src.helpers.state_ops import ordered_keys, plot_loss_curve
@@ -28,6 +28,7 @@ from src.helpers.cellpose_functions import (
     start_cellpose_validation,
     check_cellpose_validation_status,
     cancel_cellpose_validation,
+    CellposeModel3Proxy,
 )
 from src.helpers.help_panels import (
     classifier_training_plot_help,
@@ -210,15 +211,6 @@ def show_densenet_training_plots():
         st.plotly_chart(
             st.session_state["densenet_confusion_matrix"],
             width="stretch",
-        )
-
-        st.download_button(
-            "Download fine-tuned DenseNet model, dataset and training metrics",
-            data=ss["dn_zip_bytes"],
-            file_name="densenet_training.zip",
-            mime="application/zip",
-            width="stretch",
-            type="primary",
         )
 
 
@@ -518,8 +510,8 @@ def validate_and_compare(images, masks, channels):
     with st.spinner(
         "Validating model... Not long to go! Don't click yet, you will interupt training."
     ):
-        base_model = models.CellposeModel(
-            gpu=core.use_gpu(), model_type=ss["cp_base_model"]
+        base_model = CellposeModel3Proxy(
+            pretrained_model=ss["cp_base_model"], gpu=core.use_gpu()
         )
 
         hp = dict(
@@ -655,17 +647,6 @@ def show_cellpose_training_plots():
 
         else:
             st.info("No hyperparameter tuning performed.")
-
-        # button for downloading fine-tuned model, training data and training stats in a zip file
-        if "cp_zip_bytes" in ss:
-            st.download_button(
-                "Download Cellpose model, dataset and training metrics (ZIP)",
-                data=ss["cp_zip_bytes"],
-                file_name="cellpose_training.zip",
-                mime="application/zip",
-                width="stretch",
-                type="primary",
-            )
 
 
 @st.fragment(run_every=2)
