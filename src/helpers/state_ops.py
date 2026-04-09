@@ -225,10 +225,13 @@ def plot_loss_curve(train_losses, test_losses):
         marker=dict(color="#D3E4F4", size=6),
     )
 
-    e_val = list(range(1, len(test_losses) + 1))
+    # Cellpose only evaluates validation loss every 10 epochs; skip zero entries
+    val_pairs = [(i + 1, v) for i, v in enumerate(test_losses) if v != 0]
+    e_val = [p[0] for p in val_pairs]
+    val_scores = [p[1] for p in val_pairs]
     fig.add_scatter(
         x=e_val,
-        y=test_losses,
+        y=val_scores,
         mode="lines+markers",
         name="val",
         line=dict(color="#004280", width=2),
