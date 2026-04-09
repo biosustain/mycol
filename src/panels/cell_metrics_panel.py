@@ -74,10 +74,14 @@ def ui_image_selection_container() -> list[str]:
     if selected_rows is None:
         selected_keys = set()
     elif isinstance(selected_rows, pd.DataFrame):
-        selected_keys = set(selected_rows.get("_key", pd.Series([], dtype=str)).tolist())
+        selected_keys = set(
+            selected_rows.get("_key", pd.Series([], dtype=str)).tolist()
+        )
     elif isinstance(selected_rows, list):
         if selected_rows and isinstance(selected_rows[0], dict):
-            selected_keys = {row.get("_key") for row in selected_rows if row.get("_key")}
+            selected_keys = {
+                row.get("_key") for row in selected_rows if row.get("_key")
+            }
         else:
             selected_keys = {row for row in selected_rows if isinstance(row, str)}
     else:
@@ -144,9 +148,6 @@ def render_plotting_options():
         selected_names = st.session_state.get("cell_metrics_selected_names")
         if selected_names is not None:
             df = df[df["image"].isin(selected_names)]
-        if df.empty:
-            st.info("No masks found.")
-            return
 
         # Labels multiselect (single instance)
         label_options = sorted(
