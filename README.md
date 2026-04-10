@@ -44,7 +44,8 @@ Mycol is a Streamlit-based application that makes machine-learning-assisted micr
 
 ## **Installation**
 
-> [!WARNING] > `uv` is the recommended package manager for this project. It is a drop-in replacement for `pip` and `conda`.
+> [!WARNING] 
+> `uv` is the recommended package manager for this project. It is a drop-in replacement for `pip` and `conda`.
 > to install `uv`, run `pip install uv` or follow the [instructions](https://docs.astral.sh/uv/getting-started/installation/).
 > use `uv sync` to automatically create a virtual environment and install dependencies.
 > use `uv run` to execute python inside the virtual environment e.g. `uv run streamlit run app.py`, or activate the environment with `source .venv/bin/activate` on unix or `.venv\Scripts\activate` on windows.
