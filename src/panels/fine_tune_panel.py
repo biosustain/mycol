@@ -656,7 +656,6 @@ def render_densenet_status_fragment():
     if not dn_job or dn_job.get("status") != "running":
         return
 
-
     status = check_densenet_training_status()
     ss.setdefault("dn_icon_toggle", True)
     icon = "⌛" if ss["dn_icon_toggle"] else "⏳"
