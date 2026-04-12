@@ -4,6 +4,8 @@ import streamlit as st
 
 st.set_page_config(page_title="Mycol", page_icon="👨🏼‍🔬", layout="wide")
 
+st.logo("logo.png", link="https://sambra95.github.io/mycol/index.html")
+
 # Eager load heavy libraries to prevent lag on tab switching
 with st.empty():
     st.write("### ⏳ Initializing AI Models...")
