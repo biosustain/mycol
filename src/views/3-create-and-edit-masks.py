@@ -88,7 +88,7 @@ with st.spinner("Loading Annotator..."):
                     True,
                 )
             ]
-            _selected_views = st.segmented_control(
+            _selected_views = st.pills(
                 "View options",
                 options=_view_options,
                 default=_default_views,
@@ -100,13 +100,20 @@ with st.spinner("Loading Annotator..."):
             st.session_state["show_normalized"] = "Normalize" in _selected_views
             st.session_state["show_image"] = "Image" in _selected_views
 
-            # Tabs for editing and classifying masks
-            editing_tab, classifying_tab = st.tabs(
-                ["Segmentation Controls", "Classification Controls"]
+            # choose between segmentation and classification control panels
+            controls = st.segmented_control(
+                "",
+                ["Segmentation Controls", "Classification Controls"],
+                default=st.session_state.get(
+                    "segmentation_controls", "Segmentation Controls"
+                ),
+                selection_mode="single",
+                width="stretch",
             )
-            with editing_tab:
+
+            if controls == "Segmentation Controls":
                 mask_editing_panel.render_segment_sidebar(key_ns="edit_side")
-            with classifying_tab:
+            else:
                 mask_editing_panel.render_classify_sidebar(key_ns="classify_side")
 
     # Page main content
