@@ -374,7 +374,7 @@
   <h1>Frequently Asked <span>Questions</span></h1>
   <p>
     Background on the AI models used in Mycol, how key features work, and practical tips
-    to help you get the best results &mdash; even with no machine learning experience.
+    to help you get the best results - even with no machine learning experience.
   </p>
   <div class="badge-row">
     <a href="index.html" class="badge">Intro Guide</a>
@@ -403,7 +403,7 @@
         <p>
           <strong>Cellpose</strong> is a deep-learning model purpose-built for biological cell and nucleus segmentation.
           Rather than predicting a simple foreground/background mask, it learns to predict
-          <strong>gradient flows</strong> &mdash; vectors that point from every pixel toward the center of the nearest cell.
+          <strong>gradient flows</strong> - vectors that point from every pixel toward the center of the nearest cell.
           A simple post-processing step then follows those gradients to group pixels into individual cell instances,
           making it remarkably robust to cells of different sizes, shapes, and imaging conditions.
         </p>
@@ -411,7 +411,7 @@
           Cellpose is pre-trained on a large, diverse collection of microscopy images and generalises
           well out of the box. When your images differ significantly from the training data (unusual stains,
           atypical morphology, low magnification), fine-tuning on a small set of your own annotated images
-          &mdash; which Mycol supports directly &mdash; can dramatically improve results.
+          - which Mycol supports directly - can dramatically improve results.
         </p>
 
         <h3>Versions used in Mycol</h3>
@@ -464,12 +464,12 @@
         </p>
         <ul>
           <li>
-            <strong>Feature reuse</strong> &mdash; early low-level features (edges, textures) remain
+            <strong>Feature reuse</strong> - early low-level features (edges, textures) remain
             accessible to later layers without having to be re-learned, so the network extracts richer
             representations with fewer parameters.
           </li>
           <li>
-            <strong>Gradient flow</strong> &mdash; during training, gradients can travel directly from
+            <strong>Gradient flow</strong> - during training, gradients can travel directly from
             the loss back to the earliest layers, which prevents the &ldquo;vanishing gradient&rdquo;
             problem and makes training more stable, especially on small datasets.
           </li>
@@ -500,7 +500,7 @@
     <div class="faq-answer">
       <div class="faq-answer-inner">
         <p>
-          When Mycol measures a cell &mdash; its area, perimeter, diameter, and so on &mdash; the raw
+          When Mycol measures a cell - its area, perimeter, diameter, and so on - the raw
           number is always in <strong>pixels</strong>, because that is what the image is made of.
           A pixel has no inherent physical size; it depends entirely on your microscope&rsquo;s
           magnification and camera settings.
@@ -551,18 +551,17 @@
         </p>
         <p>
           In Mycol, SAM2 is used as an <strong>interactive segmentation tool</strong>.
-          Instead of running fully automatically across the whole image, you click on a cell
-          (or draw a rough outline) and SAM2 instantly returns a high-quality mask for that cell.
+          Instead of running fully automatically across the whole image, you highlight a cell
+          with a box and SAM2 will generate a high-quality mask for that cell.
           This makes it especially useful for:
         </p>
         <ul>
-          <li>Correcting individual cells that Cellpose missed or split incorrectly.</li>
-          <li>Segmenting unusual cell types or objects that Cellpose was not trained on.</li>
+          <li>Segmenting unusual cell types or objects where Cellpose may struggle.</li>
           <li>Quickly annotating small numbers of cells for a training set without running a full automatic pass.</li>
         </ul>
         <p>
           Because SAM2 relies on your prompt rather than learning from your specific image type,
-          it does not need to be fine-tuned &mdash; it works out of the box. However, for fully
+          it does not need to be fine-tuned - it works out of the box. However, for fully
           automatic, hands-off segmentation of large image sets, a trained Cellpose model will
           generally be faster and more consistent.
         </p>
@@ -589,8 +588,9 @@
         <h3>Images <em>(required)</em></h3>
         <p>
           The microscopy or sample images you want to analyse. Standard formats such as TIFF, PNG,
-          and JPEG are supported. Every other file type is optional and supplementary &mdash;
-          images are the only thing you must upload to start working.
+          and JPEG are supported. Every other file type is optional and supplementary -
+          images are the only thing you must upload to start working. Without an associated image, 
+          a mask will not be recognised when uploaded.
         </p>
 
         <h3>Masks <em>(optional)</em></h3>
@@ -599,17 +599,16 @@
           Each mask is a labelled image where every cell is represented by a unique integer ID,
           and background pixels are zero. Uploading existing masks lets you skip the automatic
           segmentation step and jump straight to classification or analysis, or to continue
-          refining masks you created in a previous session.
+          refining masks you created in a previous session. You can upload the Cellpose .npy format
+          or a tiff where each cell is a different integer value.
         </p>
 
         <h3>Hyperparameter CSV <em>(optional)</em></h3>
         <p>
-          A comma-separated file that specifies the hyperparameter search space for the
-          <strong>hyperparameter optimisation</strong> feature on the Training page.
-          Instead of accepting Mycol&rsquo;s default parameter ranges, you can provide
-          your own grid &mdash; for example, specific learning rate values or epoch counts
-          you want to try. The file format is documented on the Training page.
-          If you do not upload one, Mycol uses a sensible built-in search space.
+          A comma-separated file that specifies the seared hyperparameter space during Cellpose training.
+          The hyperparamters can significantly affect model performanace so setting Cellpose hyperparameters
+          in the Annotation page can improve your results. By uploading the searched hyperparameter csv, you
+          can automatically set the hyperparameters to the optimal values each session.
         </p>
 
         <h3>Saved Session <em>(optional)</em></h3>
@@ -662,40 +661,25 @@
           A model trained only on the &ldquo;easy&rdquo; images will struggle with the harder ones.
         </p>
 
-        <h3>Use default hyperparameters first</h3>
-        <p>
-          Mycol provides sensible defaults that work well in most cases. Only run hyperparameter
-          optimisation if you have already tried the defaults and found the results unsatisfactory.
-          Optimisation takes more compute time and requires a larger annotated dataset to be reliable.
-        </p>
-
         <h3>Watch the loss curves</h3>
         <p>
           After training, Mycol shows a plot of how the model&rsquo;s error (the &ldquo;loss&rdquo;)
           decreased over each training epoch. A healthy training run shows both the
           <strong>training loss</strong> and the <strong>validation loss</strong> falling steadily
           and then levelling off close together. If the validation loss starts rising while the
-          training loss keeps falling, the model is <strong>overfitting</strong> &mdash; it is
+          training loss keeps falling, the model is <strong>overfitting</strong> - it is
           memorising your training data rather than learning general patterns. In that case,
           stop training earlier (fewer epochs) or add more diverse training images.
         </p>
 
         <h3>Iterate in small steps</h3>
         <p>
-          Train a model, test it on new images, correct the worst errors, add those corrected
+          Train a model, test it on new images, correct the errors, add those corrected
           images back to your training set, and re-train. This cycle of
           <em>annotate &rarr; train &rarr; correct &rarr; repeat</em> is the most efficient
           way to improve a model without needing thousands of images up front.
         </p>
 
-        <div class="tip-box">
-          <p>
-            <strong>Cellpose tip:</strong> if cells are being merged (two cells counted as one),
-            try reducing the <em>cell diameter</em> parameter. If cells are being split,
-            try increasing it. Getting the diameter close to reality is often the single most
-            impactful adjustment you can make.
-          </p>
-        </div>
 
         <div class="tip-box" style="margin-top:0.75rem;">
           <p>
@@ -732,9 +716,9 @@
           <div class="desc-notation-text">
             <p><strong>Notation used below:</strong></p>
             <ul>
-              <li><strong>A</strong> &mdash; area (number of pixels inside the cell mask)</li>
-              <li><strong>P</strong> &mdash; perimeter (length of the cell boundary)</li>
-              <li><strong>a, b</strong> &mdash; semi-major and semi-minor axes of the best-fit ellipse</li>
+              <li><strong>A</strong> - area (number of pixels inside the cell mask)</li>
+              <li><strong>P</strong> - perimeter (length of the cell boundary)</li>
+              <li><strong>a, b</strong> - semi-major and semi-minor axes of the best-fit ellipse</li>
             </ul>
           </div>
           <div class="desc-notation-img">
@@ -750,7 +734,6 @@
           </button>
           <div class="desc-body">
             <p><strong>What it describes:</strong> The size of the cell in pixels.</p>
-            <p><strong>How it is calculated:</strong> Total number of pixels inside the masked region.</p>
           </div>
         </div>
 
@@ -762,7 +745,6 @@
           </button>
           <div class="desc-body">
             <p><strong>What it describes:</strong> The length of the cell&rsquo;s boundary.</p>
-            <p><strong>How it is calculated:</strong> Length of the outer contour of the masked region.</p>
           </div>
         </div>
 
@@ -776,10 +758,6 @@
             <p>
               <strong>What it describes:</strong> The longest (major) and shortest (minor) diameters of the
               best-fit ellipse. Larger major-axis values relative to cell size indicate a more elongated cell.
-            </p>
-            <p>
-              <strong>How it is calculated:</strong> Lengths of the axes of the ellipse that has the same
-              second-order moments as the masked region.
             </p>
             <div class="desc-figure">
               <img src="descriptor_diagrams/axes.svg" alt="Major and minor axis diagram" />
@@ -804,12 +782,6 @@
               elongation or irregular boundaries. Compactness is the inverse of circularity and increases
               with boundary irregularity.
             </p>
-            <p><strong>How it is calculated:</strong></p>
-            <ul>
-              <li>Circularity = 4 &middot; &pi; &middot; A / P&sup2;</li>
-              <li>Compactness = P&sup2; / (4 &middot; &pi; &middot; A)</li>
-              <li>Roundness = 4 &middot; A / (&pi; &middot; major_axis_length&sup2;)</li>
-            </ul>
             <div class="desc-figure">
               <img src="descriptor_diagrams/circularity_compactness_roundness.svg"
                    alt="Circularity compactness roundness diagram" />
@@ -834,12 +806,6 @@
               difference between axes into the range 0&ndash;1. Eccentricity measures how far the ellipse
               deviates from a circle, also ranging from 0 to 1.
             </p>
-            <p><strong>How it is calculated:</strong></p>
-            <ul>
-              <li>Aspect ratio = major_axis_length / minor_axis_length</li>
-              <li>Elongation = (major &minus; minor) / (major + minor)</li>
-              <li>Eccentricity = &radic;(1 &minus; b&sup2; / a&sup2;), using semi-axes a (major) and b (minor)</li>
-            </ul>
             <div class="desc-figure">
               <img src="descriptor_diagrams/elongation_eccentricity_aspect_ratio.svg"
                    alt="Elongation eccentricity aspect ratio diagram" />
@@ -863,7 +829,6 @@
               A value of 1 indicates a perfectly convex shape; lower values indicate concavities or
               irregular boundaries.
             </p>
-            <p><strong>How it is calculated:</strong> Solidity = area / convex_area</p>
             <div class="desc-figure">
               <img src="descriptor_diagrams/solidity.svg" alt="Solidity diagram" />
               <p class="desc-caption">
@@ -885,7 +850,6 @@
               <strong>What it describes:</strong> The fraction of the bounding box area occupied by the
               cell. Values near 1 indicate the cell nearly fills its bounding box.
             </p>
-            <p><strong>How it is calculated:</strong> Extent = area / bounding_box_area</p>
             <div class="desc-figure">
               <img src="descriptor_diagrams/extent.svg" alt="Extent diagram" />
               <p class="desc-caption">
@@ -904,7 +868,7 @@
 
 <!-- ══════════════ FOOTER ══════════════ -->
 <footer>
-  <p>Mycol &mdash; Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
+  <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
     <a href="index.html">User Guide</a> &nbsp;&middot;&nbsp;
     <a href="https://github.com/sambra95/mycol" target="_blank" rel="noopener">GitHub</a>
   </p>

@@ -228,22 +228,16 @@ def shape_metric_help():
         {
             "Name": "area (A)",
             "What it describes": "Size of the object in pixels.",
-            "How it is calculated": "Number of pixels inside the masked region.",
         },
         {
             "Name": "perimeter (P)",
             "What it describes": "Length of the object's boundary.",
-            "How it is calculated": "Length of the outer contour of the masked region.",
         },
         {
             "Name": "major / minor axis lengths",
             "What it describes": (
                 "The longest (major) and shortest (minor) axes of the best-fit ellipse. "
                 "Larger major axis values (relative to object size) indicate a more elongated object."
-            ),
-            "How it is calculated": (
-                "Lengths of the major and minor axes of the ellipse with the same second moments "
-                "as the region. These correspond to major_axis_length and minor_axis_length."
             ),
         },
         {
@@ -254,11 +248,6 @@ def shape_metric_help():
                 "elongation or irregular boundaries. Compactness is the inverse of circularity and "
                 "increases with boundary irregularity."
             ),
-            "How it is calculated": (
-                "\n- Circularity: 4 · π · A / P²\n"
-                "- Compactness: P² / (4 · π · A)\n"
-                "- Roundness: 4 · A / (π · major_axis_length²)"
-            ),
         },
         {
             "Name": "aspect ratio / elongation / eccentricity",
@@ -268,12 +257,6 @@ def shape_metric_help():
                 "Elongation normalizes the difference between axes into the range 0 to 1. "
                 "Eccentricity measures how far the ellipse deviates from a circle, also ranging from 0 to 1."
             ),
-            "How it is calculated": (
-                "\n- Aspect ratio = major_axis_length / minor_axis_length\n"
-                "- Elongation = (major_axis_length − minor_axis_length)\n"
-                "               / (major_axis_length + minor_axis_length)\n"
-                "- Eccentricity = √(1 − (b² / a²)), using semi-axes a (major) and b (minor)"
-            ),
         },
         {
             "Name": "solidity",
@@ -282,7 +265,6 @@ def shape_metric_help():
                 "A value of 1 indicates a perfectly convex shape; lower values indicate concavities or "
                 "irregular boundaries."
             ),
-            "How it is calculated": "area / convex_area",
         },
         {
             "Name": "extent",
@@ -290,7 +272,6 @@ def shape_metric_help():
                 "Fraction of the bounding box area occupied by the object. "
                 "Values near 1 indicate that the object nearly fills its bounding box."
             ),
-            "How it is calculated": "area / bounding_box_area",
         },
     ]
 
@@ -298,10 +279,7 @@ def shape_metric_help():
 
     for m in metrics:
         with st.expander(m["Name"]):
-            st.markdown(
-                f"**What it describes:** {m['What it describes']}\n\n"
-                f"**How it is calculated:** {m['How it is calculated']}"
-            )
+            st.markdown(f"**What it describes:** {m['What it describes']}")
 
             if m["Name"] == "circularity / compactness / roundness":
                 st.image(
