@@ -101,14 +101,16 @@ with st.spinner("Loading Annotator..."):
             st.session_state["show_image"] = "Image" in _selected_views
 
             # choose between segmentation and classification control panels
+            _ctrl_default = st.session_state.get("_ctrl_panel", "Segmentation Controls")
             controls = st.segmented_control(
                 "",
                 ["Segmentation Controls", "Classification Controls"],
-                default="Segmentation Controls",
+                default=_ctrl_default,
                 selection_mode="single",
                 width="stretch",
-                key="segmentation_controls",
             )
+            if controls is not None:
+                st.session_state["_ctrl_panel"] = controls
 
             if controls == "Segmentation Controls":
                 mask_editing_panel.render_segment_sidebar(key_ns="edit_side")
