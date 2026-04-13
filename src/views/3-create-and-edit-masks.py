@@ -104,11 +104,10 @@ with st.spinner("Loading Annotator..."):
             controls = st.segmented_control(
                 "",
                 ["Segmentation Controls", "Classification Controls"],
-                default=st.session_state.get(
-                    "segmentation_controls", "Segmentation Controls"
-                ),
+                default="Segmentation Controls",
                 selection_mode="single",
                 width="stretch",
+                key="segmentation_controls",
             )
 
             if controls == "Segmentation Controls":
