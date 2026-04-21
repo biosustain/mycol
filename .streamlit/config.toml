@@ -5,3 +5,7 @@ backgroundColor = "#ffffffff"          # main background (pale blue-gray)
 secondaryBackgroundColor = "#ebf1f7ff" # cards / containers
 textColor = "#004280ff"                # soft navy text
 font = "sans serif"
+
+[server]
+maxUploadSize = 512
+maxMessageSize = 512
