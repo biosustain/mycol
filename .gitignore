@@ -247,3 +247,4 @@ __marimo__/
 .streamlit/secrets.toml
 notebooks/measurement_test.ipynb
 20260322_mycol_draft.docx
+notebooks/picture_alignment.ipynb
