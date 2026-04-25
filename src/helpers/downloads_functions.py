@@ -11,6 +11,8 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from src.helpers.upload_download_functions import build_masks_images_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
+from src.helpers.cellpose_functions import build_cellpose_zip_bytes
+from src.helpers.densenet_functions import build_densenet_zip_bytes
 
 ss = st.session_state
 
@@ -31,18 +33,26 @@ def build_download_zip(images, ok) -> bytes:
             with ZipFile(io.BytesIO(inner)) as inner_zf:
                 for name in inner_zf.namelist():
                     zf.writestr(name, inner_zf.read(name))
+        elif images and ss.get("dl_include_summary", True):
+            inner = build_masks_images_zip(images, ok, False, False, False, True)
+            with ZipFile(io.BytesIO(inner)) as inner_zf:
+                zf.writestr("cell_counts_per_image.csv", inner_zf.read("cell_counts_per_image.csv"))
 
-            if ss.get("dl_include_cell_metrics", True):
-                zf.writestr(
-                    "cell_metrics.csv",
-                    build_cell_metrics_csv(tuple(ss.get("analysis_labels") or ())),
-                )
+        if images and ss.get("dl_include_cell_metrics", True):
+            zf.writestr(
+                "cell_metrics.csv",
+                build_cell_metrics_csv(tuple(ss.get("analysis_labels") or ())),
+            )
 
-        if "cp_zip_bytes" in ss and ss.get("dl_include_cellpose", True):
-            zf.writestr("cellpose_training.zip", ss["cp_zip_bytes"])
+        if ss.get("dl_include_cellpose", True) and (ss.get("cp_zip_bytes") or ss.get("cellpose_model_bytes")):
+            cp_bytes = ss.get("cp_zip_bytes") or build_cellpose_zip_bytes()
+            if cp_bytes:
+                zf.writestr("cellpose_training.zip", cp_bytes)
 
-        if "dn_zip_bytes" in ss and ss.get("dl_include_densenet", True):
-            zf.writestr("densenet_training.zip", ss["dn_zip_bytes"])
+        if ss.get("dl_include_densenet", True) and (ss.get("dn_zip_bytes") or ss.get("densenet_model") is not None):
+            dn_bytes = ss.get("dn_zip_bytes") or build_densenet_zip_bytes(ss.get("dn_input_size"))
+            if dn_bytes:
+                zf.writestr("densenet_training.zip", dn_bytes)
 
     return buf.getvalue()
 

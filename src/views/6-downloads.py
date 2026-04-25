@@ -7,8 +7,8 @@ ss = st.session_state
 images = ss.get("images", {})
 ok = ordered_keys()
 has_images = bool(ok and images)
-has_cellpose = "cp_zip_bytes" in ss
-has_densenet = "dn_zip_bytes" in ss
+has_cellpose = "cp_zip_bytes" in ss or bool(ss.get("cellpose_model_bytes"))
+has_densenet = "dn_zip_bytes" in ss or ss.get("densenet_model") is not None
 
 require_images()
 
