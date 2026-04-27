@@ -82,7 +82,7 @@ dl_col.download_button(
 session_dl_col.download_button(
     "Download Session Restore",
     data=ss.get("_session_bytes", b""),
-    file_name="saved_session.zip",
+    file_name="mycol_saved_session.zip",
     mime="application/zip",
     width="stretch",
     type="primary",
