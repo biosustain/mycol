@@ -2,6 +2,8 @@
 cellpose_training/
 models/
 measurement_test_images/
+case_study_1/
+case_study_2/
 
 # Ignore a specific file
 
