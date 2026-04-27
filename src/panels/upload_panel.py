@@ -88,6 +88,16 @@ def render_main():
                 load_demo_data()
 
         if files:
+            max_bytes = 512 * 1024 * 1024
+            oversized = [f for f in files if f.size > max_bytes]
+            if oversized:
+                total_mb = sum(f.size for f in files) / (1024 * 1024)
+                st.toast(
+                    f"Error: Upload too large ({total_mb:.0f} MB). Limit is 512 MB. Upload in batches.",
+                )
+                ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
+                st.rerun()
+
             import torch
             from src.helpers.densenet_functions import build_densenet
 
