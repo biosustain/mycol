@@ -152,6 +152,19 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
+            ss["cp_training_ch1"] = _cast(p.get("training_ch1"), int, 0)
+            ss["cp_training_ch2"] = _cast(p.get("training_ch2"), int, 0)
+            ss["cp_do_gridsearch"] = _cast(p.get("do_gridsearch"), lambda v: str(v).lower() == "true", False)
+            ss["cp_n_trials"] = _cast(p.get("n_trials"), int, 20)
+
+        # ── DenseNet training hyperparameters ─────────────────────────────────
+        if "densenet_training_hyperparameters.csv" in names:
+            df = pd.read_csv(io.StringIO(zf.read("densenet_training_hyperparameters.csv").decode()))
+            p = dict(zip(df["parameter"], df["value"]))
+            ss["dn_input_size"] = _cast(p.get("input_size"), int, 64)
+            ss["dn_batch_size"] = _cast(p.get("batch_size"), int, 32)
+            ss["dn_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
+            ss["dn_val_split"] = _cast(p.get("val_split"), float, 0.2)
 
         # ── Cellpose model ────────────────────────────────────────────────────
         if "cellpose_model.pt" in names:
@@ -193,6 +206,26 @@ def restore_session(zip_bytes: bytes) -> str | None:
                     )
                     for _, row in df.iterrows()
                 }
+
+        # ── Training plots ────────────────────────────────────────────────────
+        import plotly.io as pio
+        for filename, state_key in [
+            ("cellpose_training_losses.json", "cellpose_training_losses"),
+            ("cellpose_iou_comparison.json", "cellpose_iou_comparison"),
+            ("cellpose_original_counts_comparison.json", "cellpose_original_counts_comparison"),
+            ("cellpose_tuned_counts_comparison.json", "cellpose_tuned_counts_comparison"),
+            ("densenet_training_losses.json", "densenet_training_losses"),
+            ("densenet_training_metrics.json", "densenet_training_metrics"),
+            ("densenet_confusion_matrix.json", "densenet_confusion_matrix"),
+        ]:
+            if filename in names:
+                ss[state_key] = pio.from_json(zf.read(filename).decode())
+
+        # ── Cellpose grid search results ──────────────────────────────────────
+        if "cellpose_grid_search_results.csv" in names:
+            ss["cp_grid_results_df"] = pd.read_csv(
+                io.StringIO(zf.read("cellpose_grid_search_results.csv").decode())
+            )
 
         ok = ordered_keys()
         if ok:

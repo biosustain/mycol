@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import streamlit as st
+import plotly.io as pio
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -92,10 +93,25 @@ def build_session_zip(images, ok) -> bytes:
             "weight_decay": ss.get("cp_weight_decay"),
             "batch_size": ss.get("cp_batch_size"),
             "min_cells_per_image": ss.get("cp_min_cells_per_image"),
+            "training_ch1": ss.get("cp_training_ch1", 0),
+            "training_ch2": ss.get("cp_training_ch2", 0),
+            "do_gridsearch": ss.get("cp_do_gridsearch", False),
+            "n_trials": ss.get("cp_n_trials", 20),
         }
         zf.writestr(
             "cellpose_training_hyperparameters.csv",
             pd.Series(cp_training_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
+        )
+
+        dn_training_params = {
+            "input_size": ss.get("dn_input_size", 64),
+            "batch_size": ss.get("dn_batch_size", 32),
+            "max_epoch": ss.get("dn_max_epoch", 100),
+            "val_split": ss.get("dn_val_split", 0.2),
+        }
+        zf.writestr(
+            "densenet_training_hyperparameters.csv",
+            pd.Series(dn_training_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
         )
 
         cp_inference_params = {
@@ -138,5 +154,22 @@ def build_session_zip(images, ok) -> bytes:
             "cell_metrics.csv",
             build_cell_metrics_csv(tuple(ss.get("analysis_labels") or ())),
         )
+
+        for fig_key, filename in [
+            ("cellpose_training_losses", "cellpose_training_losses.json"),
+            ("cellpose_iou_comparison", "cellpose_iou_comparison.json"),
+            ("cellpose_original_counts_comparison", "cellpose_original_counts_comparison.json"),
+            ("cellpose_tuned_counts_comparison", "cellpose_tuned_counts_comparison.json"),
+            ("densenet_training_losses", "densenet_training_losses.json"),
+            ("densenet_training_metrics", "densenet_training_metrics.json"),
+            ("densenet_confusion_matrix", "densenet_confusion_matrix.json"),
+        ]:
+            fig = ss.get(fig_key)
+            if fig is not None:
+                zf.writestr(filename, pio.to_json(fig))
+
+        cp_grid_results_df = ss.get("cp_grid_results_df")
+        if cp_grid_results_df is not None:
+            zf.writestr("cellpose_grid_search_results.csv", cp_grid_results_df.to_csv(index=False))
 
     return buf.getvalue()
