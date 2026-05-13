@@ -9,21 +9,11 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import os
 import tempfile
 import plotly.graph_objects as go
-import subprocess
-from pathlib import Path
-import sys
-import time
-import shutil
 
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torchvision import models, transforms
-from sklearn.metrics import (
-    accuracy_score,
-    precision_recall_fscore_support,
-    confusion_matrix,
-)
 
 # ---- bring in existing app helpers ----
 from src.helpers.state_ops import (
@@ -31,6 +21,11 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     plot_loss_curve,
+)
+from src.helpers.job_runner import (
+    start_worker_job,
+    check_worker_job_status,
+    cancel_worker_job,
 )
 
 ss = st.session_state
@@ -74,31 +69,45 @@ def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 6
         crop = crop[..., :3]
 
     # resize to patch size
-    crop = resize_with_aspect_ratio(crop, patch_size=patch_size)
+    crop = resize_with_aspect_ratio(crop, patch_size)
     return crop.astype(np.float32)
 
 
-def resize_with_aspect_ratio(img: np.ndarray, patch_size=64) -> np.ndarray:
-    """resizes input image to a square with 'patch_size' height while maintaining the aspect ratio"""
-    th, tw = patch_size, patch_size
-    h, w = img.shape[:2]
+def resize_with_aspect_ratio(
+    arr: np.ndarray,
+    target: int | tuple[int, int],
+    *,
+    mode: str = "image",
+) -> np.ndarray:
+    """Resize `arr` to `target` size, preserving aspect ratio with centered zero padding.
 
-    # resize with aspect ratio
+    target: int  -> output is (target, target)
+            tuple -> output is (target_h, target_w)
+    mode:   "image" -> cv2.INTER_AREA when downscaling, INTER_LINEAR when upscaling
+            "label" -> cv2.INTER_NEAREST throughout (preserves integer label ids)
+    """
+    th, tw = (target, target) if isinstance(target, int) else target
+    h, w = arr.shape[:2]
+    if (h, w) == (th, tw):
+        return arr
+
     scale = min(th / h, tw / w)
-    nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
-    resized = cv2.resize(
-        img, (nw, nh), interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
-    )
+    nw = max(1, int(round(w * scale)))
+    nh = max(1, int(round(h * scale)))
 
-    # pad to target size
-    if img.ndim == 2:
-        canvas = np.zeros((th, tw), dtype=img.dtype)
-        y0, x0 = (th - nh) // 2, (tw - nw) // 2
+    if mode == "label":
+        interp = cv2.INTER_NEAREST
+    else:
+        interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
+
+    resized = cv2.resize(arr, (nw, nh), interpolation=interp)
+
+    y0, x0 = (th - nh) // 2, (tw - nw) // 2
+    if arr.ndim == 2:
+        canvas = np.zeros((th, tw), dtype=arr.dtype)
         canvas[y0 : y0 + nh, x0 : x0 + nw] = resized
     else:
-        c = img.shape[2]
-        canvas = np.zeros((th, tw, c), dtype=img.dtype)
-        y0, x0 = (th - nh) // 2, (tw - nw) // 2
+        canvas = np.zeros((th, tw, arr.shape[2]), dtype=arr.dtype)
         canvas[y0 : y0 + nh, x0 : x0 + nw, :] = resized
 
     return canvas
@@ -276,9 +285,9 @@ def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
     This is the single authoritative preprocessing step that must be called
     identically by both the training pipeline and the inference pipeline.
     """
-    patch = normalize_image(patch)                        # scale mean → 127.5, clip to [0,255], uint8
-    chw = np.transpose(patch, (2, 0, 1))                  # HWC → CHW
-    return torch.tensor(chw, dtype=torch.float32) / 255.0 # [0,255] → [0,1]
+    patch = normalize_image(patch)  # scale mean → 127.5, clip to [0,255], uint8
+    chw = np.transpose(patch, (2, 0, 1))  # HWC → CHW
+    return torch.tensor(chw, dtype=torch.float32) / 255.0  # [0,255] → [0,1]
 
 
 # -------------------------------
@@ -343,126 +352,44 @@ def load_labeled_patches(patch_size: int = 64):
     return X, y, all_classes
 
 
-HERE = Path(__file__).resolve().parent
-DENSENET_WORKER_SCRIPT = str(
-    (HERE.parent / "training" / "densenet_worker.py").resolve()
-)
-
-
 def start_densenet_training(input_size, batch_size, epochs, val_split):
     """Starts DenseNet training asynchronously using a worker subprocess"""
-
     X, y, classes = load_labeled_patches(patch_size=input_size)
     if X.shape[0] < 2 or len(np.unique(y)) < 2:
         st.warning("Need at least 2 samples and 2 classes. Add more labeled cells.")
         return None
 
-    tmpdir = tempfile.mkdtemp(prefix="densenet_train_")
-    in_path = Path(tmpdir) / "input.npz"
-    out_path = Path(tmpdir) / "output.npz"
-    log_path = Path(tmpdir) / "training.log"
-
-    np.savez_compressed(
-        in_path,
-        X=X,
-        y=y,
-        classes=classes,
-        batch_size=batch_size,
-        epochs=epochs,
-        val_split=val_split,
+    start_worker_job(
+        job_key="dn_training_job",
+        worker_name="densenet",
+        inputs=dict(
+            X=X,
+            y=y,
+            classes=classes,
+            batch_size=batch_size,
+            epochs=epochs,
+            val_split=val_split,
+        ),
+        metadata={
+            "input_size": input_size,
+            "num_samples": X.shape[0],
+            "classes": classes,
+        },
     )
-
-    cmd = [sys.executable, DENSENET_WORKER_SCRIPT, str(in_path), str(out_path)]
-
-    log_file = open(log_path, "w")
-
-    process = subprocess.Popen(
-        cmd,
-        stdout=log_file,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-
-    st.session_state["dn_training_job"] = {
-        "process": process,
-        "log_file": log_file,
-        "tmpdir": tmpdir,
-        "in_path": str(in_path),
-        "out_path": str(out_path),
-        "log_path": str(log_path),
-        "input_size": input_size,
-        "num_samples": X.shape[0],
-        "classes": classes,
-        "status": "running",
-    }
 
 
 def check_densenet_training_status():
-    ss = st.session_state
-    job = ss.get("dn_training_job")
-
-    if not job:
-        return None
-
-    process = job["process"]
-    log_path = Path(job["log_path"])
-    returncode = process.poll()
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                if content:
-                    job["log_content"] = content
-        except Exception:
-            # TODO: handle better
-            pass
-
-    if returncode is None:
-        return "running"
-
-    if "log_file" in job:
-        try:
-            job["log_file"].flush()
-            job["log_file"].close()
-        except:
-            pass
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                job["log_content"] = f.read()
-        except:
-            pass
-
-    out_path = Path(job["out_path"])
-    tmpdir = job["tmpdir"]
-
-    try:
-        if returncode != 0:
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        if not out_path.exists():
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        with np.load(out_path, allow_pickle=True) as data:
-            model_state = data["model_state"].item()
-            history = data["history"].item()
-            classes = data["classes"]
-            metrics = data["metrics"].item()
-            cm = data["confusion_matrix"]
+    def _on_complete(data, job):
+        model_state = data["model_state"].item()
+        history = data["history"].item()
+        classes = data["classes"]
+        metrics = data["metrics"].item()
+        cm = data["confusion_matrix"]
 
         model = build_densenet(num_classes=len(classes))
         model.load_state_dict(model_state)
 
+        ss = st.session_state
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
 
@@ -472,108 +399,15 @@ def check_densenet_training_status():
         ss["densenet_training_metrics"] = plot_densenet_metrics(metrics)
         ss["densenet_confusion_matrix"] = plot_confusion_matrix(cm, classes)
 
-        job["status"] = "complete"
         job["history"] = history
         job["val_loader"] = None  # TODO: FIX can't serialize DataLoader
         job["classes"] = classes
 
-        return "complete"
-
-    finally:
-        if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    return check_worker_job_status("dn_training_job", _on_complete)
 
 
 def cancel_densenet_training():
-    ss = st.session_state
-    job = ss.get("dn_training_job")
-
-    if not job:
-        return
-
-    process = job["process"]
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-
-    tmpdir = job["tmpdir"]
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-    job["status"] = "cancelled"
-
-
-def finetune_densenet(input_size, batch_size, epochs, val_split):
-    """
-    Legacy synchronous wrapper for backward compatibility.
-    For async training, use start_densenet_training() instead.
-    """
-    start_densenet_training(input_size, batch_size, epochs, val_split)
-
-    while True:
-        status = check_densenet_training_status()
-        if status == "complete":
-            job = st.session_state["dn_training_job"]
-            return job["history"], job["val_loader"], job["classes"]
-        elif status == "failed":
-            job = st.session_state["dn_training_job"]
-            st.error("DenseNet training failed.")
-            with st.expander("Show Error Details"):
-                st.code(job["error"])
-            return None, None, []
-        time.sleep(1)
-
-
-def evaluate_fine_tuned_densenet(history, val_loader, classes):
-    model = st.session_state.get("densenet_model")
-    if not model or not val_loader:
-        return
-
-    device = get_device()
-    model.to(device)
-    model.eval()
-
-    y_true = []
-    y_pred = []
-
-    with torch.no_grad():
-        for inputs, labels in val_loader:
-            inputs = inputs.to(device)
-            outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1)
-
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(preds.cpu().numpy())
-
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-
-    st.info(
-        "Model stored in session. You can use it immediately from the **Classify cells** panel."
-    )
-
-    acc = accuracy_score(y_true, y_pred)
-    prec_m, rec_m, f1_m, _ = precision_recall_fscore_support(
-        y_true, y_pred, average="macro", zero_division=0
-    )
-
-    train_losses = history.get("loss", [])
-    val_losses = history.get("val_loss", [])
-    ss["densenet_training_losses"] = plot_loss_curve(train_losses, val_losses)
-
-    metrics = {
-        "Accuracy": acc,
-        "Precision": prec_m,
-        "Recall": rec_m,
-        "F1": f1_m,
-    }
-    ss["densenet_training_metrics"] = plot_densenet_metrics(metrics)
-
-    cm = confusion_matrix(y_true, y_pred, labels=np.arange(len(classes)))
-    st.session_state["densenet_confusion_matrix"] = plot_confusion_matrix(cm, classes)
+    cancel_worker_job("dn_training_job")
 
 
 # -------------------------------
@@ -658,8 +492,6 @@ def build_patchset_zip(patch_size: int = 64) -> bytes | None:
         return None
 
     buf, rows = io.BytesIO(), []
-    ok = ordered_keys()
-    [st.session_state["images"][k]["name"].rsplit(".", 1)[0] for k in ok]
 
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
         for i in range(X.shape[0]):

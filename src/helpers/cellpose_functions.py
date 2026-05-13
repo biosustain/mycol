@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 import hashlib
 import pandas as pd
@@ -19,11 +18,13 @@ from src.helpers.state_ops import (
     add_plotly_as_png_to_zip,
     plot_loss_curve,
 )
+from src.helpers.job_runner import (
+    start_worker_job,
+    check_worker_job_status,
+    cancel_worker_job,
+)
 from pathlib import Path
 import plotly.graph_objects as go
-import subprocess
-import time
-import shutil
 
 # -----------------------------------------------------#
 # ---------------- IMAGE PREPROCESSING --------------- #
@@ -165,7 +166,9 @@ def segment_with_cellpose(
     im_in = preprocess_for_cellpose(rec)
 
     if model_type is not None:
-        cell_model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
+        cell_model = CellposeModel3Proxy(
+            pretrained_model=model_type, gpu=core.use_gpu()
+        )
     else:
         cell_model = get_cellpose_model()
 
@@ -195,89 +198,6 @@ def segment_with_cellpose(
     }  # reset/realign
 
 
-
-def _get_base_path():
-    """Get base path whether frozen or not.
-
-    When frozen with PyInstaller, sys._MEIPASS points to the temporary extraction folder.
-    When running as a script, use the current file's directory.
-    """
-    if getattr(sys, "frozen", False):
-        # Running as compiled executable
-        return Path(sys._MEIPASS)
-    else:
-        # Running as script
-        return Path(__file__).resolve().parent
-
-
-# -----------------------------------------------------------------------------
-# WORKER PATH RESOLUTION
-# -----------------------------------------------------------------------------
-
-
-def _get_portable_paths():
-    """
-    Detect if running in Portable Mode (bundled folder) and return paths.
-
-    Structure in Portable Mode:
-      MyCol/
-        bin/python_worker/ (Embedded Python)
-        src/helpers/cellpose_functions.py (This file)
-    """
-    # Base path of this file: .../src/helpers/cellpose_functions.py
-    here = Path(__file__).resolve()
-
-    # Check for: .../bin/python_worker/python.exe (Windows)
-    # The relative path from 'here' to 'bin' is: ../../bin
-    # here.parent = helpers
-    # here.parent.parent = src
-    # here.parent.parent.parent = MyCol root
-
-    root = here.parent.parent.parent
-
-    # Windows Portable Check
-    win_python = root / "bin" / "python_worker" / "python.exe"
-    if win_python.exists():
-        return str(win_python), str(root / "src" / "training" / "unified_worker.py")
-
-    # macOS Portable Check (TBD - align with make_dist.sh structure)
-    # For now assume similar relative structure or standard venv-like bin/python
-    mac_python = root / "bin" / "python_worker" / "bin" / "python"
-    if mac_python.exists():
-        return str(mac_python), str(root / "src" / "training" / "unified_worker.py")
-
-    return None, None
-
-
-PORTABLE_WORKER_PYTHON, PORTABLE_UNIFIED_WORKER = _get_portable_paths()
-
-if PORTABLE_WORKER_PYTHON:
-    # PORTABLE MODE
-    print(f"[MyCol] Portable mode detected. Worker: {PORTABLE_WORKER_PYTHON}")
-    TRAINING_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "finetune"]
-    VALIDATION_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "validation"]
-    DENSENET_WORKER_SCRIPT = [str(PORTABLE_UNIFIED_WORKER), "densenet"]
-    TRAINING_PROJECT = None  # Not needed, direct python call
-
-elif getattr(sys, "frozen", False):
-    # PYINSTALLER FROZEN MODE (Legacy/Fallback)
-    HERE = _get_base_path()
-    UNIFIED_WORKER = str((HERE / "workers" / "unified_worker.exe").resolve())
-    TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER, "finetune"]
-    VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER, "validation"]
-    DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER, "densenet"]
-    TRAINING_PROJECT = None
-else:
-    # DEVELOPMENT MODE (UV)
-    HERE = Path(__file__).resolve().parent
-    TRAINING_PROJECT = str((HERE.parent / "training").resolve())
-    UNIFIED_WORKER_PY = str((HERE.parent / "training" / "unified_worker.py").resolve())
-
-    TRAINING_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "finetune"]
-    VALIDATION_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "validation"]
-    DENSENET_WORKER_SCRIPT = [UNIFIED_WORKER_PY, "densenet"]
-
-
 class CellposeModel3Proxy:
     """A proxy class that runs Cellpose 3 inference via background worker"""
 
@@ -286,8 +206,9 @@ class CellposeModel3Proxy:
         self.gpu = gpu
         # attributes for API compatibility
         self.device = torch.device(
-            "mps" if torch.backends.mps.is_available() else
-            "cuda" if torch.cuda.is_available() else "cpu"
+            "mps"
+            if torch.backends.mps.is_available()
+            else "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.net = type("obj", (object,), {"device": self.device})()
 
@@ -493,7 +414,6 @@ def load_base_cellpose_model(base_model: str):
     return CellposeModel3Proxy(pretrained_model=init_model, gpu=core.use_gpu())
 
 
-
 def start_cellpose_training(
     recs: dict,
     base_model: str,
@@ -505,197 +425,64 @@ def start_cellpose_training(
     min_train_masks=5,
 ):
     """Starts Cellpose fine-tuning asynchronously using cp3 worker bridge"""
-
     images, masks = [], []
-    for k in recs.keys():
+    for k in recs:
         images.append(preprocess_for_cellpose(recs[k]))
         masks.append(recs[k]["masks"].astype("uint16"))
 
-    # nessaccary to create persistent temp directory for the aysnc worker
-    tmpdir = tempfile.mkdtemp(prefix="cellpose_train_")
-    in_path = Path(tmpdir) / "input.npz"
-    out_path = Path(tmpdir) / "output.npz"
-    log_path = Path(tmpdir) / "training.log"
-
-    # save input data for the worker
-    np.savez_compressed(
-        in_path,
-        images=np.array([np.ascontiguousarray(im) for im in images], dtype=object),
-        masks=np.array(
-            [np.ascontiguousarray(ma).astype(np.uint16) for ma in masks], dtype=object
+    start_worker_job(
+        job_key="cp_training_job",
+        worker_name="finetune",
+        inputs=dict(
+            images=np.array([np.ascontiguousarray(im) for im in images], dtype=object),
+            masks=np.array(
+                [np.ascontiguousarray(m).astype(np.uint16) for m in masks], dtype=object
+            ),
+            base_model=base_model,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            nimg_per_epoch=nimg_per_epoch,
+            channels=np.array(channels),
+            min_train_masks=min_train_masks,
         ),
-        base_model=base_model,
-        epochs=epochs,
-        learning_rate=learning_rate,
-        weight_decay=weight_decay,
-        nimg_per_epoch=nimg_per_epoch,
-        channels=np.array(channels),
-        min_train_masks=min_train_masks,
+        metadata={"base_model": base_model, "num_images": len(images)},
     )
-
-    if PORTABLE_WORKER_PYTHON:
-        # Portable Mode
-        cmd = (
-            [PORTABLE_WORKER_PYTHON]
-            + TRAINING_WORKER_SCRIPT
-            + [str(in_path), str(out_path)]
-        )
-    elif getattr(sys, "frozen", False):
-        # Direct executable call when frozen
-        cmd = TRAINING_WORKER_SCRIPT + [str(in_path), str(out_path)]
-    else:
-        # uv run call in development mode
-        cmd = (
-            [
-                "uv",
-                "run",
-                "--project",
-                TRAINING_PROJECT,
-                "python",
-            ]
-            + TRAINING_WORKER_SCRIPT
-            + [str(in_path), str(out_path)]
-        )
-
-    # open log file for output
-    log_file = open(log_path, "w")
-
-    process = subprocess.Popen(
-        cmd,
-        stdout=log_file,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-
-    # store job state in session
-    st.session_state["cp_training_job"] = {
-        "process": process,
-        "log_file": log_file,
-        "tmpdir": tmpdir,
-        "in_path": str(in_path),
-        "out_path": str(out_path),
-        "log_path": str(log_path),
-        "base_model": base_model,
-        "num_images": len(images),
-        "status": "running",
-    }
 
 
 def check_cellpose_training_status():
-    """Check if Cellpose training is complete and load results if so"""
-    ss = st.session_state
-    job = ss.get("cp_training_job")
+    """Check if Cellpose training is complete and load results if so."""
 
-    if not job:
-        return None  # no active job
+    def _on_complete(data, job):
+        train_losses = np.array(data["train_losses"])
+        test_losses = np.array(data["test_losses"])
+        model_name = str(data["model_name"])
+        state_dict = data["state_dict"].item()
 
-    process = job["process"]
-    log_path = Path(job["log_path"])
-    returncode = process.poll()
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                if content:
-                    job["log_content"] = content
-        except Exception:
-            # TODO: handle this better
-            pass
-
-    if returncode is None:
-        return "running"
-
-    if "log_file" in job:
-        try:
-            job["log_file"].flush()
-            job["log_file"].close()
-        except:
-            pass
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                job["log_content"] = f.read()
-        except:
-            pass
-
-    out_path = Path(job["out_path"])
-    tmpdir = job["tmpdir"]
-
-    try:
-
-        if returncode != 0:
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        if not out_path.exists():
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        # success - load results
-        with np.load(out_path, allow_pickle=True) as data:
-            train_losses = np.array(data["train_losses"])
-            test_losses = np.array(data["test_losses"])
-            model_name = str(data["model_name"])
-            state_dict = data["state_dict"].item()
-
-        # save to session state
         buf = IO.BytesIO()
         torch.save(state_dict, buf)
+        ss = st.session_state
         ss["cellpose_model_bytes"] = buf.getvalue()
         ss["cellpose_model_name"] = model_name
         ss["model_to_fine_tune"] = job["base_model"]
         ss["train_losses"] = train_losses
         ss["test_losses"] = test_losses
-
         ss["cellpose_training_losses"] = plot_loss_curve(train_losses, test_losses)
 
-        job["status"] = "complete"
         job["train_losses"] = train_losses
         job["test_losses"] = test_losses
         job["model_name"] = model_name
 
-        return "complete"
-
-    finally:
-        if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    return check_worker_job_status("cp_training_job", _on_complete)
 
 
 def cancel_cellpose_training():
-    ss = st.session_state
-    job = ss.get("cp_training_job")
-
-    if not job:
-        return
-
-    process = job["process"]
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-
-    tmpdir = job["tmpdir"]
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-    job["status"] = "cancelled"
+    cancel_worker_job("cp_training_job")
 
 
 def start_cellpose_validation(
     recs, base_model, channels, do_gridsearch=False, n_trials=20
 ):
-    ss = st.session_state
-
     model_path = get_cellpose_weights()
     if not model_path:
         st.error("No trained model found")
@@ -705,136 +492,41 @@ def start_cellpose_validation(
 
     images, masks, image_names = prepare_eval_data(recs)
 
-    tmpdir = tempfile.mkdtemp(prefix="cellpose_validation_")
-    in_path = Path(tmpdir) / "input.npz"
-    out_path = Path(tmpdir) / "output.npz"
-    log_path = Path(tmpdir) / "validation.log"
-
-    np.savez_compressed(
-        in_path,
-        images=np.array(images, dtype=object),
-        masks=np.array(masks, dtype=object),
-        image_names=np.array(image_names, dtype=object),
-        base_model=base_model,
-        tuned_model_path=model_path,
-        channels=np.array(channels),
-        do_gridsearch=do_gridsearch,
-        n_trials=n_trials,
+    start_worker_job(
+        job_key="cp_validation_job",
+        worker_name="validation",
+        inputs=dict(
+            images=np.array(images, dtype=object),
+            masks=np.array(masks, dtype=object),
+            image_names=np.array(image_names, dtype=object),
+            base_model=base_model,
+            tuned_model_path=model_path,
+            channels=np.array(channels),
+            do_gridsearch=do_gridsearch,
+            n_trials=n_trials,
+        ),
     )
-
-    if PORTABLE_WORKER_PYTHON:
-        # Portable Mode
-        cmd = (
-            [PORTABLE_WORKER_PYTHON]
-            + VALIDATION_WORKER_SCRIPT
-            + [str(in_path), str(out_path)]
-        )
-    elif getattr(sys, "frozen", False):
-        # Direct executable call when frozen
-        cmd = VALIDATION_WORKER_SCRIPT + [str(in_path), str(out_path)]
-    else:
-        # uv run call in development mode
-        cmd = (
-            [
-                "uv",
-                "run",
-                "--project",
-                TRAINING_PROJECT,
-                "python",
-            ]
-            + VALIDATION_WORKER_SCRIPT
-            + [str(in_path), str(out_path)]
-        )
-
-    log_file = open(log_path, "w")
-    process = subprocess.Popen(
-        cmd, stdout=log_file, stderr=subprocess.STDOUT, text=True
-    )  # popen async
-
-    ss["cp_validation_job"] = {
-        "process": process,
-        "log_file": log_file,
-        "tmpdir": tmpdir,
-        "in_path": str(in_path),
-        "out_path": str(out_path),
-        "log_path": str(log_path),
-        "status": "running",
-    }
 
 
 def check_cellpose_validation_status():
-    """Check validation status and load results when complete"""
-    ss = st.session_state
-    job = ss.get("cp_validation_job")
+    """Check validation status and load results when complete."""
 
-    if not job:
-        return None
-
-    process = job["process"]
-    log_path = Path(job["log_path"])
-    returncode = process.poll()
-
-    # read log
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                if content:
-                    job["log_content"] = content
-        except:
-            pass
-
-    if returncode is None:
-        return "running"
-
-    if "log_file" in job:
-        try:
-            job["log_file"].flush()
-            job["log_file"].close()
-        except:
-            pass
-
-    time.sleep(0.5)
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                job["log_content"] = f.read()
-        except:
-            pass
-
-    out_path = Path(job["out_path"])
-    tmpdir = job["tmpdir"]
-
-    try:
-        if returncode != 0:
-            job["status"] = "failed"
-            job["error"] = (
-                f"Validation failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        if not out_path.exists():
-            job["status"] = "failed"
-            job["error"] = (
-                f"Validation failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        with np.load(out_path, allow_pickle=True) as data:
-            optuna_results = data.get("optuna_results")
-            best_params = data["best_params"].item()
-            validation_metrics = data["validation_metrics"].item()
+    def _on_complete(data, job):
+        ss = st.session_state
+        optuna_results = data.get("optuna_results")
+        best_params = data["best_params"].item()
+        validation_metrics = data["validation_metrics"].item()
 
         try:
             if optuna_results is not None:
                 if isinstance(optuna_results, np.ndarray):
-                    if optuna_results.ndim == 0:
-                        optuna_results = optuna_results.item()
-                    else:
-                        optuna_results = optuna_results.tolist()
+                    optuna_results = (
+                        optuna_results.item()
+                        if optuna_results.ndim == 0
+                        else optuna_results.tolist()
+                    )
 
                 df = pd.DataFrame(optuna_results)
-
                 if not df.empty and "ap_iou_0.5" in df.columns:
                     ss["cp_grid_results_df"] = df.sort_values(
                         by="ap_iou_0.5", ascending=False, na_position="last"
@@ -846,7 +538,6 @@ def check_cellpose_validation_status():
                             "Warning: 'ap_iou_0.5' column missing from Optuna results. Skipping sort."
                         )
 
-                # set best hyperparameters
                 if best_params:
                     ss["cp_cellprob_threshold"] = float(
                         best_params.get("cellprob", 0.0)
@@ -858,7 +549,6 @@ def check_cellpose_validation_status():
                     ss["cp_niter"] = int(best_params.get("niter", 200))
         except Exception as e:
             st.error(f"Error processing Optuna results: {e}")
-            pass
 
         image_names = validation_metrics.get("image_names", [])
         ss["cellpose_iou_comparison"] = plot_iou_comparison(
@@ -879,69 +569,13 @@ def check_cellpose_validation_status():
             image_names=image_names,
         )
 
-        # build zip like before
         ss["cp_zip_bytes"] = build_cellpose_zip_bytes()
 
-        job["status"] = "complete"
-        return "complete"
-
-    finally:
-        if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    return check_worker_job_status("cp_validation_job", _on_complete)
 
 
 def cancel_cellpose_validation():
-    """Cancel running validation"""
-    ss = st.session_state
-    job = ss.get("cp_validation_job")
-
-    if not job:
-        return
-
-    process = job["process"]
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-
-    tmpdir = job["tmpdir"]
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-    job["status"] = "cancelled"
-
-
-def finetune_cellpose(
-    recs: dict,
-    base_model: str,
-    epochs=100,
-    learning_rate=0.1,
-    weight_decay=0.0001,
-    nimg_per_epoch=32,
-    channels=[0, 0],
-):
-    """
-    Legacy synchronous wrapper for backward compatibility.
-    For async training, use start_cellpose_training() instead.
-    """
-    start_cellpose_training(
-        recs, base_model, epochs, learning_rate, weight_decay, nimg_per_epoch, channels
-    )
-
-    while True:
-        status = check_cellpose_training_status()
-        if status == "complete":
-            job = st.session_state["cp_training_job"]
-            return job["train_losses"], job["test_losses"], job["model_name"]
-        elif status == "failed":
-            job = st.session_state["cp_training_job"]
-            st.error("Cellpose 3 Training Bridge failed.")
-            with st.expander("Show Error Details"):
-                st.code(job["error"])
-            st.stop()
-        time.sleep(1)
+    cancel_worker_job("cp_validation_job")
 
 
 def is_not_empty_mask(m):
@@ -956,7 +590,10 @@ def build_cellpose_zip_bytes():
     ok = ordered_keys()
     ss = st.session_state
     n_masks = sum(
-        int(len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16)))) - 1)
+        int(
+            len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16))))
+            - 1
+        )
         for k in ok
     )
 
@@ -1048,9 +685,10 @@ def batch_segment_and_refresh(model_type: str | None = None):
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        segment_with_cellpose(st.session_state.images.get(k), model_type=model_type, **params)
+        segment_with_cellpose(
+            st.session_state.images.get(k), model_type=model_type, **params
+        )
         pb.progress(i / n, text=f"Segmented {i}/{n}")
-
 
 
 def get_cellpose_hparams_from_state():

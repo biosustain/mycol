@@ -15,7 +15,6 @@ from src.helpers.densenet_functions import (
     cancel_densenet_training,
 )
 from src.helpers.cellpose_functions import (
-    finetune_cellpose,
     compute_prediction_ious,
     plot_iou_comparison,
     plot_pred_vs_true_counts,
@@ -34,7 +33,6 @@ from src.helpers.help_panels import (
     classifier_training_plot_help,
     cellpose_training_plot_help,
 )
-
 
 ss = st.session_state
 
@@ -373,30 +371,6 @@ def get_train_setup():
     nimg = int(ss.get("cp_batch_size"))
     channels = [ss.get("cp_training_ch1"), ss.get("cp_training_ch2")]
     return recs, base_model, epochs, lr, wd, nimg, channels, min_cells
-
-
-def finetune_cellpose_button_function(
-    recs, base_model, epochs, learning_rate, weight_decay, nimg, channels
-):
-
-    with st.spinner(
-        "Fine-tuning Cellpose. Grab a coffee! Clicking elsewhere within the app now will interrupt training..."
-    ):
-        train_losses, test_losses, model_name = finetune_cellpose(
-            recs,
-            base_model=base_model,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            nimg_per_epoch=nimg,
-            channels=channels,
-        )
-        st.session_state["train_losses"] = train_losses
-        st.session_state["test_losses"] = test_losses
-        st.session_state["cellpose_training_losses"] = plot_loss_curve(
-            train_losses, test_losses
-        )
-    return model_name
 
 
 @st.cache_data(show_spinner=False)

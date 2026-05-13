@@ -26,7 +26,7 @@ from src.helpers.state_ops import (
     ordered_keys,
     stem,
     set_current_by_index,
-    reset_global_state,
+    reset_global_state_defaults,
 )
 
 from src.helpers.state_ops import normalize_image
@@ -36,9 +36,6 @@ ss = st.session_state
 # --------------------------------------
 # ---------- UPLOAD FUNCTIONS ----------
 # --------------------------------------
-
-
-ss = st.session_state
 
 
 def load_demo_data():
@@ -58,7 +55,11 @@ def load_demo_data():
 
 def restore_session(zip_bytes: bytes) -> str | None:
     """Restore a saved session zip into session state. Returns an error string or None on success."""
-    from src.helpers.state_ops import reset_global_state, set_current_by_index, ordered_keys
+    from src.helpers.state_ops import (
+        reset_global_state_defaults,
+        set_current_by_index,
+        ordered_keys,
+    )
 
     def _cast(v, t, default):
         try:
@@ -68,27 +69,41 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
     with ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = set(zf.namelist())
-        reset_global_state()
+        st.session_state.clear()
+        reset_global_state_defaults()
 
         # ── Images ───────────────────────────────────────────────────────────
-        for entry in sorted(n for n in names if n.startswith("images/") and not n.endswith("/")):
+        for entry in sorted(
+            n for n in names if n.startswith("images/") and not n.endswith("/")
+        ):
             fname = Path(entry).name
-            img_np = np.array(Image.open(io.BytesIO(zf.read(entry))).convert("RGB"), dtype=np.uint8)
+            img_np = np.array(
+                Image.open(io.BytesIO(zf.read(entry))).convert("RGB"), dtype=np.uint8
+            )
             H, W = img_np.shape[:2]
             k = ss["next_ord"]
             ss["next_ord"] += 1
             ss["images"][k] = {
-                "name": fname, "id": k,
-                "image": img_np, "H": H, "W": W, "orig_H": H, "orig_W": W,
+                "name": fname,
+                "id": k,
+                "image": img_np,
+                "H": H,
+                "W": W,
+                "orig_H": H,
+                "orig_W": W,
                 "masks": np.zeros((H, W), dtype=np.uint16),
-                "labels": {}, "boxes": [], "last_click_xy": None,
+                "labels": {},
+                "boxes": [],
+                "last_click_xy": None,
                 "canvas": {"closed_json": None, "processed_count": 0},
             }
             ss["name_to_key"][fname] = k
 
         # ── Masks ─────────────────────────────────────────────────────────────
         stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
-        for entry in sorted(n for n in names if n.startswith("masks/") and not n.endswith("/")):
+        for entry in sorted(
+            n for n in names if n.startswith("masks/") and not n.endswith("/")
+        ):
             k = stem_to_key.get(Path(entry).stem)
             if k is None:
                 continue
@@ -96,7 +111,9 @@ def restore_session(zip_bytes: bytes) -> str | None:
             mask = tiff.imread(io.BytesIO(zf.read(entry))).astype(np.uint16)
             if mask.shape != (rec["H"], rec["W"]):
                 mask = np.array(
-                    Image.fromarray(mask).resize((rec["W"], rec["H"]), resample=Image.NEAREST),
+                    Image.fromarray(mask).resize(
+                        (rec["W"], rec["H"]), resample=Image.NEAREST
+                    ),
                     dtype=np.uint16,
                 )
             rec["masks"] = mask
@@ -123,7 +140,9 @@ def restore_session(zip_bytes: bytes) -> str | None:
                     if k is None:
                         continue
                     label = str(row["mask label"])
-                    label = None if label in ("Unlabelled", "No label", "nan") else label
+                    label = (
+                        None if label in ("Unlabelled", "No label", "nan") else label
+                    )
                     ss["images"][k]["labels"][int(row["mask #"])] = label
                     if label:
                         all_labels.add(label)
@@ -132,7 +151,9 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
         # ── Cellpose inference hyperparameters ────────────────────────────────
         if "cellpose_inference_hyperparameters.csv" in names:
-            df = pd.read_csv(io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode()))
+            df = pd.read_csv(
+                io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode())
+            )
             p = dict(zip(df["parameter"], df["value"]))
             ss["cp_ch1"] = _cast(p.get("channel_1"), int, 0)
             ss["cp_ch2"] = _cast(p.get("channel_2"), int, 0)
@@ -144,7 +165,9 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
         # ── Cellpose training hyperparameters ─────────────────────────────────
         if "cellpose_training_hyperparameters.csv" in names:
-            df = pd.read_csv(io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode()))
+            df = pd.read_csv(
+                io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode())
+            )
             p = dict(zip(df["parameter"], df["value"]))
             ss["cp_base_model"] = _cast(p.get("base_model"), str, "cyto3")
             ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
@@ -154,12 +177,16 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
             ss["cp_training_ch1"] = _cast(p.get("training_ch1"), int, 0)
             ss["cp_training_ch2"] = _cast(p.get("training_ch2"), int, 0)
-            ss["cp_do_gridsearch"] = _cast(p.get("do_gridsearch"), lambda v: str(v).lower() == "true", False)
+            ss["cp_do_gridsearch"] = _cast(
+                p.get("do_gridsearch"), lambda v: str(v).lower() == "true", False
+            )
             ss["cp_n_trials"] = _cast(p.get("n_trials"), int, 20)
 
         # ── DenseNet training hyperparameters ─────────────────────────────────
         if "densenet_training_hyperparameters.csv" in names:
-            df = pd.read_csv(io.StringIO(zf.read("densenet_training_hyperparameters.csv").decode()))
+            df = pd.read_csv(
+                io.StringIO(zf.read("densenet_training_hyperparameters.csv").decode())
+            )
             p = dict(zip(df["parameter"], df["value"]))
             ss["dn_input_size"] = _cast(p.get("input_size"), int, 64)
             ss["dn_batch_size"] = _cast(p.get("batch_size"), int, 32)
@@ -178,7 +205,8 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
             data = zf.read("densenet_model.pth")
             path = os.path.join(
-                tempfile.gettempdir(), f"model_{hashlib.sha1(data).hexdigest()[:12]}.pth"
+                tempfile.gettempdir(),
+                f"model_{hashlib.sha1(data).hexdigest()[:12]}.pth",
             )
             if not os.path.exists(path):
                 with open(path, "wb") as f:
@@ -209,11 +237,18 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
         # ── Training plots ────────────────────────────────────────────────────
         import plotly.io as pio
+
         for filename, state_key in [
             ("cellpose_training_losses.json", "cellpose_training_losses"),
             ("cellpose_iou_comparison.json", "cellpose_iou_comparison"),
-            ("cellpose_original_counts_comparison.json", "cellpose_original_counts_comparison"),
-            ("cellpose_tuned_counts_comparison.json", "cellpose_tuned_counts_comparison"),
+            (
+                "cellpose_original_counts_comparison.json",
+                "cellpose_original_counts_comparison",
+            ),
+            (
+                "cellpose_tuned_counts_comparison.json",
+                "cellpose_tuned_counts_comparison",
+            ),
             ("densenet_training_losses.json", "densenet_training_losses"),
             ("densenet_training_metrics.json", "densenet_training_metrics"),
             ("densenet_confusion_matrix.json", "densenet_confusion_matrix"),
@@ -284,30 +319,6 @@ def process_uploads(files, mask_suffix):
     return skipped
 
 
-def _resize_label_with_aspect_ratio(
-    mask: np.ndarray, target_h: int, target_w: int
-) -> np.ndarray:
-    """
-    Resize an instance-label mask to (target_h, target_w) without geometric distortion.
-    Uses nearest-neighbor interpolation and center padding to preserve label ids.
-    """
-    h, w = mask.shape[:2]
-    if (h, w) == (target_h, target_w):
-        return mask.astype(np.uint16, copy=False)
-
-    scale = min(target_h / h, target_w / w)
-    nw = max(1, int(round(w * scale)))
-    nh = max(1, int(round(h * scale)))
-
-    resized = np.array(
-        Image.fromarray(mask).resize((nw, nh), resample=Image.NEAREST), dtype=np.uint16
-    )
-    canvas = np.zeros((target_h, target_w), dtype=np.uint16)
-    y0, x0 = (target_h - nh) // 2, (target_w - nw) // 2
-    canvas[y0 : y0 + nh, x0 : x0 + nw] = resized
-    return canvas
-
-
 def load_npy_mask(file, rec):
     """Read Cellpose *_seg.npy and return a (H,W) label matrix with 0 background, 1..N instances."""
     file = file.read()
@@ -320,7 +331,7 @@ def load_npy_mask(file, rec):
         orig_w = rec.get("orig_W", W)
         if (orig_h, orig_w) != (H, W):
             # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = _resize_label_with_aspect_ratio(mask, H, W)
+            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
         else:
             mask = np.array(
                 Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
@@ -340,7 +351,7 @@ def load_tif_mask(file, rec):
         orig_w = rec.get("orig_W", W)
         if (orig_h, orig_w) != (H, W):
             # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = _resize_label_with_aspect_ratio(mask, H, W)
+            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
         else:
             mask = np.array(
                 Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
@@ -368,7 +379,7 @@ def create_new_record_with_image(uploaded_file):
         orig_H, orig_W = img_np.shape[:2]
         # optionally resize images to 512x512
         if st.session_state.get("resize_on_upload", True):
-            img_np = resize_with_aspect_ratio(img_np, patch_size=512)
+            img_np = resize_with_aspect_ratio(img_np, 512)
     except (UnidentifiedImageError, Exception):
         raise
 
