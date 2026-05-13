@@ -547,8 +547,6 @@ def build_patchset_zip(patch_size: int = 64) -> bytes | None:
         return None
 
     buf, rows = io.BytesIO(), []
-    ok = ordered_keys()
-    [st.session_state["images"][k]["name"].rsplit(".", 1)[0] for k in ok]
 
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
         for i in range(X.shape[0]):
