@@ -38,9 +38,6 @@ ss = st.session_state
 # --------------------------------------
 
 
-ss = st.session_state
-
-
 def load_demo_data():
     """Restore the bundled example_session.zip through the normal session-restore pipeline."""
     app_dir = Path(__file__).parent.parent.parent  # repo root (where app.py lives)
