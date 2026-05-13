@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\), filename=f\\) for f in \\('src/helpers/state_ops.py','app.py','src/helpers/upload_download_functions.py'\\)]; print\\('OK'\\)\")",
-      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\), filename=f\\) for f in \\('src/helpers/densenet_functions.py','src/helpers/upload_download_functions.py'\\)]; print\\('OK'\\)\")"
-    ]
-  }
-}

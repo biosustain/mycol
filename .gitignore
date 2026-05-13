@@ -4,6 +4,7 @@ models/
 measurement_test_images/
 case_study_1/
 case_study_2/
+.claude/
 
 # Ignore a specific file
 
