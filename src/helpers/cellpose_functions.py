@@ -167,7 +167,9 @@ def segment_with_cellpose(
     im_in = preprocess_for_cellpose(rec)
 
     if model_type is not None:
-        cell_model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
+        cell_model = CellposeModel3Proxy(
+            pretrained_model=model_type, gpu=core.use_gpu()
+        )
     else:
         cell_model = get_cellpose_model()
 
@@ -197,7 +199,6 @@ def segment_with_cellpose(
     }  # reset/realign
 
 
-
 class CellposeModel3Proxy:
     """A proxy class that runs Cellpose 3 inference via background worker"""
 
@@ -206,8 +207,9 @@ class CellposeModel3Proxy:
         self.gpu = gpu
         # attributes for API compatibility
         self.device = torch.device(
-            "mps" if torch.backends.mps.is_available() else
-            "cuda" if torch.cuda.is_available() else "cpu"
+            "mps"
+            if torch.backends.mps.is_available()
+            else "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.net = type("obj", (object,), {"device": self.device})()
 
@@ -413,7 +415,6 @@ def load_base_cellpose_model(base_model: str):
     return CellposeModel3Proxy(pretrained_model=init_model, gpu=core.use_gpu())
 
 
-
 def start_cellpose_training(
     recs: dict,
     base_model: str,
@@ -539,8 +540,12 @@ def check_cellpose_validation_status():
                         )
 
                 if best_params:
-                    ss["cp_cellprob_threshold"] = float(best_params.get("cellprob", 0.0))
-                    ss["cp_flow_threshold"] = float(best_params.get("flow_threshold", 0.4))
+                    ss["cp_cellprob_threshold"] = float(
+                        best_params.get("cellprob", 0.0)
+                    )
+                    ss["cp_flow_threshold"] = float(
+                        best_params.get("flow_threshold", 0.4)
+                    )
                     ss["cp_min_size"] = int(best_params.get("min_size", 15))
                     ss["cp_niter"] = int(best_params.get("niter", 200))
         except Exception as e:
@@ -574,37 +579,6 @@ def cancel_cellpose_validation():
     cancel_worker_job("cp_validation_job")
 
 
-def finetune_cellpose(
-    recs: dict,
-    base_model: str,
-    epochs=100,
-    learning_rate=0.1,
-    weight_decay=0.0001,
-    nimg_per_epoch=32,
-    channels=[0, 0],
-):
-    """
-    Legacy synchronous wrapper for backward compatibility.
-    For async training, use start_cellpose_training() instead.
-    """
-    start_cellpose_training(
-        recs, base_model, epochs, learning_rate, weight_decay, nimg_per_epoch, channels
-    )
-
-    while True:
-        status = check_cellpose_training_status()
-        if status == "complete":
-            job = st.session_state["cp_training_job"]
-            return job["train_losses"], job["test_losses"], job["model_name"]
-        elif status == "failed":
-            job = st.session_state["cp_training_job"]
-            st.error("Cellpose 3 Training Bridge failed.")
-            with st.expander("Show Error Details"):
-                st.code(job["error"])
-            st.stop()
-        time.sleep(1)
-
-
 def is_not_empty_mask(m):
     """returns True if mask is a non-empty numpy array"""
     return isinstance(m, np.ndarray) and m.any()
@@ -617,7 +591,10 @@ def build_cellpose_zip_bytes():
     ok = ordered_keys()
     ss = st.session_state
     n_masks = sum(
-        int(len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16)))) - 1)
+        int(
+            len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16))))
+            - 1
+        )
         for k in ok
     )
 
@@ -709,9 +686,10 @@ def batch_segment_and_refresh(model_type: str | None = None):
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        segment_with_cellpose(st.session_state.images.get(k), model_type=model_type, **params)
+        segment_with_cellpose(
+            st.session_state.images.get(k), model_type=model_type, **params
+        )
         pb.progress(i / n, text=f"Segmented {i}/{n}")
-
 
 
 def get_cellpose_hparams_from_state():

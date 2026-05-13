@@ -291,9 +291,9 @@ def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
     This is the single authoritative preprocessing step that must be called
     identically by both the training pipeline and the inference pipeline.
     """
-    patch = normalize_image(patch)                        # scale mean → 127.5, clip to [0,255], uint8
-    chw = np.transpose(patch, (2, 0, 1))                  # HWC → CHW
-    return torch.tensor(chw, dtype=torch.float32) / 255.0 # [0,255] → [0,1]
+    patch = normalize_image(patch)  # scale mean → 127.5, clip to [0,255], uint8
+    chw = np.transpose(patch, (2, 0, 1))  # HWC → CHW
+    return torch.tensor(chw, dtype=torch.float32) / 255.0  # [0,255] → [0,1]
 
 
 # -------------------------------
@@ -414,27 +414,6 @@ def check_densenet_training_status():
 
 def cancel_densenet_training():
     cancel_worker_job("dn_training_job")
-
-
-def finetune_densenet(input_size, batch_size, epochs, val_split):
-    """
-    Legacy synchronous wrapper for backward compatibility.
-    For async training, use start_densenet_training() instead.
-    """
-    start_densenet_training(input_size, batch_size, epochs, val_split)
-
-    while True:
-        status = check_densenet_training_status()
-        if status == "complete":
-            job = st.session_state["dn_training_job"]
-            return job["history"], job["val_loader"], job["classes"]
-        elif status == "failed":
-            job = st.session_state["dn_training_job"]
-            st.error("DenseNet training failed.")
-            with st.expander("Show Error Details"):
-                st.code(job["error"])
-            return None, None, []
-        time.sleep(1)
 
 
 def evaluate_fine_tuned_densenet(history, val_loader, classes):
