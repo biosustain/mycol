@@ -9,11 +9,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import os
 import tempfile
 import plotly.graph_objects as go
-import subprocess
-from pathlib import Path
-import sys
 import time
-import shutil
 
 import torch
 import torch.nn as nn
@@ -31,6 +27,11 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     plot_loss_curve,
+)
+from src.helpers.job_runner import (
+    start_worker_job,
+    check_worker_job_status,
+    cancel_worker_job,
 )
 
 ss = st.session_state
@@ -343,126 +344,44 @@ def load_labeled_patches(patch_size: int = 64):
     return X, y, all_classes
 
 
-HERE = Path(__file__).resolve().parent
-DENSENET_WORKER_SCRIPT = str(
-    (HERE.parent / "training" / "densenet_worker.py").resolve()
-)
-
-
 def start_densenet_training(input_size, batch_size, epochs, val_split):
     """Starts DenseNet training asynchronously using a worker subprocess"""
-
     X, y, classes = load_labeled_patches(patch_size=input_size)
     if X.shape[0] < 2 or len(np.unique(y)) < 2:
         st.warning("Need at least 2 samples and 2 classes. Add more labeled cells.")
         return None
 
-    tmpdir = tempfile.mkdtemp(prefix="densenet_train_")
-    in_path = Path(tmpdir) / "input.npz"
-    out_path = Path(tmpdir) / "output.npz"
-    log_path = Path(tmpdir) / "training.log"
-
-    np.savez_compressed(
-        in_path,
-        X=X,
-        y=y,
-        classes=classes,
-        batch_size=batch_size,
-        epochs=epochs,
-        val_split=val_split,
+    start_worker_job(
+        job_key="dn_training_job",
+        worker_name="densenet",
+        inputs=dict(
+            X=X,
+            y=y,
+            classes=classes,
+            batch_size=batch_size,
+            epochs=epochs,
+            val_split=val_split,
+        ),
+        metadata={
+            "input_size": input_size,
+            "num_samples": X.shape[0],
+            "classes": classes,
+        },
     )
-
-    cmd = [sys.executable, DENSENET_WORKER_SCRIPT, str(in_path), str(out_path)]
-
-    log_file = open(log_path, "w")
-
-    process = subprocess.Popen(
-        cmd,
-        stdout=log_file,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-
-    st.session_state["dn_training_job"] = {
-        "process": process,
-        "log_file": log_file,
-        "tmpdir": tmpdir,
-        "in_path": str(in_path),
-        "out_path": str(out_path),
-        "log_path": str(log_path),
-        "input_size": input_size,
-        "num_samples": X.shape[0],
-        "classes": classes,
-        "status": "running",
-    }
 
 
 def check_densenet_training_status():
-    ss = st.session_state
-    job = ss.get("dn_training_job")
-
-    if not job:
-        return None
-
-    process = job["process"]
-    log_path = Path(job["log_path"])
-    returncode = process.poll()
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                if content:
-                    job["log_content"] = content
-        except Exception:
-            # TODO: handle better
-            pass
-
-    if returncode is None:
-        return "running"
-
-    if "log_file" in job:
-        try:
-            job["log_file"].flush()
-            job["log_file"].close()
-        except:
-            pass
-
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                job["log_content"] = f.read()
-        except:
-            pass
-
-    out_path = Path(job["out_path"])
-    tmpdir = job["tmpdir"]
-
-    try:
-        if returncode != 0:
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed with exit code {returncode}\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        if not out_path.exists():
-            job["status"] = "failed"
-            job["error"] = (
-                f"Training failed: Output file not found.\n\nLog:\n{job.get('log_content', 'No log available')}"
-            )
-            return "failed"
-
-        with np.load(out_path, allow_pickle=True) as data:
-            model_state = data["model_state"].item()
-            history = data["history"].item()
-            classes = data["classes"]
-            metrics = data["metrics"].item()
-            cm = data["confusion_matrix"]
+    def _on_complete(data, job):
+        model_state = data["model_state"].item()
+        history = data["history"].item()
+        classes = data["classes"]
+        metrics = data["metrics"].item()
+        cm = data["confusion_matrix"]
 
         model = build_densenet(num_classes=len(classes))
         model.load_state_dict(model_state)
 
+        ss = st.session_state
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
 
@@ -472,38 +391,15 @@ def check_densenet_training_status():
         ss["densenet_training_metrics"] = plot_densenet_metrics(metrics)
         ss["densenet_confusion_matrix"] = plot_confusion_matrix(cm, classes)
 
-        job["status"] = "complete"
         job["history"] = history
         job["val_loader"] = None  # TODO: FIX can't serialize DataLoader
         job["classes"] = classes
 
-        return "complete"
-
-    finally:
-        if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    return check_worker_job_status("dn_training_job", _on_complete)
 
 
 def cancel_densenet_training():
-    ss = st.session_state
-    job = ss.get("dn_training_job")
-
-    if not job:
-        return
-
-    process = job["process"]
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-
-    tmpdir = job["tmpdir"]
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-    job["status"] = "cancelled"
+    cancel_worker_job("dn_training_job")
 
 
 def finetune_densenet(input_size, batch_size, epochs, val_split):
