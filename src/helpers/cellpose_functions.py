@@ -25,7 +25,6 @@ from src.helpers.job_runner import (
 )
 from pathlib import Path
 import plotly.graph_objects as go
-import time
 
 # -----------------------------------------------------#
 # ---------------- IMAGE PREPROCESSING --------------- #

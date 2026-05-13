@@ -9,17 +9,11 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import os
 import tempfile
 import plotly.graph_objects as go
-import time
 
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torchvision import models, transforms
-from sklearn.metrics import (
-    accuracy_score,
-    precision_recall_fscore_support,
-    confusion_matrix,
-)
 
 # ---- bring in existing app helpers ----
 from src.helpers.state_ops import (
@@ -414,55 +408,6 @@ def check_densenet_training_status():
 
 def cancel_densenet_training():
     cancel_worker_job("dn_training_job")
-
-
-def evaluate_fine_tuned_densenet(history, val_loader, classes):
-    model = st.session_state.get("densenet_model")
-    if not model or not val_loader:
-        return
-
-    device = get_device()
-    model.to(device)
-    model.eval()
-
-    y_true = []
-    y_pred = []
-
-    with torch.no_grad():
-        for inputs, labels in val_loader:
-            inputs = inputs.to(device)
-            outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1)
-
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(preds.cpu().numpy())
-
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-
-    st.info(
-        "Model stored in session. You can use it immediately from the **Classify cells** panel."
-    )
-
-    acc = accuracy_score(y_true, y_pred)
-    prec_m, rec_m, f1_m, _ = precision_recall_fscore_support(
-        y_true, y_pred, average="macro", zero_division=0
-    )
-
-    train_losses = history.get("loss", [])
-    val_losses = history.get("val_loss", [])
-    ss["densenet_training_losses"] = plot_loss_curve(train_losses, val_losses)
-
-    metrics = {
-        "Accuracy": acc,
-        "Precision": prec_m,
-        "Recall": rec_m,
-        "F1": f1_m,
-    }
-    ss["densenet_training_metrics"] = plot_densenet_metrics(metrics)
-
-    cm = confusion_matrix(y_true, y_pred, labels=np.arange(len(classes)))
-    st.session_state["densenet_confusion_matrix"] = plot_confusion_matrix(cm, classes)
 
 
 # -------------------------------
