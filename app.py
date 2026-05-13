@@ -17,9 +17,9 @@ with st.empty():
 
 # ------------------ Boot steps ------------------ #
 from src.boot import configure_tf_cpu_only
-from src.helpers.state_ops import ensure_global_state
+from src.helpers.state_ops import reset_global_state_defaults
 
-ensure_global_state()
+reset_global_state_defaults()
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 configure_tf_cpu_only()
 
