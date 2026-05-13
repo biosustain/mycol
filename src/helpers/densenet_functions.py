@@ -75,31 +75,45 @@ def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 6
         crop = crop[..., :3]
 
     # resize to patch size
-    crop = resize_with_aspect_ratio(crop, patch_size=patch_size)
+    crop = resize_with_aspect_ratio(crop, patch_size)
     return crop.astype(np.float32)
 
 
-def resize_with_aspect_ratio(img: np.ndarray, patch_size=64) -> np.ndarray:
-    """resizes input image to a square with 'patch_size' height while maintaining the aspect ratio"""
-    th, tw = patch_size, patch_size
-    h, w = img.shape[:2]
+def resize_with_aspect_ratio(
+    arr: np.ndarray,
+    target: int | tuple[int, int],
+    *,
+    mode: str = "image",
+) -> np.ndarray:
+    """Resize `arr` to `target` size, preserving aspect ratio with centered zero padding.
 
-    # resize with aspect ratio
+    target: int  -> output is (target, target)
+            tuple -> output is (target_h, target_w)
+    mode:   "image" -> cv2.INTER_AREA when downscaling, INTER_LINEAR when upscaling
+            "label" -> cv2.INTER_NEAREST throughout (preserves integer label ids)
+    """
+    th, tw = (target, target) if isinstance(target, int) else target
+    h, w = arr.shape[:2]
+    if (h, w) == (th, tw):
+        return arr
+
     scale = min(th / h, tw / w)
-    nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
-    resized = cv2.resize(
-        img, (nw, nh), interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
-    )
+    nw = max(1, int(round(w * scale)))
+    nh = max(1, int(round(h * scale)))
 
-    # pad to target size
-    if img.ndim == 2:
-        canvas = np.zeros((th, tw), dtype=img.dtype)
-        y0, x0 = (th - nh) // 2, (tw - nw) // 2
+    if mode == "label":
+        interp = cv2.INTER_NEAREST
+    else:
+        interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
+
+    resized = cv2.resize(arr, (nw, nh), interpolation=interp)
+
+    y0, x0 = (th - nh) // 2, (tw - nw) // 2
+    if arr.ndim == 2:
+        canvas = np.zeros((th, tw), dtype=arr.dtype)
         canvas[y0 : y0 + nh, x0 : x0 + nw] = resized
     else:
-        c = img.shape[2]
-        canvas = np.zeros((th, tw, c), dtype=img.dtype)
-        y0, x0 = (th - nh) // 2, (tw - nw) // 2
+        canvas = np.zeros((th, tw, arr.shape[2]), dtype=arr.dtype)
         canvas[y0 : y0 + nh, x0 : x0 + nw, :] = resized
 
     return canvas

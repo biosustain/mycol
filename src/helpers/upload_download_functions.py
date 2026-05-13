@@ -322,30 +322,6 @@ def process_uploads(files, mask_suffix):
     return skipped
 
 
-def _resize_label_with_aspect_ratio(
-    mask: np.ndarray, target_h: int, target_w: int
-) -> np.ndarray:
-    """
-    Resize an instance-label mask to (target_h, target_w) without geometric distortion.
-    Uses nearest-neighbor interpolation and center padding to preserve label ids.
-    """
-    h, w = mask.shape[:2]
-    if (h, w) == (target_h, target_w):
-        return mask.astype(np.uint16, copy=False)
-
-    scale = min(target_h / h, target_w / w)
-    nw = max(1, int(round(w * scale)))
-    nh = max(1, int(round(h * scale)))
-
-    resized = np.array(
-        Image.fromarray(mask).resize((nw, nh), resample=Image.NEAREST), dtype=np.uint16
-    )
-    canvas = np.zeros((target_h, target_w), dtype=np.uint16)
-    y0, x0 = (target_h - nh) // 2, (target_w - nw) // 2
-    canvas[y0 : y0 + nh, x0 : x0 + nw] = resized
-    return canvas
-
-
 def load_npy_mask(file, rec):
     """Read Cellpose *_seg.npy and return a (H,W) label matrix with 0 background, 1..N instances."""
     file = file.read()
@@ -358,7 +334,7 @@ def load_npy_mask(file, rec):
         orig_w = rec.get("orig_W", W)
         if (orig_h, orig_w) != (H, W):
             # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = _resize_label_with_aspect_ratio(mask, H, W)
+            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
         else:
             mask = np.array(
                 Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
@@ -378,7 +354,7 @@ def load_tif_mask(file, rec):
         orig_w = rec.get("orig_W", W)
         if (orig_h, orig_w) != (H, W):
             # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = _resize_label_with_aspect_ratio(mask, H, W)
+            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
         else:
             mask = np.array(
                 Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
@@ -406,7 +382,7 @@ def create_new_record_with_image(uploaded_file):
         orig_H, orig_W = img_np.shape[:2]
         # optionally resize images to 512x512
         if st.session_state.get("resize_on_upload", True):
-            img_np = resize_with_aspect_ratio(img_np, patch_size=512)
+            img_np = resize_with_aspect_ratio(img_np, 512)
     except (UnidentifiedImageError, Exception):
         raise
 
