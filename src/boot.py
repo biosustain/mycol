@@ -2,12 +2,6 @@
 import streamlit as st
 
 
-@st.cache_resource(show_spinner=False)
-def configure_tf_cpu_only():
-    # Deprecated, removed tf from dependencies
-    pass
-
-
 def common_boot():
     # st.set_page_config(page_title="Mask Toggle", layout="wide")
 
