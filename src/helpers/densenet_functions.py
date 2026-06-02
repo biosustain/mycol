@@ -522,14 +522,25 @@ def build_densenet_zip_bytes(psize):
 
     with ZipFile(io.BytesIO(pzip)) as zin:
         labels = pd.read_csv(io.BytesIO(zin.read("cell_patch_labels.csv")))
-        params = dict(
-            input_size=int(psize),
-            epochs=int(ss.get("dn_max_epoch")),
-            batch_size=int(ss.get("dn_batch_size")),
-            val_split=float(ss.get("dn_val_split")),
-            patches=len(labels),
-            classes=labels["label"].nunique(),
-        )
+
+        # an uploaded (vs trained) model has no training params set, so coerce
+        # only when present and skip missing entries
+        def _coerce(key, cast):
+            val = ss.get(key)
+            return cast(val) if val is not None else None
+
+        params = {
+            k: v
+            for k, v in dict(
+                input_size=int(psize) if psize is not None else None,
+                epochs=_coerce("dn_max_epoch", int),
+                batch_size=_coerce("dn_batch_size", int),
+                val_split=_coerce("dn_val_split", float),
+                patches=len(labels),
+                classes=labels["label"].nunique(),
+            ).items()
+            if v is not None
+        }
 
         buf = io.BytesIO()
         with ZipFile(buf, "w", ZIP_DEFLATED) as zout:

@@ -141,8 +141,13 @@ def normalize_image(image: np.ndarray) -> np.ndarray:
 
 
 def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default_h=400):
-    """Adds a plotly figure stored in st.session_state[fig_key] as a PNG to the given zip file."""
-    fig = st.session_state[fig_key]
+    """Adds a plotly figure stored in st.session_state[fig_key] as a PNG to the given zip file.
+
+    Silently skips figures that were never created (e.g. when a model was uploaded
+    rather than trained, so no training plots exist)."""
+    fig = st.session_state.get(fig_key)
+    if fig is None:
+        return
     png = pio.to_image(
         fig,
         format="png",

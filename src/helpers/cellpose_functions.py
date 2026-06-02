@@ -597,16 +597,25 @@ def build_cellpose_zip_bytes():
         for k in ok
     )
 
-    # extract training parameters
-    params = dict(
-        base_model=ss.get("cp_base_model"),
-        epochs=int(ss.get("cp_max_epoch")),
-        learning_rate=float(ss.get("cp_learning_rate")),
-        weight_decay=float(ss.get("cp_weight_decay")),
-        batch_size=int(ss.get("cp_batch_size")),
-        images_used=len(ok),
-        masks_used=n_masks,
-    )
+    # extract training parameters; an uploaded (vs trained) model has none of
+    # these set, so coerce only when present and skip missing entries
+    def _coerce(key, cast):
+        val = ss.get(key)
+        return cast(val) if val is not None else None
+
+    params = {
+        k: v
+        for k, v in dict(
+            base_model=ss.get("cp_base_model"),
+            epochs=_coerce("cp_max_epoch", int),
+            learning_rate=_coerce("cp_learning_rate", float),
+            weight_decay=_coerce("cp_weight_decay", float),
+            batch_size=_coerce("cp_batch_size", int),
+            images_used=len(ok),
+            masks_used=n_masks,
+        ).items()
+        if v is not None
+    }
 
     # Build zip in memory
     buf = IO.BytesIO()
