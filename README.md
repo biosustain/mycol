@@ -1,5 +1,7 @@
 # **Mycol**
 
+🔗 **[Homepage](https://biosustain.github.io/mycol/)**
+
 _A lightweight, human-in-the-loop microscopy image analysis app._
 
 Mycol is a Streamlit-based application that makes machine-learning-assisted microscopy analysis accessible to non-specialists. It enables fast annotation, automated segmentation and classification, model fine-tuning, and quantitative phenotyping, all on a standard laptop and without coding.
