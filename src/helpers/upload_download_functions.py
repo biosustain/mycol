@@ -19,7 +19,11 @@ from src.helpers.classifying_functions import (
     create_colour_palette,
 )
 from src.helpers.mask_editing_functions import create_image_mask_overlay
-from src.helpers.densenet_functions import resize_with_aspect_ratio
+from src.helpers.densenet_functions import (
+    resize_with_aspect_ratio,
+    generate_cell_patch,
+    array_to_png_bytes,
+)
 
 
 from src.helpers.state_ops import (
@@ -580,18 +584,17 @@ def build_masks_images_zip(
                         if cname in (None, "", -1)
                         else str(cname).replace(" ", "_")
                     )
-                    # extract patch
-                    ys, xs = np.where(mask == iid)
-                    if ys.size == 0 or xs.size == 0:
+                    # extract patch (background blacked out, square-padded) using
+                    # the same routine as the DenseNet training pipeline so the
+                    # downloaded patches match the ones used for training
+                    if not np.any(mask == iid):
                         continue
-                    y1, y2 = ys.min(), ys.max() + 1
-                    x1, x2 = xs.min(), xs.max() + 1
-                    patch = rec["image"][y1:y2, x1:x2]
+                    patch = generate_cell_patch(
+                        image=rec["image"], mask=(mask == iid)
+                    )
                     # write patch to zip
-                    pbuf = io.BytesIO()
-                    tiff.imwrite(pbuf, patch, photometric="rgb", compression="deflate")
-                    patch_filename = f"patches/{name}_id{iid}_{cname_str}.tif"
-                    zf.writestr(patch_filename, pbuf.getvalue())
+                    patch_filename = f"patches/{name}_id{iid}_{cname_str}.png"
+                    zf.writestr(patch_filename, array_to_png_bytes(patch))
 
         if include_summary:
 
