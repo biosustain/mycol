@@ -24,6 +24,7 @@ from src.helpers.densenet_functions import (
     generate_cell_patch,
     array_to_png_bytes,
 )
+from src.helpers.cell_metrics_functions import build_per_image_counts
 
 
 from src.helpers.state_ops import (
@@ -467,17 +468,6 @@ def render_images_form():
 # --------------------------------------
 
 
-def counts_for_rec(rec) -> dict:
-    """Return dict class_name -> count for one record, using rec['labels'] mapping."""
-    labels = rec.get("labels", {}) or {}
-    # Values in labels can be strings or ints or None; normalize to str
-    by_class = {}
-    for iid, cname in labels.items():
-        cname = "No label" if cname in (None, "", -1) else str(cname)
-        by_class[cname] = by_class.get(cname, 0) + 1
-    return by_class
-
-
 def build_masks_images_zip(
     state_images,
     key_order,
@@ -501,14 +491,16 @@ def build_masks_images_zip(
         )
 
         # --- prep columns & rows for summary.csv
-        class_cols = [c for c in st.session_state["all_classes"]]
+        counts_df, class_cols = build_per_image_counts(key_order)
+        counts_by_key = {r["_key"]: r for r in counts_df.to_dict("records")}
         summary_rows = []
 
         # iterate through records
         for k in key_order:
             rec = state_images[k]
             name = Path(rec.get("name", f"{k}")).stem
-            counts = counts_for_rec(rec)
+            crow = counts_by_key.get(k, {})
+            counts = {c: int(crow.get(c, 0)) for c in class_cols}
 
             # write mask
             mask = rec.get("masks")
@@ -560,7 +552,7 @@ def build_masks_images_zip(
             # capture a row for the CSV
             row = {"image": name}
             row.update({c: int(counts.get(c, 0)) for c in class_cols})
-            row["total"] = int(sum(counts.values()))
+            row["total"] = int(crow.get("Total masks", 0))
             summary_rows.append(row)
 
             # write processed image to zip file
@@ -589,9 +581,7 @@ def build_masks_images_zip(
                     # downloaded patches match the ones used for training
                     if not np.any(mask == iid):
                         continue
-                    patch = generate_cell_patch(
-                        image=rec["image"], mask=(mask == iid)
-                    )
+                    patch = generate_cell_patch(image=rec["image"], mask=(mask == iid))
                     # write patch to zip
                     patch_filename = f"patches/{name}_id{iid}_{cname_str}.png"
                     zf.writestr(patch_filename, array_to_png_bytes(patch))

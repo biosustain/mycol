@@ -1,11 +1,11 @@
 # panels/cell_metrics_panel.py
-import numpy as np
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from src.helpers.cell_metrics_functions import (
     build_analysis_df,
+    build_per_image_counts,
     plot_violin,
     plot_bar,
 )
@@ -18,31 +18,7 @@ def ui_image_selection_container() -> list[str]:
     Returns a list of selected image names."""
     keys = ordered_keys()
 
-    # Collect all label groups across all images
-    all_labels: set[str] = set()
-    for k in keys:
-        rec = st.session_state["images"][k]
-        for cls in (rec.get("labels") or {}).values():
-            all_labels.add("Unlabelled" if cls in (None, "No label") else cls)
-    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
-
-    rows = []
-    for k in keys:
-        rec = st.session_state["images"][k]
-        masks = rec.get("masks")
-        n_masks = int(masks.max()) if masks is not None and np.any(masks) else 0
-        label_dict = rec.get("labels") or {}
-        counts: dict[str, int] = {lab: 0 for lab in sorted_labels}
-        for cls in label_dict.values():
-            lab = "Unlabelled" if cls in (None, "No label") else cls
-            counts[lab] = counts.get(lab, 0) + 1
-        # masks with no entry in label_dict are unlabelled
-        counts["Unlabelled"] = counts.get("Unlabelled", 0) + (n_masks - len(label_dict))
-        row = {"_key": k, "Image": rec["name"], "Total masks": n_masks}
-        row.update(counts)
-        rows.append(row)
-
-    opt = pd.DataFrame(rows)
+    opt, sorted_labels = build_per_image_counts(keys)
     ids = opt["_key"].tolist()
 
     sel = st.session_state.setdefault("cell_metrics_image_sel", {})

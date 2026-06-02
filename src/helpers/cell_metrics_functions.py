@@ -390,6 +390,44 @@ def apply_pixel_scaling(df: pd.DataFrame, pixel_size) -> pd.DataFrame:
     return df
 
 
+def build_per_image_counts(keys=None):
+    """Per-image cell counts grouped by class label.
+
+    Single source of truth for per-image counts, shared by the Cell Metrics
+    table and the download summary. Returns
+    ``(DataFrame, sorted_labels)`` where the frame has columns
+    ``_key, Image, Total masks`` followed by one column per label.
+    """
+    if keys is None:
+        keys = ordered_keys()
+
+    # Collect all label groups across all images
+    all_labels: set[str] = set()
+    for k in keys:
+        rec = st.session_state["images"][k]
+        for cls in (rec.get("labels") or {}).values():
+            all_labels.add("Unlabelled" if cls in (None, "No label") else cls)
+    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
+
+    rows = []
+    for k in keys:
+        rec = st.session_state["images"][k]
+        masks = rec.get("masks")
+        n_masks = int(masks.max()) if masks is not None and np.any(masks) else 0
+        label_dict = rec.get("labels") or {}
+        counts: dict[str, int] = {lab: 0 for lab in sorted_labels}
+        for cls in label_dict.values():
+            lab = "Unlabelled" if cls in (None, "No label") else cls
+            counts[lab] = counts.get(lab, 0) + 1
+        # masks with no entry in label_dict are unlabelled
+        counts["Unlabelled"] = counts.get("Unlabelled", 0) + (n_masks - len(label_dict))
+        row = {"_key": k, "Image": rec["name"], "Total masks": n_masks}
+        row.update(counts)
+        rows.append(row)
+
+    return pd.DataFrame(rows), sorted_labels
+
+
 # --- FUNCTIONS FOR DOWNLOADING CLASS CHARACTERISTICS PLOTS
 
 
