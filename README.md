@@ -50,7 +50,7 @@ Mycol is a Streamlit-based application that makes machine-learning-assisted micr
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/sambra95/mycol.git
+git clone https://github.com/biosustain/mycol.git
 ```
 
 **2. Navigate into the repository in your terminal**
