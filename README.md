@@ -1,6 +1,6 @@
 # **Mycol**
 
-🔗 **[Homepage](https://biosustain.github.io/mycol/)**
+**[Homepage](https://biosustain.github.io/mycol/)**
 
 _A lightweight, human-in-the-loop microscopy image analysis app._
 
