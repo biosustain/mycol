@@ -152,7 +152,9 @@ def build_session_zip(images, ok) -> bytes:
 
         zf.writestr(
             "cell_metrics.csv",
-            build_cell_metrics_csv(tuple(ss.get("analysis_labels") or ())),
+            # session snapshot: persist ALL masks/labels, ignoring the Cell
+            # Metrics comparison filter (otherwise excluded labels are lost on restore)
+            build_cell_metrics_csv(()),
         )
 
         for fig_key, filename in [
