@@ -1,0 +1,6 @@
+base = "light"
+primaryColor = "#5A8871"  # sage accent (buttons, sliders, highlights)
+backgroundColor = "#F7F7F4"  # main background (soft off-white)
+secondaryBackgroundColor = "#EFEFE9"  # sidebar/cards background (warm grey)
+textColor = "#21312A"  # deep greenish text
+font = "sans serif"
