@@ -42,8 +42,13 @@ def render_segment_sidebar(*, key_ns: str = "side"):
             type="primary",
         ):
 
+            model_options = ["Cyto3", "Cyto2", "Fine-tuned Model"]
+            finetuned_available = st.session_state["cellpose_model_bytes"] is not None
+            default_index = (
+                model_options.index("Fine-tuned Model") if finetuned_available else 0
+            )
             model_family = st.selectbox(
-                "Select model", ["Cyto3", "Cyto2", "Fine-tuned Model"]
+                "Select model", model_options, index=default_index
             )
 
             model_type_map = {"Cyto3": "cyto3", "Cyto2": "cyto2", "Fine-tuned Model": None}
