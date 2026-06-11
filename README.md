@@ -32,7 +32,7 @@ This is where your analysis begins. Upload the key files Mycol will use in later
 Once uploaded, a **summary table** shows which images have masks linked, how many cells are highlighted in each image, and any models you've provided.
 
 <p align="center">
-  <img src="docs/upload_demo.gif" alt="Upload demo" width="600" />
+  <img src="docs/upload_demo.gif" alt="Upload demo" width="450" />
 </p>
 
 ---
@@ -49,15 +49,15 @@ The central workspace where annotated datasets are produced. Here you can:
 Once ready, download your dataset (including images, masks and tabulated cell counts) or move on to phenotypic comparison or training new models.
 
 <p align="center">
-  <img src="docs/demo0.gif" alt="Annotation demo 1" width="600" />
+  <img src="docs/demo0.gif" alt="Annotation demo 1" width="450" />
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Annotation demo 2" width="600" />
+  <img src="docs/demo.gif" alt="Annotation demo 2" width="450" />
 </p>
 
 <p align="center">
-  <img src="docs/demo2.gif" alt="Annotation demo 3" width="600" />
+  <img src="docs/demo2.gif" alt="Annotation demo 3" width="450" />
 </p>
 
 ---
@@ -74,15 +74,15 @@ Sensible default parameters are provided, but you can also run **hyperparameter 
 After training, performance plots show training progress, accuracy, loss, and validation metrics. Trained models can be **used immediately** in the annotation page or **downloaded** for reuse.
 
 <p align="center">
-  <img src="docs/training_demo1.gif" alt="Training demo 1" width="600" />
+  <img src="docs/training_demo1.gif" alt="Training demo 1" width="450" />
 </p>
 
 <p align="center">
-  <img src="docs/training_demo2.gif" alt="Training demo 2" width="600" />
+  <img src="docs/training_demo2.gif" alt="Training demo 2" width="450" />
 </p>
 
 <p align="center">
-  <img src="docs/training_demo3.gif" alt="Training demo 3" width="600" />
+  <img src="docs/training_demo3.gif" alt="Training demo 3" width="450" />
 </p>
 
 ---
@@ -100,7 +100,7 @@ Select which classes and characteristics to include, and Mycol generates plots t
 Downloadable results include **cell counts per class**, **descriptive statistics**, and **publication-ready plots**.
 
 <p align="center">
-  <img src="docs/analyze_demo.gif" alt="Analysis demo" width="600" />
+  <img src="docs/analyze_demo.gif" alt="Analysis demo" width="450" />
 </p>
 
 ---
