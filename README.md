@@ -31,7 +31,9 @@ This is where your analysis begins. Upload the key files Mycol will use in later
 
 Once uploaded, a **summary table** shows which images have masks linked, how many cells are highlighted in each image, and any models you've provided.
 
-https://github.com/user-attachments/assets/e4d01651-d145-40f5-9ee7-10a18f19a536
+<p align="center">
+  <img src="docs/upload_demo.gif" alt="Upload demo" width="100%" />
+</p>
 
 ---
 
@@ -46,11 +48,17 @@ The central workspace where annotated datasets are produced. Here you can:
 
 Once ready, download your dataset (including images, masks and tabulated cell counts) or move on to phenotypic comparison or training new models.
 
-https://github.com/user-attachments/assets/b9125bf1-2d30-4e51-877c-39420d03f4d2
+<p align="center">
+  <img src="docs/demo0.gif" alt="Annotation demo 1" width="100%" />
+</p>
 
-https://github.com/user-attachments/assets/d34d0831-6cd9-4e3d-8c63-8cbfb465af83
+<p align="center">
+  <img src="docs/demo.gif" alt="Annotation demo 2" width="100%" />
+</p>
 
-https://github.com/user-attachments/assets/cf458f7d-d5c1-4af4-be3a-46b1465bbdce
+<p align="center">
+  <img src="docs/demo2.gif" alt="Annotation demo 3" width="100%" />
+</p>
 
 ---
 
@@ -65,11 +73,17 @@ Sensible default parameters are provided, but you can also run **hyperparameter 
 
 After training, performance plots show training progress, accuracy, loss, and validation metrics. Trained models can be **used immediately** in the annotation page or **downloaded** for reuse.
 
-https://github.com/user-attachments/assets/a9323399-e613-4125-81d3-129b8b75c44d
+<p align="center">
+  <img src="docs/training_demo1.gif" alt="Training demo 1" width="100%" />
+</p>
 
-https://github.com/user-attachments/assets/d8d433ab-1bc6-4099-944e-2e62424f7633
+<p align="center">
+  <img src="docs/training_demo2.gif" alt="Training demo 2" width="100%" />
+</p>
 
-https://github.com/user-attachments/assets/3c7197b6-b717-4f2e-9353-9348f8ac7696
+<p align="center">
+  <img src="docs/training_demo3.gif" alt="Training demo 3" width="100%" />
+</p>
 
 ---
 
@@ -85,7 +99,9 @@ Select which classes and characteristics to include, and Mycol generates plots t
 
 Downloadable results include **cell counts per class**, **descriptive statistics**, and **publication-ready plots**.
 
-https://github.com/user-attachments/assets/9bebbe84-0f84-4709-826b-525e20e0f1aa
+<p align="center">
+  <img src="docs/analyze_demo.gif" alt="Analysis demo" width="100%" />
+</p>
 
 ---
 
