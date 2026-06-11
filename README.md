@@ -154,7 +154,7 @@ Downloadable results include **cell counts per class**, **descriptive statistics
 <tr>
 <td width="38%" valign="middle">
 
-**Assess** the performance of your fine-tuned models using interactive graphics.
+**Visualize and compare** the morphologies of identified cell populations through interactive graphs.
 
 </td>
 <td width="62%">
