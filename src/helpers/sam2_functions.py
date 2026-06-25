@@ -200,6 +200,14 @@ def _clear_boxes(rec: dict):
     rec["boxes_display"] = []
 
 
+def _remove_last_box(rec: dict):
+    """Remove the most recently drawn box (UI + original coords)."""
+    if rec.get("boxes"):
+        rec["boxes"].pop()
+    if rec.get("boxes_display"):
+        rec["boxes_display"].pop()
+
+
 @st.fragment
 def box_draw_fragment(bg_img, disp_w, disp_h, chart_key: str, rec: dict):
     """Render the Plotly chart for 'Draw box' mode, with box selection handling."""

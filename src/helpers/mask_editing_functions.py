@@ -16,6 +16,7 @@ from src.helpers.state_ops import normalize_image
 from src.helpers.sam2_functions import (
     segment_with_sam2,
     _clear_boxes,
+    _remove_last_box,
     box_draw_fragment,
     integrate_new_mask,
 )
@@ -542,8 +543,17 @@ def render_box_tools_fragment(key_ns="side"):
     ):
         st.session_state["interaction_mode"] = "Draw box"
         st.rerun()
-    # button to clear all boxes from the current image
+    # button to remove only the last drawn box from the current image
     if c2.button(
+        "Remove last box",
+        width="stretch",
+        key="remove_last_box_button",
+        help="Remove the most recently drawn box",
+    ):
+        _remove_last_box(rec)
+
+    # button to clear all boxes from the current image
+    if st.button(
         "Clear boxes",
         width="stretch",
         key="clear_boxes_button",
