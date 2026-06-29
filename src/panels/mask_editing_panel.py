@@ -94,11 +94,11 @@ def render_segment_sidebar(*, key_ns: str = "side"):
         ):
             render_box_tools_fragment(key_ns)
 
-        # render manual mask drawing controls (Freehand / Circle)
+        # render manual mask drawing controls (Freehand / Ellipse)
         with st.popover(
             "Manually draw masks",
             width="stretch",
-            help="Manually draw masks freehand or as circles.",
+            help="Manually draw masks freehand or as ellipses.",
             type="primary",
         ):
             render_draw_mask_tools_fragment(key_ns)

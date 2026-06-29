@@ -167,7 +167,7 @@ def create_image_display(rec, max_display_width=768):
 def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
     """
     Create a Plotly figure with a background image and fixed pixel size.
-    Used by the box, freehand and circle drawing modes.
+    Used by the box, freehand and ellipse drawing modes.
     """
 
     # build figure with background image
@@ -288,14 +288,14 @@ def _handle_draw_mask_mode(
     )
 
 
-def _handle_draw_circle_mode(
+def _handle_draw_ellipse_mode(
     rec: Record,
     display_for_ui: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
 ) -> None:
-    """Handle interactions when in 'Circle' mask drawing mode.
+    """Handle interactions when in 'Ellipse' mask drawing mode.
 
     The user drags a box around a colony; the bounding box is filled with an
     ellipse (a circle when the drag is square). The shape is committed the
@@ -308,10 +308,10 @@ def _handle_draw_circle_mode(
 
     # unique key per image so Streamlit doesn't reuse chart state incorrectly
     img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_circle_{img_hash}"
+    chart_key = f"{key_ns}_plotly_ellipse_{img_hash}"
 
     # callback to turn each box-drag into a filled ellipse
-    def add_circle() -> None:
+    def add_ellipse() -> None:
         event = st.session_state.get(chart_key)
         sel = getattr(event, "selection", None)
         for b in getattr(sel, "box", None) or []:
@@ -330,7 +330,7 @@ def _handle_draw_circle_mode(
     st.plotly_chart(
         fig,
         key=chart_key,
-        on_select=add_circle,
+        on_select=add_ellipse,
         selection_mode="box",
         use_container_width=False,
         config={
@@ -636,7 +636,7 @@ def render_box_tools_fragment(key_ns="side"):
 
 
 def render_draw_mask_tools_fragment(key_ns="side"):
-    """Render the manual mask drawing mode options (Freehand / Circle)."""
+    """Render the manual mask drawing mode options (Freehand / Ellipse)."""
 
     c1, c2 = st.columns([1, 1])
 
@@ -650,14 +650,14 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         st.session_state["interaction_mode"] = "Freehand"
         st.rerun()
 
-    # button to set mode to circle/ellipse mask drawing
+    # button to set mode to ellipse mask drawing
     if c2.button(
         "Ellipse",
         width="stretch",
-        key=f"{key_ns}_draw_circle",
+        key=f"{key_ns}_draw_ellipse",
         help="Drag a box around a colony to fill it with a rough ellipse",
     ):
-        st.session_state["interaction_mode"] = "Circle"
+        st.session_state["interaction_mode"] = "Ellipse"
         st.rerun()
 
 
@@ -745,8 +745,8 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
             disp_h=disp_h,
             key_ns=key_ns,
         )
-    elif mode == "Circle":
-        _handle_draw_circle_mode(
+    elif mode == "Ellipse":
+        _handle_draw_ellipse_mode(
             rec=rec,
             display_for_ui=display_for_ui,
             disp_w=disp_w,
