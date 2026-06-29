@@ -545,7 +545,7 @@ def render_box_tools_fragment(key_ns="side"):
         st.rerun()
     # button to remove only the last drawn box from the current image
     if c2.button(
-        "Remove last box",
+        "Undo draw",
         width="stretch",
         key="remove_last_box_button",
         help="Remove the most recently drawn box",
