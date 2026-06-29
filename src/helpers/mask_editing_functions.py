@@ -167,7 +167,7 @@ def create_image_display(rec, max_display_width=768):
 def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
     """
     Create a Plotly figure with a background image and fixed pixel size.
-    Used by both 'Draw box' and 'Draw mask' modes.
+    Used by the box, freehand and circle drawing modes.
     """
 
     # build figure with background image
@@ -205,6 +205,20 @@ def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Fig
     return fig
 
 
+def _commit_display_mask(rec: Record, mask_disp: MaskArray) -> None:
+    """Resize a display-space bool mask to image resolution and integrate it."""
+    mask_full = np.array(
+        Image.fromarray(mask_disp.astype(np.uint8)).resize(
+            (rec["W"], rec["H"]), Image.NEAREST
+        ),
+        dtype=bool,
+    )
+    inst, new_id = integrate_new_mask(rec["masks"], mask_full)
+    if new_id is not None:
+        rec["masks"] = inst
+        rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(int(new_id), None)
+
+
 def _handle_draw_mask_mode(
     rec: Record,
     display_for_ui: ImageArray,
@@ -212,7 +226,7 @@ def _handle_draw_mask_mode(
     disp_h: int,
     key_ns: str,
 ) -> None:
-    """Handle interactions when in 'Draw mask' mode."""
+    """Handle interactions when in 'Freehand' mask drawing mode."""
 
     # background image for plotting
     bg = Image.fromarray(display_for_ui).convert("RGBA")
@@ -252,24 +266,9 @@ def _handle_draw_mask_mode(
                 xs_disp = xs_plot
                 ys_disp = [disp_h - y for y in ys_plot]
 
-                # 1) polygon (display space) -> mask in display resolution
+                # polygon (display space) -> mask, then integrate into rec["masks"]
                 mask_disp = polygon_xy_to_mask(xs_disp, ys_disp, disp_h, disp_w)
-
-                # 2) resize to ORIGINAL image resolution
-                mask_full = np.array(
-                    Image.fromarray(mask_disp.astype(np.uint8)).resize(
-                        (rec["W"], rec["H"]), Image.NEAREST
-                    ),
-                    dtype=bool,
-                )
-
-                # 3) integrate into rec["masks"]
-                inst, new_id = integrate_new_mask(rec["masks"], mask_full)
-                if new_id is not None:
-                    rec["masks"] = inst
-                    rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(
-                        int(new_id), None
-                    )
+                _commit_display_mask(rec, mask_disp)
 
     # Build figure using the shared helper: same size as box mode
     fig = _make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
@@ -285,6 +284,59 @@ def _handle_draw_mask_mode(
             "scrollZoom": True,
             "displaylogo": False,
             "modeBarButtonsToAdd": ["lasso2d", "select2d", "zoom2d", "pan2d"],
+        },
+    )
+
+
+def _handle_draw_circle_mode(
+    rec: Record,
+    display_for_ui: ImageArray,
+    disp_w: int,
+    disp_h: int,
+    key_ns: str,
+) -> None:
+    """Handle interactions when in 'Circle' mask drawing mode.
+
+    The user drags a box around a colony; the bounding box is filled with an
+    ellipse (a circle when the drag is square). The shape is committed the
+    moment the drag ends, so its position and size match exactly what was
+    dragged with no follow-up adjustment.
+    """
+
+    # background image for plotting
+    bg = Image.fromarray(display_for_ui).convert("RGBA")
+
+    # unique key per image so Streamlit doesn't reuse chart state incorrectly
+    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
+    chart_key = f"{key_ns}_plotly_circle_{img_hash}"
+
+    # callback to turn each box-drag into a filled ellipse
+    def add_circle() -> None:
+        event = st.session_state.get(chart_key)
+        sel = getattr(event, "selection", None)
+        for b in getattr(sel, "box", None) or []:
+            x0, x1 = sorted(map(float, b["x"]))
+            y0, y1 = sorted(map(float, b["y"]))
+            if x1 <= x0 or y1 <= y0:  # ignore zero-size drags
+                continue
+            # Plotly y (0 at bottom) -> display y (0 at top), then integrate
+            mask_disp = ellipse_box_to_mask(x0, disp_h - y1, x1, disp_h - y0, disp_h, disp_w)
+            _commit_display_mask(rec, mask_disp)
+
+    # Build figure using the shared helper: same size as box mode
+    fig = _make_base_figure(bg, disp_w, disp_h, dragmode="select")
+
+    # render the plotly chart with box selection
+    st.plotly_chart(
+        fig,
+        key=chart_key,
+        on_select=add_circle,
+        selection_mode="box",
+        use_container_width=False,
+        config={
+            "scrollZoom": True,
+            "displaylogo": False,
+            "modeBarButtonsToAdd": ["select2d", "zoom2d", "pan2d"],
         },
     )
 
@@ -344,6 +396,13 @@ def polygon_xy_to_mask(xs, ys, height, width):
     img = Image.new("L", (width, height), 0)
     xy = list(zip(xs, ys))
     ImageDraw.Draw(img).polygon(xy, outline=1, fill=1)
+    return np.array(img, dtype=bool)
+
+
+def ellipse_box_to_mask(x0, y0, x1, y1, height, width):
+    """Rasterize a filled ellipse inscribed in the (x0,y0,x1,y1) bounding box."""
+    img = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(img).ellipse([x0, y0, x1, y1], outline=1, fill=1)
     return np.array(img, dtype=bool)
 
 
@@ -576,26 +635,40 @@ def render_box_tools_fragment(key_ns="side"):
         st.rerun()
 
 
+def render_draw_mask_tools_fragment(key_ns="side"):
+    """Render the manual mask drawing mode options (Freehand / Circle)."""
+
+    c1, c2 = st.columns([1, 1])
+
+    # button to set mode to freehand (lasso) mask drawing
+    if c1.button(
+        "Freehand",
+        width="stretch",
+        key=f"{key_ns}_draw_masks",
+        help="Click and hold to draw a freehand mask",
+    ):
+        st.session_state["interaction_mode"] = "Freehand"
+        st.rerun()
+
+    # button to set mode to circle/ellipse mask drawing
+    if c2.button(
+        "Ellipse",
+        width="stretch",
+        key=f"{key_ns}_draw_circle",
+        help="Drag a box around a colony to fill it with a rough ellipse",
+    ):
+        st.session_state["interaction_mode"] = "Circle"
+        st.rerun()
+
+
 def render_mask_tools_fragment(key_ns="side"):
-    """Render manual mask drawing and removal button control fragment."""
+    """Render manual mask removal/clear button control fragment."""
 
     # get current record
     rec = get_current_rec()
-    row = st.container()
-    c1, c2 = row.columns([1, 1])
-
-    # button to set mode to draw masks on the image
-    if c1.button(
-        "Draw mask",
-        width="stretch",
-        key=f"{key_ns}_draw_masks",
-        help="Click and hold to draw masks",
-    ):
-        st.session_state["interaction_mode"] = "Draw mask"
-        st.rerun()
 
     # button to set mode to remove masks by clicking on them
-    if c2.button(
+    if st.button(
         "Remove mask",
         width="stretch",
         key=f"{key_ns}_remove_masks",
@@ -664,8 +737,16 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)
     mode = st.session_state.get("interaction_mode", "Draw box")  # default to draw box
-    if mode == "Draw mask":
+    if mode == "Freehand":
         _handle_draw_mask_mode(
+            rec=rec,
+            display_for_ui=display_for_ui,
+            disp_w=disp_w,
+            disp_h=disp_h,
+            key_ns=key_ns,
+        )
+    elif mode == "Circle":
+        _handle_draw_circle_mode(
             rec=rec,
             display_for_ui=display_for_ui,
             disp_w=disp_w,

@@ -5,6 +5,7 @@ from src.helpers.state_ops import ordered_keys
 from src.helpers.mask_editing_functions import (
     render_cellpose_hyperparameters_fragment,
     render_box_tools_fragment,
+    render_draw_mask_tools_fragment,
     render_mask_tools_fragment,
     render_display_and_interact_fragment,
 )
@@ -36,7 +37,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 
         # render cellpose controls
         with st.popover(
-            "Predict masks for image",
+            "Predict masks with Cellpose",
             width="stretch",
             help="Segment cells using the loaded Cellpose model.",
             type="primary",
@@ -86,12 +87,21 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 
         # render SAM2 controls
         with st.popover(
-            "Predict masks from boxes",
+            "Predict masks with boxes",
             width="stretch",
             help="Draw boxes and click segment to use SAM2 to segment individual cells.",
             type="primary",
         ):
             render_box_tools_fragment(key_ns)
+
+        # render manual mask drawing controls (Freehand / Circle)
+        with st.popover(
+            "Manually draw masks",
+            width="stretch",
+            help="Manually draw masks freehand or as circles.",
+            type="primary",
+        ):
+            render_draw_mask_tools_fragment(key_ns)
 
         # section for selecting tools for directly adding/removing masks
         render_mask_tools_fragment(key_ns)

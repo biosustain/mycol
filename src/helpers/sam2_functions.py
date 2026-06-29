@@ -70,7 +70,7 @@ def integrate_new_mask(original: np.ndarray, new_binary: np.ndarray):
 def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
     """
     Create a Plotly figure with a background image and fixed pixel size.
-    Used by both 'Draw box' and 'Draw mask' modes.
+    Used by the box, freehand and circle drawing modes.
     """
     fig = go.Figure()
     # add background image
