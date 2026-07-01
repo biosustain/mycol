@@ -96,7 +96,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
 
         # render manual mask drawing controls (Freehand / Ellipse)
         with st.popover(
-            "Manually draw masks",
+            "Manually edit masks",
             width="stretch",
             help="Manually draw masks freehand or as ellipses.",
             type="primary",
