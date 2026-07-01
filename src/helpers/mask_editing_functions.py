@@ -204,14 +204,8 @@ def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Fig
     return fig
 
 
-def _commit_display_mask(rec: Record, mask_disp: MaskArray) -> None:
-    """Resize a display-space bool mask to image resolution and integrate it."""
-    mask_full = np.array(
-        Image.fromarray(mask_disp.astype(np.uint8)).resize(
-            (rec["W"], rec["H"]), Image.NEAREST
-        ),
-        dtype=bool,
-    )
+def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
+    """Integrate a full-resolution bool mask into rec['masks']."""
     inst, new_id = integrate_new_mask(rec["masks"], mask_full)
     if new_id is not None:
         rec["masks"] = inst
@@ -278,8 +272,8 @@ def _handle_draw_mask_mode(
     """Handle interactions when in 'Freehand' mask drawing mode."""
 
     def draw(xs, ys) -> None:
-        mask_disp = polygon_xy_to_mask(xs, ys, disp_h, disp_w)
-        _commit_display_mask(rec, mask_disp)
+        mask_full = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        _commit_mask(rec, mask_full)
 
     _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "mask", draw)
 
@@ -315,9 +309,12 @@ def _handle_draw_ellipse_mode(
             y0, y1 = sorted(map(float, b["y"]))
             if x1 <= x0 or y1 <= y0:  # ignore zero-size drags
                 continue
-            # Plotly y (0 at bottom) -> display y (0 at top), then integrate
-            mask_disp = ellipse_box_to_mask(x0, disp_h - y1, x1, disp_h - y0, disp_h, disp_w)
-            _commit_display_mask(rec, mask_disp)
+            # display box -> full-res box (Plotly y 0 at bottom -> display y 0 at top)
+            sx, sy = rec["W"] / disp_w, rec["H"] / disp_h
+            mask_full = ellipse_box_to_mask(
+                x0 * sx, (disp_h - y1) * sy, x1 * sx, (disp_h - y0) * sy, rec["H"], rec["W"]
+            )
+            _commit_mask(rec, mask_full)
 
     # Build figure using the shared helper: same size as box mode
     fig = _make_base_figure(bg, disp_w, disp_h, dragmode="select")
@@ -418,7 +415,7 @@ def _handle_merge_mask_mode(
     """
 
     def merge(xs, ys) -> None:
-        region = polygon_xy_to_selection(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        region = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
         merge_in_lasso(rec, region)
 
     _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "merge", merge)
@@ -456,8 +453,8 @@ def polyline_xy_to_barrier(xs, ys, disp_w, disp_h, width, height):
     return np.array(img, dtype=bool)
 
 
-def polygon_xy_to_selection(xs, ys, disp_w, disp_h, width, height):
-    """Rasterize a display-space lasso polygon into a filled (height,width) bool mask."""
+def polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, width, height):
+    """Rasterize a display-space polygon into a filled full-res (height,width) bool mask."""
     sx, sy = width / disp_w, height / disp_h
     return polygon_xy_to_mask([x * sx for x in xs], [y * sy for y in ys], height, width)
 
