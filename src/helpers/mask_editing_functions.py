@@ -472,8 +472,6 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
     m = rec["masks"]
     touched = np.unique(m[barrier])
     touched = touched[touched != 0]
-    if touched.size == 0:
-        return
 
     struct = np.ones((3, 3), dtype=bool)  # 8-connectivity
     labels = rec.setdefault("labels", {})
@@ -514,7 +512,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
 
     if changed:
         rec["masks"] = out
-        st.toast(f"Split {split_n} mask{'s' if split_n != 1 else ''}.")
+    st.toast(f"Split {split_n} mask{'s' if split_n != 1 else ''}.")
 
 
 def remove_clicked():
@@ -577,33 +575,32 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
     inside = set(np.unique(m[region])) - {0}
     outside = set(np.unique(m[~region]))
     selected = inside - outside  # masks lying completely within the selection
-    if len(selected) < 2:
-        return
 
-    # group selected masks by contact: touching masks share a connected component
-    picked = np.isin(m, np.fromiter(selected, dtype=m.dtype))
-    comp, n = ndi.label(picked, structure=np.ones((3, 3), dtype=bool))
-
-    out = m.copy()
     merged_n = 0  # how many masks were combined
     groups = 0  # how many merged masks they became
-    for c in range(1, n + 1):
-        cm = comp == c
-        ids = np.unique(m[cm])
-        if ids.size > 1:  # >=2 selected masks touch here -> merge them
-            out[cm] = ids.min()
-            merged_n += int(ids.size)
-            groups += 1
-    if not merged_n:
-        return
+    if len(selected) >= 2:
+        # group selected masks by contact: touching masks share a connected component
+        picked = np.isin(m, np.fromiter(selected, dtype=m.dtype))
+        comp, n = ndi.label(picked, structure=np.ones((3, 3), dtype=bool))
 
-    # compact ids to a contiguous range and remap labels to match
-    uniq, inv = np.unique(out, return_inverse=True)
-    rec["masks"] = inv.reshape(m.shape).astype(m.dtype)
-    remap = {int(old): new for new, old in enumerate(uniq)}
-    rec["labels"] = {
-        remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
-    }
+        out = m.copy()
+        for c in range(1, n + 1):
+            cm = comp == c
+            ids = np.unique(m[cm])
+            if ids.size > 1:  # >=2 selected masks touch here -> merge them
+                out[cm] = ids.min()
+                merged_n += int(ids.size)
+                groups += 1
+
+        if merged_n:
+            # compact ids to a contiguous range and remap labels to match
+            uniq, inv = np.unique(out, return_inverse=True)
+            rec["masks"] = inv.reshape(m.shape).astype(m.dtype)
+            remap = {int(old): new for new, old in enumerate(uniq)}
+            rec["labels"] = {
+                remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
+            }
+
     st.toast(f"Merged {merged_n} masks in {groups}.")
 
 
