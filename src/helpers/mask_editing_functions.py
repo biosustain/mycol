@@ -341,7 +341,7 @@ def _handle_cut_mask_mode(
     disp_h: int,
     key_ns: str,
 ) -> None:
-    """Handle interactions when in 'Cut mask' mode.
+    """Handle interactions when in 'Split masks' mode.
 
     The user clicks and drags to draw a freehand line; any mask the line passes
     all the way through is split into separate masks along that line.
@@ -813,12 +813,12 @@ def render_draw_mask_tools_fragment(key_ns="side"):
 
     # button to set mode to cutting masks with a drawn line
     if c3.button(
-        "Split mask",
+        "Split masks",
         width="stretch",
         key=f"{key_ns}_cut_mask",
         help="Click and drag a line all the way through a mask to split it in two",
     ):
-        st.session_state["interaction_mode"] = "Cut mask"
+        st.session_state["interaction_mode"] = "Split masks"
         st.rerun()
 
     # button to set mode to merging two touching masks
@@ -924,7 +924,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
             disp_h=disp_h,
             key_ns=key_ns,
         )
-    elif mode == "Cut mask":
+    elif mode == "Split masks":
         _handle_cut_mask_mode(
             rec=rec,
             display_for_ui=display_for_ui,
