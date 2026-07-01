@@ -6,6 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 from PIL import Image, ImageDraw
+from scipy import ndimage as ndi
 
 from src.helpers.state_ops import get_current_rec
 from src.helpers.classifying_functions import (
@@ -341,6 +342,64 @@ def _handle_draw_ellipse_mode(
     )
 
 
+def _handle_cut_mask_mode(
+    rec: Record,
+    display_for_ui: ImageArray,
+    disp_w: int,
+    disp_h: int,
+    key_ns: str,
+) -> None:
+    """Handle interactions when in 'Cut mask' mode.
+
+    The user clicks and drags to draw a freehand line; any mask the line passes
+    all the way through is split into separate masks along that line.
+    """
+
+    # background image for plotting
+    bg = Image.fromarray(display_for_ui).convert("RGBA")
+
+    # unique key per image so Streamlit doesn't reuse chart state incorrectly
+    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
+    chart_key = f"{key_ns}_plotly_cut_{img_hash}"
+
+    # callback to turn each drawn stroke into a cut
+    def apply_cut() -> None:
+        event = st.session_state.get(chart_key)
+        sel = getattr(event, "selection", None)
+        for l in getattr(sel, "lasso", None) or []:
+            # Plotly coords (0 at bottom) -> display coords (0 at top)
+            xs = l["x"]
+            ys = [disp_h - y for y in l["y"]]
+            barrier = polyline_xy_to_barrier(
+                xs, ys, disp_w, disp_h, rec["W"], rec["H"]
+            )
+            cut_masks_along_barrier(rec, barrier)
+
+    # Build figure using the shared helper: same size as freehand mode
+    fig = _make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
+
+    # show only the drawn line: strip the shaded fill from the lasso selection so
+    # it reads as a cut line rather than a closed shape
+    fig.update_layout(
+        newselection=dict(line=dict(color="red", width=1)),
+        activeselection=dict(fillcolor="rgba(0,0,0,0)"),
+    )
+
+    # render the plotly chart with lasso (freehand line) selection
+    st.plotly_chart(
+        fig,
+        key=chart_key,
+        on_select=apply_cut,
+        selection_mode="lasso",
+        use_container_width=False,
+        config={
+            "scrollZoom": True,
+            "displaylogo": False,
+            "modeBarButtonsToAdd": ["lasso2d", "zoom2d", "pan2d"],
+        },
+    )
+
+
 def _handle_draw_box_mode(
     rec: Record,
     display_for_ui: ImageArray,
@@ -404,6 +463,73 @@ def ellipse_box_to_mask(x0, y0, x1, y1, height, width):
     img = Image.new("L", (width, height), 0)
     ImageDraw.Draw(img).ellipse([x0, y0, x1, y1], outline=1, fill=1)
     return np.array(img, dtype=bool)
+
+
+def polyline_xy_to_barrier(xs, ys, disp_w, disp_h, width, height):
+    """Rasterize a display-space freehand line into a thin (height,width) bool barrier."""
+    sx, sy = width / disp_w, height / disp_h
+    pts = [(x * sx, y * sy) for x, y in zip(xs, ys)]
+    img = Image.new("L", (width, height), 0)
+    if len(pts) >= 2:
+        # scale line thickness with resolution so the cut always separates regions
+        thickness = max(3, round(3 * width / disp_w))
+        ImageDraw.Draw(img).line(pts, fill=1, width=thickness)
+    return np.array(img, dtype=bool)
+
+
+def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
+    """Split any mask that the barrier line fully dissects into separate masks.
+
+    For each instance the barrier touches, the barrier pixels are removed and the
+    remainder relabelled: only if this yields >=2 connected components did the line
+    pass all the way through, so those instances are split (each new piece inherits
+    the original class). Barrier pixels are then reassigned to their nearest piece so
+    the resulting masks touch with no gap. Partially-crossed masks stay a single
+    component and are left untouched.
+    """
+    m = rec["masks"]
+    touched = np.unique(m[barrier])
+    touched = touched[touched != 0]
+    if touched.size == 0:
+        return
+
+    struct = np.ones((3, 3), dtype=bool)  # 8-connectivity
+    labels = rec.setdefault("labels", {})
+    out = m
+    next_id = int(m.max())
+    changed = False
+
+    for iid in map(int, touched):
+        # work within the instance's bounding box for efficiency
+        ys, xs = np.where(m == iid)
+        y0, y1 = ys.min(), ys.max() + 1
+        x0, x1 = xs.min(), xs.max() + 1
+        full = m[y0:y1, x0:x1] == iid
+        pieces, n = ndi.label(full & ~barrier[y0:y1, x0:x1], structure=struct)
+        if n < 2:
+            continue  # line does not fully dissect this mask -> leave intact
+
+        if not changed:
+            out = m.copy()
+            changed = True
+        if next_id + (n - 1) > np.iinfo(out.dtype).max:
+            out = out.astype(np.uint32)
+
+        # assign every pixel (incl. barrier) to its nearest piece so masks abut
+        nearest = ndi.distance_transform_edt(
+            pieces == 0, return_indices=True, return_distances=False
+        )
+        filled = pieces[tuple(nearest)]
+        sub = out[y0:y1, x0:x1]
+        # piece 1 already keeps iid (out is a copy of m); only relabel the rest
+        for k in range(2, n + 1):
+            pid = next_id + (k - 1)
+            sub[full & (filled == k)] = pid
+            labels[pid] = labels.get(iid)
+        next_id += n - 1
+
+    if changed:
+        rec["masks"] = out
 
 
 def remove_clicked():
@@ -660,6 +786,16 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         st.session_state["interaction_mode"] = "Ellipse"
         st.rerun()
 
+    # button to set mode to cutting masks with a drawn line
+    if st.button(
+        "Cut mask",
+        width="stretch",
+        key=f"{key_ns}_cut_mask",
+        help="Click and drag a line all the way through a mask to split it in two",
+    ):
+        st.session_state["interaction_mode"] = "Cut mask"
+        st.rerun()
+
 
 def render_mask_tools_fragment(key_ns="side"):
     """Render manual mask removal/clear button control fragment."""
@@ -747,6 +883,14 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
         )
     elif mode == "Ellipse":
         _handle_draw_ellipse_mode(
+            rec=rec,
+            display_for_ui=display_for_ui,
+            disp_w=disp_w,
+            disp_h=disp_h,
+            key_ns=key_ns,
+        )
+    elif mode == "Cut mask":
+        _handle_cut_mask_mode(
             rec=rec,
             display_for_ui=display_for_ui,
             disp_w=disp_w,
