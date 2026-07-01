@@ -480,6 +480,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
     out = m
     next_id = int(m.max())
     changed = False
+    split_n = 0  # how many masks the line fully dissected
 
     for iid in map(int, touched):
         # work within the instance's bounding box for efficiency
@@ -494,6 +495,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
         if not changed:
             out = m.copy()
             changed = True
+        split_n += 1
         if next_id + (n - 1) > np.iinfo(out.dtype).max:
             out = out.astype(np.uint32)
 
@@ -512,6 +514,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
 
     if changed:
         rec["masks"] = out
+        st.toast(f"Split {split_n} mask{'s' if split_n != 1 else ''}.")
 
 
 def remove_clicked():
@@ -582,14 +585,16 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
     comp, n = ndi.label(picked, structure=np.ones((3, 3), dtype=bool))
 
     out = m.copy()
-    merged = False
+    merged_n = 0  # how many masks were combined
+    groups = 0  # how many merged masks they became
     for c in range(1, n + 1):
         cm = comp == c
         ids = np.unique(m[cm])
         if ids.size > 1:  # >=2 selected masks touch here -> merge them
             out[cm] = ids.min()
-            merged = True
-    if not merged:
+            merged_n += int(ids.size)
+            groups += 1
+    if not merged_n:
         return
 
     # compact ids to a contiguous range and remap labels to match
@@ -599,6 +604,7 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
     rec["labels"] = {
         remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
     }
+    st.toast(f"Merged {merged_n} masks in {groups}.")
 
 
 def assign_clicked():
