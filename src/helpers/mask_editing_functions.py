@@ -80,35 +80,30 @@ def create_image_mask_overlay(image, mask, classes_map, palette, alpha=0.5):
     if inst.size == 0 or not np.any(inst):
         return image
 
-    # create overlay
     out = image.astype(np.float32) / 255.0
 
-    ids = np.unique(inst)
-    ids = ids[ids != 0]  # skip background
+    # per-pixel colour via a label -> colour lookup table (vectorised, no per-mask loop)
+    default = np.array(palette["__unlabeled__"], dtype=np.float32)
+    lut = np.tile(default, (int(inst.max()) + 1, 1))
+    for iid in np.unique(inst):
+        if iid:
+            cls = classes_map.get(int(iid), "__unlabeled__")
+            lut[iid] = palette.get(cls, default)
+    color_img = lut[inst]
 
-    # draw each instance
-    for iid in ids:
-        # get class and colour
-        cls = classes_map.get(int(iid), "__unlabeled__")
-        color = np.array(palette.get(cls, palette["__unlabeled__"]), dtype=np.float32)
+    # blend the filled regions in a single pass
+    fg = inst != 0
+    a = (fg.astype(np.float32) * alpha)[..., None]
+    out = out * (1 - a) + color_img * a
 
-        # mask for this instance
-        mm = inst == iid
-
-        # filled region
-        a = (mm.astype(np.float32) * alpha)[..., None]
-        out = out * (1 - a) + color[None, None, :] * a
-
-        # 1px white edge (simple interior test)
-        interior = (
-            mm
-            & np.roll(mm, 1, 0)
-            & np.roll(mm, -1, 0)
-            & np.roll(mm, 1, 1)
-            & np.roll(mm, -1, 1)
-        )
-        edge = mm & ~interior
-        out[edge] = 1.0
+    # 1px white edge: a foreground pixel whose 4-neighbour has a different label
+    edge = fg & (
+        (inst != np.roll(inst, 1, 0))
+        | (inst != np.roll(inst, -1, 0))
+        | (inst != np.roll(inst, 1, 1))
+        | (inst != np.roll(inst, -1, 1))
+    )
+    out[edge] = 1.0
 
     return (np.clip(out, 0, 1) * 255).astype(np.uint8)
 
@@ -144,13 +139,16 @@ def create_image_display(rec, max_display_width=768):
         palette = create_colour_palette(labels)
         classes_map = classes_map_from_labels(rec["masks"], rec["labels"])
 
-        # just shows masks over black background
+        # Build the overlay at display resolution (much fewer pixels than full res).
+        # This is display-only; rec["masks"] stays full-res for all measurements.
         if not st.session_state.get("show_image", True):
-            background = np.zeros((rec["H"], rec["W"], 3), dtype=np.uint8)
-
+            background = np.zeros((disp_h, disp_w, 3), dtype=np.uint8)
         else:
-            background = rec["image"]
+            background = np.array(
+                Image.fromarray(rec["image"]).resize((disp_w, disp_h), Image.BILINEAR)
+            )
 
+        # mask is downsized (NEAREST) to the background inside the overlay helper
         base_img = cached_image_mask_overlay(
             background, rec["masks"], classes_map, palette, alpha=0.35
         )
@@ -245,9 +243,9 @@ def _lasso_select_fragment(
     def handle() -> None:
         event = st.session_state.get(chart_key)
         sel = getattr(event, "selection", None)
-        for l in getattr(sel, "lasso", None) or []:
+        for stroke in getattr(sel, "lasso", None) or []:
             # Plotly coords (0 at bottom) -> display coords (0 at top)
-            on_stroke(l["x"], [disp_h - y for y in l["y"]])
+            on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
 
     fig = _make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
     if show_line:
