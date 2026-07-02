@@ -255,9 +255,11 @@ def _lasso_select_fragment(
         selection_mode="lasso",
         use_container_width=False,
         config={
-            "scrollZoom": True,
+            # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
+            # image refresh; use the browser's own pinch-zoom instead.
+            "scrollZoom": False,
             "displaylogo": False,
-            "modeBarButtonsToAdd": ["lasso2d", "zoom2d", "pan2d"],
+            "modeBarButtons": [["lasso2d"]],
         },
     )
 
@@ -327,9 +329,11 @@ def _handle_draw_ellipse_mode(
         selection_mode="box",
         use_container_width=False,
         config={
-            "scrollZoom": True,
+            # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
+            # image refresh; use the browser's own pinch-zoom instead.
+            "scrollZoom": False,
             "displaylogo": False,
-            "modeBarButtonsToAdd": ["select2d", "zoom2d", "pan2d"],
+            "modeBarButtons": [["select2d"]],
         },
     )
 

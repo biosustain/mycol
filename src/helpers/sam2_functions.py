@@ -218,6 +218,13 @@ def box_draw_fragment(bg_img, disp_w, disp_h, chart_key: str, rec: dict):
         selection_mode="box",
         on_select=lambda: _update_boxes(chart_key, rec),
         use_container_width=False,  # respects fig.width / fig.height
+        config={
+            # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
+            # image refresh; use the browser's own pinch-zoom instead.
+            "scrollZoom": False,
+            "displaylogo": False,
+            "modeBarButtons": [["select2d"]],
+        },
     )
 
 
