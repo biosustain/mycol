@@ -751,7 +751,8 @@ def render_box_tools_fragment(key_ns="side"):
         "Draw box",
         width="stretch",
         key=f"{key_ns}_draw_boxes",
-        help="Click and drag boxes around cells",
+        shortcut="B",
+        help="Click and drag boxes around cells (shortcut: B)",
     ):
         st.session_state["interaction_mode"] = "Draw box"
         st.rerun()
@@ -778,7 +779,8 @@ def render_box_tools_fragment(key_ns="side"):
         "Generate masks from boxes",
         width="stretch",
         key=f"{key_ns}_predict",
-        help="Use SAM2 to segment cells in boxes",
+        shortcut="G",
+        help="Use SAM2 to segment cells in boxes (shortcut: G)",
     ):
         # create new masks from boxes and add them to rec["mask"]
         segment_with_sam2(rec)
@@ -798,7 +800,8 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         "Freehand",
         width="stretch",
         key=f"{key_ns}_draw_masks",
-        help="Click and hold to draw a freehand mask",
+        shortcut="F",
+        help="Click and hold to draw a freehand mask (shortcut: F)",
     ):
         st.session_state["interaction_mode"] = "Freehand"
         st.rerun()
@@ -808,7 +811,8 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         "Ellipse",
         width="stretch",
         key=f"{key_ns}_draw_ellipse",
-        help="Drag a box around a colony to fill it with a rough ellipse",
+        shortcut="E",
+        help="Drag a box around a colony to fill it with a rough ellipse (shortcut: E)",
     ):
         st.session_state["interaction_mode"] = "Ellipse"
         st.rerun()
@@ -820,7 +824,8 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         "Split masks",
         width="stretch",
         key=f"{key_ns}_cut_mask",
-        help="Click and drag a line all the way through a mask to split it in two",
+        shortcut="S",
+        help="Click and drag a line all the way through a mask to split it in two (shortcut: S)",
     ):
         st.session_state["interaction_mode"] = "Split masks"
         st.rerun()
@@ -830,7 +835,8 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         "Merge masks",
         width="stretch",
         key=f"{key_ns}_merge_masks",
-        help="Draw a lasso around touching masks to merge them into one",
+        shortcut="M",
+        help="Draw a lasso around touching masks to merge them into one (shortcut: M)",
     ):
         st.session_state["interaction_mode"] = "Merge masks"
         st.rerun()
@@ -847,7 +853,8 @@ def render_mask_tools_fragment(key_ns="side"):
         "Remove mask",
         width="stretch",
         key=f"{key_ns}_remove_masks",
-        help="Click masks to remove them",
+        shortcut="D",
+        help="Click masks to remove them (shortcut: D)",
     ):
         st.session_state["interaction_mode"] = "Remove mask"
         st.rerun()
