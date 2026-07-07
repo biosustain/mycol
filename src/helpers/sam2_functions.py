@@ -10,6 +10,8 @@ from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 import plotly.graph_objects as go
 
+from src.helpers.state_ops import snapshot_for_undo
+
 
 # masks can be cut when adding them to the existing array (new masks lose priority).
 # therefore, add mask, rextract to see if it is cut, if so, take it out and re-add the largest section
@@ -133,6 +135,7 @@ def _update_boxes(chart_key: str, rec: dict):
         # --- 1) Store display-space box for visualization ---
         box_disp = {"x0": x0_plot, "x1": x1_plot, "y0": y0_plot, "y1": y1_plot}
         if box_disp not in boxes_display:
+            snapshot_for_undo(rec)
             boxes_display.append(box_disp)
 
         # --- 2) Also compute original image coordinates, if we know the scale ---
@@ -282,6 +285,9 @@ def segment_with_sam2(rec: dict):
     if boxes.size == 0:
         st.info("No boxes drawn yet.")
         return []
+
+    # snapshot before generating so this whole action (incl. the box clear below) can be undone
+    snapshot_for_undo(rec)
 
     # load the model
     predictor, device = _load_sam2()

@@ -21,6 +21,7 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     plot_loss_curve,
+    snapshot_for_undo,
 )
 from src.helpers.job_runner import (
     start_worker_job,
@@ -223,6 +224,9 @@ def classify_cells_with_densenet(rec: dict) -> None:
     class_map = ensure_densenet_class_map()
     all_classes = ss.setdefault("all_classes", ["No label"])
     labels = rec.setdefault("labels", {})
+
+    # snapshot before writing labels so this (and each image in a batch) can be undone
+    snapshot_for_undo(rec)
 
     for iid, cls_idx in zip(keep_ids, preds):
         idx = int(cls_idx)

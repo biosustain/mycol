@@ -117,6 +117,9 @@ with st.spinner("Loading Annotator..."):
             else:
                 mask_editing_panel.render_classify_sidebar(key_ns="classify_side")
 
+            # editing tools available in both tabs
+            mask_editing_panel.render_common_tools(key_ns="tools")
+
     # Page main content
     with col2:
         mask_editing_panel.render_main(key_ns="edit")

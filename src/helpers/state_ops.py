@@ -20,7 +20,7 @@ _DEFAULTS = {
     "side_new_label": "",
     "show_overlay": True,
     "show_normalized": True,
-    "interaction_mode": "Remove mask",
+    "interaction_mode": "Remove",
     "side_interaction_mode": "Draw box",
     "skipped_files": [],
     "remove_click": False,
@@ -108,6 +108,33 @@ def require_images():
 def get_current_rec():
     k = st.session_state.get("current_key")
     return st.session_state.images.get(k) if k is not None else None
+
+
+def snapshot_for_undo(rec) -> None:
+    """Save a one-level undo snapshot (masks/labels/boxes) of the record.
+
+    Call immediately before any action that mutates it; one snapshot per record."""
+    if rec is None:
+        return
+    masks = rec.get("masks")
+    rec["undo"] = {
+        "masks": None if masks is None else masks.copy(),
+        "labels": dict(rec.get("labels", {})),
+        "boxes": list(rec.get("boxes", [])),
+        "boxes_display": list(rec.get("boxes_display", [])),
+    }
+
+
+def apply_undo(rec) -> bool:
+    """Restore the last snapshot saved by snapshot_for_undo. Returns True if undone."""
+    snap = rec.pop("undo", None) if rec else None
+    if not snap:
+        return False
+    rec["masks"] = snap["masks"]
+    rec["labels"] = snap["labels"]
+    rec["boxes"] = snap["boxes"]
+    rec["boxes_display"] = snap["boxes_display"]
+    return True
 
 
 def set_current_by_index(idx: int):

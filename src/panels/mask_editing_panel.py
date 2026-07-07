@@ -6,7 +6,7 @@ from src.helpers.mask_editing_functions import (
     render_cellpose_hyperparameters_fragment,
     render_box_tools_fragment,
     render_draw_mask_tools_fragment,
-    render_mask_tools_fragment,
+    render_common_tools_fragment,
     render_display_and_interact_fragment,
 )
 from src.helpers.classifying_functions import (
@@ -103,9 +103,6 @@ def render_segment_sidebar(*, key_ns: str = "side"):
         ):
             render_draw_mask_tools_fragment(key_ns)
 
-        # section for selecting tools for directly adding/removing masks
-        render_mask_tools_fragment(key_ns)
-
 
 def render_classify_sidebar(*, key_ns: str = "side"):
 
@@ -123,6 +120,15 @@ def render_classify_sidebar(*, key_ns: str = "side"):
             classify_actions_fragment()
 
         class_selection_fragment()
+
+
+def render_common_tools(*, key_ns: str = "tools"):
+    """Always-visible editing tools (Remove / Clear All / Undo).
+
+    Rendered outside the segmentation/classification tabs so they're available
+    in both."""
+    with st.container(border=True):
+        render_common_tools_fragment(key_ns)
 
 
 def render_main(*, key_ns: str = "edit"):
