@@ -327,7 +327,7 @@ def batch_classify():
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        classify_cells_with_densenet(st.session_state.images.get(k))
+        classify_cells_with_densenet(st.session_state.images.get(k), snapshot=False)
         pb.progress(i / n, text=f"Classified {i}/{n}")
 
 

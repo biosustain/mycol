@@ -195,8 +195,11 @@ def densenet_mapping_fragment():
     ss["densenet_class_map"] = class_map
 
 
-def classify_cells_with_densenet(rec: dict) -> None:
-    """Classify segmented cell masks in `rec` using a DenseNet-121 model."""
+def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
+    """Classify segmented cell masks in `rec` using a DenseNet-121 model.
+
+    Pass ``snapshot=False`` for batch runs so the whole-dataset action isn't
+    recorded as a single-image undo step."""
     ss = st.session_state
     model = ss.get("densenet_model")
     M = rec.get("masks")
@@ -225,8 +228,10 @@ def classify_cells_with_densenet(rec: dict) -> None:
     all_classes = ss.setdefault("all_classes", ["No label"])
     labels = rec.setdefault("labels", {})
 
-    # snapshot before writing labels so this (and each image in a batch) can be undone
-    snapshot_for_undo(rec)
+    # snapshot before writing labels so a single-image classify can be undone
+    # (batch runs pass snapshot=False so they aren't recorded as undo steps)
+    if snapshot:
+        snapshot_for_undo(rec)
 
     for iid, cls_idx in zip(keep_ids, preds):
         idx = int(cls_idx)
