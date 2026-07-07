@@ -683,8 +683,7 @@ def segment_current_and_refresh(model_type: str | None = None):
     rec = get_current_rec()
     if rec is not None:
         params = get_cellpose_hparams_from_state()
-        # snapshot before overwriting masks so this single-image segmentation can
-        # be undone (the batch path deliberately takes no snapshot)
+        # snapshot so this single-image segmentation can be undone (batch path doesn't)
         snapshot_for_undo(rec)
         segment_with_cellpose(rec, model_type=model_type, **params)
         st.session_state["edit_canvas_nonce"] += 1

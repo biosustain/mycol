@@ -111,13 +111,14 @@ def get_current_rec():
 
 
 def snapshot_for_undo(rec) -> None:
-    """Save a one-level undo snapshot (masks/labels/boxes) of the record.
+    """Save the one app-wide undo snapshot for the current image.
 
-    Call immediately before any action that mutates it; one snapshot per record."""
+    Call immediately before any action that mutates the current record."""
     if rec is None:
         return
     masks = rec.get("masks")
-    rec["undo"] = {
+    st.session_state["undo"] = {
+        "key": st.session_state.get("current_key"),
         "masks": None if masks is None else masks.copy(),
         "labels": dict(rec.get("labels", {})),
         "boxes": list(rec.get("boxes", [])),
@@ -126,15 +127,24 @@ def snapshot_for_undo(rec) -> None:
 
 
 def apply_undo(rec) -> bool:
-    """Restore the last snapshot saved by snapshot_for_undo. Returns True if undone."""
-    snap = rec.pop("undo", None) if rec else None
-    if not snap:
+    """Restore the undo snapshot if it's for the current image; always consume it."""
+    snap = st.session_state.pop("undo", None)
+    if not snap or rec is None:
         return False
+    if snap.get("key") != st.session_state.get("current_key"):
+        return False  # snapshot is for a different image
     rec["masks"] = snap["masks"]
     rec["labels"] = snap["labels"]
     rec["boxes"] = snap["boxes"]
     rec["boxes_display"] = snap["boxes_display"]
     return True
+
+
+def reset_undo_on_navigation() -> None:
+    """Drop the undo snapshot if the displayed image changed since it was taken."""
+    snap = st.session_state.get("undo")
+    if snap and snap.get("key") != st.session_state.get("current_key"):
+        st.session_state.pop("undo", None)
 
 
 def set_current_by_index(idx: int):

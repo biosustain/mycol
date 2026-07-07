@@ -1,6 +1,11 @@
 import streamlit as st
 from src.panels import mask_editing_panel
-from src.helpers.state_ops import ordered_keys, set_current_by_index, require_images
+from src.helpers.state_ops import (
+    ordered_keys,
+    set_current_by_index,
+    require_images,
+    reset_undo_on_navigation,
+)
 
 require_images()
 
@@ -22,6 +27,9 @@ with st.spinner("Loading Annotator..."):
 
             reck = st.session_state.current_key
             rec_idx = ok.index(reck) if reck in ok else 0  # 0-based index
+
+            # discard the undo snapshot when the displayed image changes
+            reset_undo_on_navigation()
 
             st.info(f"**Image {rec_idx+1}/{len(ok)}:** {names[rec_idx]}")
 
