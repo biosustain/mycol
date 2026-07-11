@@ -2,6 +2,21 @@
 import os
 import streamlit as st
 
+PLOTLY_CONFIG = {"toImageButtonOptions": {"format": "svg"}}
+
+# Guarded: Streamlit re-executes this script on every rerun.
+if not getattr(st.plotly_chart, "_svg_default", False):
+
+    def _svg_default(orig):
+        def wrapper(figure_or_data, *args, **kwargs):
+            kwargs["config"] = {**PLOTLY_CONFIG, **(kwargs.get("config") or {})}
+            return orig(figure_or_data, *args, **kwargs)
+
+        wrapper._svg_default = True
+        return wrapper
+
+    st.plotly_chart = _svg_default(st.plotly_chart)
+
 st.set_page_config(page_title="Mycol", page_icon="👨🏼‍🔬", layout="wide")
 
 st.logo("logo.png", link="https://biosustain.github.io/mycol/index.html")
