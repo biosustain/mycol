@@ -704,26 +704,6 @@ def assign_clicked():
 @st.fragment
 def render_cellpose_hyperparameters_fragment():
     """Render Cellpose hyperparameters editing fragment."""
-    # Channel 1
-    st.number_input(
-        "Channel 1",
-        value=st.session_state.get("cp_ch1"),
-        step=1,
-        format="%d",
-        key="w_cp_ch1",
-    )
-    st.session_state["cp_ch1"] = st.session_state.get("w_cp_ch1")
-
-    # Channel 2
-    st.number_input(
-        "Channel 2",
-        value=st.session_state.get("cp_ch2"),
-        step=1,
-        format="%d",
-        key="w_cp_ch2",
-    )
-    st.session_state["cp_ch2"] = st.session_state["w_cp_ch2"]
-
     # Diameter
     diam_val = st.number_input(
         "Mean cell diameter (pixels)",

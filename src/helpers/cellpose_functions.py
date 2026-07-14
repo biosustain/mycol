@@ -706,12 +706,11 @@ def batch_segment_and_refresh(model_type: str | None = None):
 def get_cellpose_hparams_from_state():
     """calls hparam values from session state"""
     # Build kwargs matching segment_rec_with_cellpose signature
-    ch1 = int(st.session_state.get("cp_ch1"))
-    ch2 = int(st.session_state.get("cp_ch2"))
+    # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
     diameter = st.session_state.get("cp_diameter")
 
     return dict(
-        channels=(ch1, ch2),
+        channels=(0, 0),
         diameter=diameter,
         cellprob_threshold=float(st.session_state.get("cp_cellprob_threshold")),
         flow_threshold=float(st.session_state.get("cp_flow_threshold")),
