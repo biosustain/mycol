@@ -33,12 +33,7 @@ _DEFAULTS = {
     "cyto_to_train": "cyto3",
     "train_losses": [],
     "test_losses": [],
-    "cp_training_ch1": 0,
-    "cp_training_ch2": 0,
-
     # cellpose inference
-    "cp_ch1": 0,
-    "cp_ch2": 0,
     "cp_min_size": 0,
     "cp_niter": 500,
     "cp_flow_threshold": 0.3,

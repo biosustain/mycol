@@ -6,7 +6,7 @@ import streamlit as st
 from cellpose import metrics, core
 import optuna
 
-from src.helpers.state_ops import ordered_keys, plot_loss_curve
+from src.helpers.state_ops import ordered_keys
 from src.helpers.densenet_functions import (
     load_labeled_patches,
     build_densenet_zip_bytes,

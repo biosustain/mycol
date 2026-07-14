@@ -45,12 +45,9 @@ class CellDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        img = self.X[idx]
-        img = np.transpose(img, (2, 0, 1))
-        tensor = torch.tensor(img, dtype=torch.float32)
-
-        if tensor.max() > 1.0:
-            tensor = tensor / 255.0
+        # X is already preprocessed app-side (patch_to_tensor): CHW float32 in [0, 1].
+        # The worker only applies random augmentation on top.
+        tensor = torch.tensor(self.X[idx], dtype=torch.float32)
 
         if self.transform:
             tensor = self.transform(tensor)

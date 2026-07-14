@@ -12,8 +12,7 @@ import plotly.graph_objects as go
 
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
-from torchvision import models, transforms
+from torchvision import models
 
 # ---- bring in existing app helpers ----
 from src.helpers.state_ops import (
@@ -244,48 +243,6 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     ss["all_classes"] = all_classes
 
 
-# -------------------------------
-#  Augmentation & Transforms
-# -------------------------------
-
-
-def apply_random_augmentations(img_tensor):
-    """
-    Apply random transforms on a (3, H, W) tensor.
-    Simple manual implementation to match previous logic logic or utilize Torchvision transforms.
-    Here we use torchvision transforms for simplicity and speed.
-    """
-    t = transforms.Compose(
-        [
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(15),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
-        ]
-    )
-    return t(img_tensor)
-
-
-class CellDataset(Dataset):
-    def __init__(self, X, y, transform=None):
-        self.X = X  # expecting (N, H, W, C) numpy arrays 0..1 or 0..255
-        self.y = y
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.X)
-
-    def __getitem__(self, idx):
-        tensor = patch_to_tensor(self.X[idx])
-
-        if self.transform:
-            tensor = self.transform(tensor)
-
-        label = torch.tensor(self.y[idx], dtype=torch.long)
-        return tensor, label
-
-
 def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
     """Convert a preprocessed HWC uint8 patch to a normalised CHW float32 tensor in [0, 1].
 
@@ -365,6 +322,8 @@ def start_densenet_training(input_size, batch_size, epochs, val_split):
     if X.shape[0] < 2 or len(np.unique(y)) < 2:
         st.warning("Need at least 2 samples and 2 classes. Add more labeled cells.")
         return None
+
+    X = np.stack([patch_to_tensor(x).numpy() for x in X])  # (N, 3, H, W) float32 in [0, 1]
 
     start_worker_job(
         job_key="dn_training_job",

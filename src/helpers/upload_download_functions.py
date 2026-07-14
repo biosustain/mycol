@@ -60,11 +60,6 @@ def load_demo_data():
 
 def restore_session(zip_bytes: bytes) -> str | None:
     """Restore a saved session zip into session state. Returns an error string or None on success."""
-    from src.helpers.state_ops import (
-        reset_global_state_defaults,
-        set_current_by_index,
-        ordered_keys,
-    )
 
     def _cast(v, t, default):
         try:
@@ -139,8 +134,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
                 io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode())
             )
             p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_ch1"] = _cast(p.get("channel_1"), int, 0)
-            ss["cp_ch2"] = _cast(p.get("channel_2"), int, 0)
             ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
             ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
             ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
@@ -159,8 +152,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
-            ss["cp_training_ch1"] = _cast(p.get("training_ch1"), int, 0)
-            ss["cp_training_ch2"] = _cast(p.get("training_ch2"), int, 0)
             ss["cp_do_gridsearch"] = _cast(
                 p.get("do_gridsearch"), lambda v: str(v).lower() == "true", False
             )
