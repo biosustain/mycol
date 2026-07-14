@@ -7,10 +7,9 @@ from src.helpers.upload_download_functions import (
     render_images_form,
     load_demo_data,
     restore_session,
+    load_model,
 )
 import os
-import tempfile
-import hashlib
 import pandas as pd
 
 
@@ -98,9 +97,6 @@ def render_main():
                 ss["uploader_nonce"] = ss.get("uploader_nonce", 0) + 1
                 st.rerun()
 
-            import torch
-            from src.helpers.densenet_functions import build_densenet
-
             zip_files = [f for f in files if f.name.lower().endswith(".zip")]
             image_files = [
                 f for f in files if os.path.splitext(f.name)[1].lower() in IMAGE_EXTS
@@ -156,42 +152,12 @@ def render_main():
                         ss["_model_error"] = f"Failed to load HP CSV: {e}"
                 else:
                     # auto-detect Cellpose vs DenseNet from state dict keys
-                    data = model_file.read()
-                    ext = os.path.splitext(model_file.name)[1].lower() or ".pth"
-                    h = hashlib.sha1(data).hexdigest()[:12]
-                    path = os.path.join(tempfile.gettempdir(), f"model_{h}{ext}")
-                    if not os.path.exists(path):
-                        with open(path, "wb") as f:
-                            f.write(data)
                     try:
-                        state_dict = torch.load(path, map_location="cpu")
-                        if "features.conv0.weight" in state_dict:
-                            # DenseNet-121
-                            num_classes = 2
-                            if "classifier.2.weight" in state_dict:
-                                num_classes = state_dict["classifier.2.weight"].shape[0]
-                            elif "classifier.weight" in state_dict:
-                                num_classes = state_dict["classifier.weight"].shape[0]
-                            model = build_densenet(num_classes=num_classes)
-                            model.load_state_dict(state_dict)
-                            model.eval()
-                            ss["densenet_model"] = model
-                            ss["densenet_model_path"] = path
-                            ss["densenet_ckpt_name"] = model_file.name
-                            ss["_model_toast"] = (
-                                f"Loaded DenseNet model: {model_file.name}"
-                            )
-                        elif any(k.startswith("downsample.") for k in state_dict):
-                            # Cellpose UNet
-                            ss["cellpose_model_bytes"] = data
-                            ss["cellpose_model_name"] = model_file.name
-                            ss["_model_toast"] = (
-                                f"Loaded Cellpose model: {model_file.name}"
-                            )
-                        else:
-                            ss["_model_error"] = (
-                                f"Could not identify model type for: {model_file.name}"
-                            )
+                        ss["_model_toast"] = load_model(
+                            model_file.name, model_file.read()
+                        )
+                    except ValueError as e:
+                        ss["_model_error"] = str(e)
                     except Exception as e:
                         ss["_model_error"] = f"Failed to load model: {e}"
 

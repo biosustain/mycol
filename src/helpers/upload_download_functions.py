@@ -78,65 +78,44 @@ def restore_session(zip_bytes: bytes) -> str | None:
         reset_global_state_defaults()
 
         # ── Images ───────────────────────────────────────────────────────────
+        # saved images are already the resized working image, so resize=False;
+        # true orig dimensions are re-applied from image_metadata.json below
         for entry in sorted(
             n for n in names if n.startswith("images/") and not n.endswith("/")
         ):
-            fname = Path(entry).name
-            img_np = np.array(
-                Image.open(io.BytesIO(zf.read(entry))).convert("RGB"), dtype=np.uint8
-            )
-            H, W = img_np.shape[:2]
-            k = ss["next_ord"]
-            ss["next_ord"] += 1
-            ss["images"][k] = {
-                "name": fname,
-                "id": k,
-                "image": img_np,
-                "H": H,
-                "W": W,
-                "orig_H": H,
-                "orig_W": W,
-                "masks": np.zeros((H, W), dtype=np.uint16),
-                "labels": {},
-                "boxes": [],
-                "last_click_xy": None,
-                "canvas": {"closed_json": None, "processed_count": 0},
-            }
-            ss["name_to_key"][fname] = k
+            add_image(Path(entry).name, zf.read(entry), resize=False)
+
+        # ── Per-image metadata (mask suffix, orig dimensions, boxes) ──────────
+        mask_suffix, image_metadata = "_masks", {}
+        if "image_metadata.json" in names:
+            raw = json.loads(zf.read("image_metadata.json").decode())
+            # new shape: {"mask_suffix": str, "images": {...}}; legacy: flat {...}
+            if isinstance(raw.get("mask_suffix"), str):
+                mask_suffix, image_metadata = raw["mask_suffix"], raw.get("images", {})
+            else:
+                image_metadata = raw
+        ss["mask_suffix"] = mask_suffix
+        for k, rec in ss["images"].items():
+            name = Path(rec["name"]).stem
+            m = image_metadata.get(name, {})
+            rec["orig_H"] = m.get("orig_H", rec["H"])
+            rec["orig_W"] = m.get("orig_W", rec["W"])
+            rec["boxes"] = m.get("boxes", [])
+            rec["boxes_display"] = m.get("boxes_display", [])
 
         # ── Masks ─────────────────────────────────────────────────────────────
-        stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
-        for entry in sorted(
-            n for n in names if n.startswith("masks/") and not n.endswith("/")
-        ):
-            k = stem_to_key.get(Path(entry).stem)
-            if k is None:
+        for k, rec in ss["images"].items():
+            img_stem = Path(rec["name"]).stem
+            entry = f"masks/{img_stem}{mask_suffix}.tif"
+            if entry not in names:
+                entry = f"masks/{img_stem}.tif"  # legacy zips saved without the suffix
+            if entry not in names:
                 continue
-            rec = ss["images"][k]
-            mask = tiff.imread(io.BytesIO(zf.read(entry))).astype(np.uint16)
-            if mask.shape != (rec["H"], rec["W"]):
-                mask = np.array(
-                    Image.fromarray(mask).resize(
-                        (rec["W"], rec["H"]), resample=Image.NEAREST
-                    ),
-                    dtype=np.uint16,
-                )
-            rec["masks"] = mask
-            rec["labels"] = {int(i): None for i in np.unique(mask) if i != 0}
-
-        # ── Per-image metadata (orig dimensions, boxes) ───────────────────────
-        if "image_metadata.json" in names:
-            image_metadata = json.loads(zf.read("image_metadata.json").decode())
-            for k, rec in ss["images"].items():
-                name = Path(rec["name"]).stem
-                m = image_metadata.get(name, {})
-                rec["orig_H"] = m.get("orig_H", rec["H"])
-                rec["orig_W"] = m.get("orig_W", rec["W"])
-                rec["boxes"] = m.get("boxes", [])
-                rec["boxes_display"] = m.get("boxes_display", [])
+            add_mask(rec, entry, zf.read(entry))
 
         # ── Labels (from cell_metrics.csv) ────────────────────────────────────
         if "cell_metrics.csv" in names:
+            stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
             df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
             if {"image", "mask #", "mask label"}.issubset(df.columns):
                 all_labels = set()
@@ -198,36 +177,13 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["dn_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
             ss["dn_val_split"] = _cast(p.get("val_split"), float, 0.2)
 
-        # ── Cellpose model ────────────────────────────────────────────────────
-        if "cellpose_model.pt" in names:
-            ss["cellpose_model_bytes"] = zf.read("cellpose_model.pt")
-            ss["cellpose_model_name"] = "cellpose_model.pt"
-
-        # ── DenseNet model ────────────────────────────────────────────────────
-        if "densenet_model.pth" in names:
-            import torch
-            from src.helpers.densenet_functions import build_densenet
-
-            data = zf.read("densenet_model.pth")
-            path = os.path.join(
-                tempfile.gettempdir(),
-                f"model_{hashlib.sha1(data).hexdigest()[:12]}.pth",
-            )
-            if not os.path.exists(path):
-                with open(path, "wb") as f:
-                    f.write(data)
-            state_dict = torch.load(path, map_location="cpu")
-            num_classes = 2
-            if "classifier.2.weight" in state_dict:
-                num_classes = state_dict["classifier.2.weight"].shape[0]
-            elif "classifier.weight" in state_dict:
-                num_classes = state_dict["classifier.weight"].shape[0]
-            model = build_densenet(num_classes=num_classes)
-            model.load_state_dict(state_dict)
-            model.eval()
-            ss["densenet_model"] = model
-            ss["densenet_model_path"] = path
-            ss["densenet_ckpt_name"] = "densenet_model.pth"
+        # ── Models (Cellpose / DenseNet) ──────────────────────────────────────
+        for model_entry in ("cellpose_model.pt", "densenet_model.pth"):
+            if model_entry in names:
+                try:
+                    load_model(model_entry, zf.read(model_entry))
+                except Exception:
+                    pass
 
         # ── DenseNet class map ────────────────────────────────────────────────
         if "densenet_class_map.csv" in names:
@@ -286,11 +242,12 @@ def process_uploads(files, mask_suffix):
     mask_suffix_len = len(mask_suffix)
     imgs = [(f) for f in files if not stem(f.name).endswith(mask_suffix)]
     masks = [f for f in files if stem(f.name).endswith(mask_suffix)]
+    resize = ss.get("resize_on_upload", True)
 
     # process images
     for f in imgs:
         try:
-            create_new_record_with_image(f)
+            add_image(f.name, f.read(), resize)
         except (UnidentifiedImageError, Exception):
             skipped.append(f.name)
 
@@ -307,93 +264,39 @@ def process_uploads(files, mask_suffix):
             if k is None:
                 skipped.append(f.name)
                 continue
-            rec = ss.images[k]
-            rec["labels"] = {}
             try:
-                if f.name.endswith(".npy"):
-                    rec["masks"] = load_npy_mask(f, rec)
-                else:
-                    rec["masks"] = load_tif_mask(f, rec)
-                rec["labels"] = {
-                    int(i): None for i in np.unique(rec["masks"]) if i != 0
-                }
+                add_mask(ss.images[k], f.name, f.read())
             except Exception:
                 skipped.append(f.name)
-                continue
 
     return skipped
 
 
-def load_npy_mask(file, rec):
-    """Read Cellpose *_seg.npy and return a (H,W) label matrix with 0 background, 1..N instances."""
-    file = file.read()
-    arr = np.load(io.BytesIO(file), allow_pickle=True).item()
-    # Cellpose stores masks in dict under 'masks'
-    mask = arr["masks"].astype(np.uint16)
-    H, W = rec["H"], rec["W"]
-    if mask.shape != (H, W):
-        orig_h = rec.get("orig_H", H)
-        orig_w = rec.get("orig_W", W)
-        if (orig_h, orig_w) != (H, W):
-            # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
-        else:
-            mask = np.array(
-                Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
-                dtype=np.uint16,
-            )
-    return mask
+# --------------------------------------
+# ------ SHARED LOADING PIPELINE -------
+# --------------------------------------
+# add_image / add_mask / load_model are the single path through which images,
+# masks and models enter the app, used by both the uploads page and session
+# restore. Each takes a filename and raw bytes so the caller's source (an
+# uploaded file or a zip entry) is irrelevant.
 
 
-def load_tif_mask(file, rec):
-    """Read a label TIFF and return a (H,W) label matrix with 0 background, 1..N instances."""
-    file = file.read()
-    mask = tiff.imread(io.BytesIO(file)).astype(np.uint16)
-
-    H, W = rec["H"], rec["W"]
-    if mask.shape != (H, W):
-        orig_h = rec.get("orig_H", H)
-        orig_w = rec.get("orig_W", W)
-        if (orig_h, orig_w) != (H, W):
-            # mirror image upload geometry: aspect-ratio resize + centered padding
-            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
-        else:
-            mask = np.array(
-                Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
-                dtype=np.uint16,
-            )
-    return mask
-
-
-def create_new_record_with_image(uploaded_file):
-    """Create a new image record in state from uploaded file."""
-
-    # get name mappings and images dict
-    name = uploaded_file.name
-    m = st.session_state.name_to_key
-    imgs = st.session_state.images
-
-    # check for existing name
+def add_image(name: str, data: bytes, resize: bool) -> None:
+    """Create a new image record in state from raw image bytes."""
+    m = ss.name_to_key
     if name in m:
-        st.session_state.current_key = m[name]
+        ss.current_key = m[name]
         return
 
-    try:
-        # load image and convert to RGB
-        img_np = np.array(Image.open(uploaded_file).convert("RGB"), dtype=np.uint8)
-        orig_H, orig_W = img_np.shape[:2]
-        # optionally resize images to 512x512
-        if st.session_state.get("resize_on_upload", True):
-            img_np = resize_with_aspect_ratio(img_np, 512)
-    except (UnidentifiedImageError, Exception):
-        raise
-
-    # get image dimensions
+    img_np = np.array(Image.open(io.BytesIO(data)).convert("RGB"), dtype=np.uint8)
+    orig_H, orig_W = img_np.shape[:2]
+    if resize:
+        img_np = resize_with_aspect_ratio(img_np, 512)
     H, W = img_np.shape[:2]
-    # create new record
-    k = st.session_state.next_ord
-    st.session_state.next_ord += 1
-    imgs[k] = {
+
+    k = ss.next_ord
+    ss.next_ord += 1
+    ss.images[k] = {
         "name": name,
         "id": k,
         "image": img_np,
@@ -408,7 +311,89 @@ def create_new_record_with_image(uploaded_file):
         "canvas": {"closed_json": None, "processed_count": 0},
     }
     m[name] = k
-    st.session_state.current_key = k
+    ss.current_key = k
+
+
+def add_mask(rec: dict, name: str, data: bytes) -> None:
+    """Decode a mask (.npy or .tif) from bytes, fit it to the record and set labels."""
+    if name.lower().endswith(".npy"):
+        mask = load_npy_mask(data, rec)
+    else:
+        mask = load_tif_mask(data, rec)
+    rec["masks"] = mask
+    rec["labels"] = {int(i): None for i in np.unique(mask) if i != 0}
+
+
+def _fit_mask_to_record(mask, rec):
+    """Resize a label matrix to the record's working dims, mirroring image geometry."""
+    H, W = rec["H"], rec["W"]
+    if mask.shape != (H, W):
+        orig_h = rec.get("orig_H", H)
+        orig_w = rec.get("orig_W", W)
+        if (orig_h, orig_w) != (H, W):
+            # mirror image upload geometry: aspect-ratio resize + centered padding
+            mask = resize_with_aspect_ratio(mask, (H, W), mode="label")
+        else:
+            mask = np.array(
+                Image.fromarray(mask).resize((W, H), resample=Image.NEAREST),
+                dtype=np.uint16,
+            )
+    return mask
+
+
+def load_npy_mask(data, rec):
+    """Read Cellpose *_seg.npy bytes and return a (H,W) label matrix fitted to rec."""
+    arr = np.load(io.BytesIO(data), allow_pickle=True).item()
+    # Cellpose stores masks in dict under 'masks'
+    mask = arr["masks"].astype(np.uint16)
+    return _fit_mask_to_record(mask, rec)
+
+
+def load_tif_mask(data, rec):
+    """Read label TIFF bytes and return a (H,W) label matrix fitted to rec."""
+    mask = tiff.imread(io.BytesIO(data)).astype(np.uint16)
+    return _fit_mask_to_record(mask, rec)
+
+
+def load_model(name: str, data: bytes) -> str:
+    """Detect and load a Cellpose or DenseNet checkpoint from bytes into state.
+
+    Returns a status message; raises ValueError if the type is unrecognised.
+    """
+    import torch
+    from src.helpers.densenet_functions import build_densenet
+
+    ext = os.path.splitext(name)[1].lower() or ".pth"
+    path = os.path.join(
+        tempfile.gettempdir(), f"model_{hashlib.sha1(data).hexdigest()[:12]}{ext}"
+    )
+    if not os.path.exists(path):
+        with open(path, "wb") as f:
+            f.write(data)
+    state_dict = torch.load(path, map_location="cpu")
+
+    if "features.conv0.weight" in state_dict:
+        # DenseNet-121
+        num_classes = 2
+        if "classifier.2.weight" in state_dict:
+            num_classes = state_dict["classifier.2.weight"].shape[0]
+        elif "classifier.weight" in state_dict:
+            num_classes = state_dict["classifier.weight"].shape[0]
+        model = build_densenet(num_classes=num_classes)
+        model.load_state_dict(state_dict)
+        model.eval()
+        ss["densenet_model"] = model
+        ss["densenet_model_path"] = path
+        ss["densenet_ckpt_name"] = name
+        return f"Loaded DenseNet model: {name}"
+
+    if any(k.startswith("downsample.") for k in state_dict):
+        # Cellpose UNet
+        ss["cellpose_model_bytes"] = data
+        ss["cellpose_model_name"] = name
+        return f"Loaded Cellpose model: {name}"
+
+    raise ValueError(f"Could not identify model type for: {name}")
 
 
 def render_images_form():

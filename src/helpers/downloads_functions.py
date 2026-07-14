@@ -62,6 +62,7 @@ def build_session_zip(images, ok) -> bytes:
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
 
+        mask_suffix = ss.get("mask_suffix", "_masks")
         image_metadata = {}
         for k in ok:
             rec = images[k]
@@ -75,7 +76,7 @@ def build_session_zip(images, ok) -> bytes:
             if mask is not None:
                 mbuf = io.BytesIO()
                 tiff.imwrite(mbuf, mask.astype(np.uint16))
-                zf.writestr(f"masks/{name}.tif", mbuf.getvalue())
+                zf.writestr(f"masks/{name}{mask_suffix}.tif", mbuf.getvalue())
 
             image_metadata[name] = {
                 "orig_H": rec.get("orig_H", rec["H"]),
@@ -84,7 +85,10 @@ def build_session_zip(images, ok) -> bytes:
                 "boxes_display": rec.get("boxes_display", []),
             }
 
-        zf.writestr("image_metadata.json", json.dumps(image_metadata))
+        zf.writestr(
+            "image_metadata.json",
+            json.dumps({"mask_suffix": mask_suffix, "images": image_metadata}),
+        )
 
         cp_training_params = {
             "base_model": ss.get("cp_base_model"),
