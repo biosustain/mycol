@@ -146,18 +146,56 @@ def get_densenet_num_classes(model) -> int | None:
         return None
 
 
+def _ensure_assignable_classes(n_classes: int) -> list[str]:
+    """Return at least n non-'No label' classes, creating ClassN names as needed."""
+    ss = st.session_state
+    all_classes = ss.setdefault("all_classes", ["No label"])
+    real_classes = [c for c in all_classes if c != "No label"]
+
+    next_idx = 1
+    while len(real_classes) < n_classes:
+        name = f"Class{next_idx}"
+        next_idx += 1
+        if name in all_classes:
+            continue
+        all_classes.append(name)
+        real_classes.append(name)
+
+    ss["all_classes"] = all_classes
+    return real_classes
+
+
+def initialize_densenet_class_map() -> dict[int, str]:
+    """Rebuild the DenseNet output-to-class map for a newly uploaded model."""
+    ss = st.session_state
+    n_classes = get_densenet_num_classes(ss.get("densenet_model"))
+    if n_classes is None:
+        ss["densenet_class_map"] = {}
+        return {}
+
+    real_classes = _ensure_assignable_classes(n_classes)
+    class_map = {idx: real_classes[idx] for idx in range(n_classes)}
+    ss["densenet_class_map"] = class_map
+    return class_map
+
+
 def ensure_densenet_class_map() -> dict[int, str | None]:
-    """Ensure we have a mapping for each model class index in session_state."""
+    """Ensure each model class index has a valid, non-'No label' mapping."""
     ss = st.session_state
     model = ss.get("densenet_model")
     n_classes = get_densenet_num_classes(model)
     if n_classes is None:
         return {}
 
-    class_map = ss.setdefault("densenet_class_map", {})
-    # Make sure there is a key for each model output index
+    real_classes = _ensure_assignable_classes(n_classes)
+    class_map = {
+        idx: ss.get("densenet_class_map", {}).get(idx) for idx in range(n_classes)
+    }
+
     for idx in range(n_classes):
-        class_map.setdefault(idx, None)
+        if class_map[idx] not in real_classes:
+            class_map[idx] = real_classes[idx]
+
     ss["densenet_class_map"] = class_map
     return class_map
 
@@ -174,11 +212,11 @@ def densenet_mapping_fragment():
 
     for idx in range(n_classes):
         current = class_map.get(idx)
-        options = all_classes
+        options = [c for c in all_classes if c != "No label"]
         if current in options:
             default_idx = options.index(current)
         else:
-            default_idx = options.index("No label") if "No label" in options else 0
+            default_idx = 0
 
         selected = st.selectbox(
             label=f"Map model class {idx+1} to",

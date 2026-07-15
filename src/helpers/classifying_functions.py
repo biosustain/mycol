@@ -316,10 +316,6 @@ def classify_actions_fragment():
             batch_classify()
             st.rerun()
 
-    # mapping fragment for assiging model outputs to classes
-    with st.expander("Map model predictions to cell classes"):
-        densenet_mapping_fragment()
-
 
 def batch_classify():
     """classify masks in the all images"""
@@ -405,3 +401,7 @@ def class_manage_fragment(key_ns="side"):
                 f"{key_ns}_rename_from", f"{key_ns}_rename_to"
             ),
         )
+
+    if ss.get("densenet_model") is not None:
+        with st.expander("Map model predictions to cell classes"):
+            densenet_mapping_fragment()

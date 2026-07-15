@@ -353,7 +353,10 @@ def load_model(name: str, data: bytes) -> str:
     Returns a status message; raises ValueError if the type is unrecognised.
     """
     import torch
-    from src.helpers.densenet_functions import build_densenet
+    from src.helpers.densenet_functions import (
+        build_densenet,
+        initialize_densenet_class_map,
+    )
 
     ext = os.path.splitext(name)[1].lower() or ".pth"
     path = os.path.join(
@@ -377,6 +380,7 @@ def load_model(name: str, data: bytes) -> str:
         ss["densenet_model"] = model
         ss["densenet_model_path"] = path
         ss["densenet_ckpt_name"] = name
+        initialize_densenet_class_map()
         return f"Loaded DenseNet model: {name}"
 
     if any(k.startswith("downsample.") for k in state_dict):
