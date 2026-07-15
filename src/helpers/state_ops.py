@@ -86,6 +86,28 @@ def ordered_keys():
     return sorted(st.session_state.images.keys())
 
 
+def image_number_lookup():
+    """Map each image name to its 1-based 'No.' in the image selection table."""
+    return {
+        st.session_state["images"][k]["name"]: i
+        for i, k in enumerate(ordered_keys(), start=1)
+    }
+
+
+def point_hover_texts(numbers, names, patches=None):
+    """Per-point hover labels — image number, image name and (optionally) patch
+    number, each on its own line. Shared by the cell-metrics and fine-tuning plots."""
+    if patches is None:
+        patches = [None] * len(names)
+    texts = []
+    for num, name, patch in zip(numbers, names, patches):
+        line = f"Image number: {num}<br>Image name: {name}"
+        if patch is not None:
+            line += f"<br>Patch number: {patch}"
+        texts.append(line)
+    return texts
+
+
 def selected_training_keys(namespace: str):
     """Ordered image keys chosen for training in ``namespace`` (``'cp'``/``'dn'``).
 

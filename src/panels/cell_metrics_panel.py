@@ -50,7 +50,9 @@ def render_plotting_options():
     with st.container(border=True):
         st.subheader("Step 3: Select attributes to compare")
         metric_options = [
-            col for col in df.columns if col not in ["image", "mask #", "mask label"]
+            col
+            for col in df.columns
+            if col not in ["image #", "image", "mask #", "mask label"]
         ]
         default_metrics = st.session_state.get("analysis_metrics", metric_options)
         default_metrics = [

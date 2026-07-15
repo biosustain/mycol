@@ -18,6 +18,8 @@ from src.helpers.state_ops import (
     add_plotly_as_png_to_zip,
     plot_loss_curve,
     snapshot_for_undo,
+    image_number_lookup,
+    point_hover_texts,
 )
 from src.helpers.job_runner import (
     start_worker_job,
@@ -295,6 +297,8 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
     names = (
         image_names if image_names else [f"Image {i}" for i in range(len(base_ious))]
     )
+    lookup = image_number_lookup()
+    hover = point_hover_texts([lookup.get(n, "?") for n in names], names)
 
     # create figure
     fig = go.Figure(layout=dict(barcornerradius=10))
@@ -319,7 +323,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         y=base_ious,
         mode="markers",
         marker=dict(color="#004280", size=6),
-        text=names,
+        text=hover,
         hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
     fig.add_scatter(
@@ -329,7 +333,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         y=tuned_ious,
         mode="markers",
         marker=dict(color="#004280", size=6),
-        text=names,
+        text=hover,
         hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
 
@@ -356,6 +360,8 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
     names = (
         image_names if image_names else [f"Image {i}" for i in range(len(gt_counts))]
     )
+    lookup = image_number_lookup()
+    hover = point_hover_texts([lookup.get(n, "?") for n in names], names)
 
     # create figure
     fig = go.Figure()
@@ -365,7 +371,7 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
         mode="markers",
         marker=dict(size=8, opacity=0.85, color="#004280"),
         name="Original",
-        text=names,
+        text=hover,
         hovertemplate="%{text}<br>True: %{x}<br>Predicted: %{y}<extra></extra>",
     )
     fig.add_scatter(

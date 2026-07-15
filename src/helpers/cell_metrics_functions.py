@@ -2,9 +2,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from src.helpers.state_ops import ordered_keys
+from src.helpers.state_ops import ordered_keys, point_hover_texts
 from skimage.measure import regionprops
-from pathlib import Path
 from src.helpers.classifying_functions import color_hex_for
 
 
@@ -81,10 +80,6 @@ def plot_violin(df: pd.DataFrame, value_col: str):
 
         # optional data points overlaid
         if show_points and len(vals) > 0:
-            imgs = df.loc[idx, "image"].astype(str).to_numpy()
-            masks = df.loc[idx, "mask #"].astype(str).to_numpy()
-            texts = [f"{im}_patch{mk}" for im, mk in zip(imgs, masks)]
-
             fig.add_trace(
                 go.Violin(
                     x=x_vals,
@@ -105,8 +100,12 @@ def plot_violin(df: pd.DataFrame, value_col: str):
                         color="black",
                         line=dict(width=0.3, color="black"),
                     ),
-                    text=texts,  # per-point labels
-                    hovertemplate="Image: %{text}<extra></extra>",
+                    text=point_hover_texts(
+                        df.loc[idx, "image #"],
+                        df.loc[idx, "image"],
+                        df.loc[idx, "mask #"],
+                    ),
+                    hovertemplate="%{text}<extra></extra>",
                     hoveron="points",
                     showlegend=False,
                 )
@@ -205,10 +204,6 @@ def add_data_points_to_plot(plot, order, sub, value_col, xpos):
         if ys.size == 0:
             continue
 
-        imgs = sub.loc[idx, "image"].astype(str).to_numpy()
-        masks = sub.loc[idx, "mask #"].astype(str).to_numpy()
-        texts = [f"{Path(im).stem}_patch{mk}" for im, mk in zip(imgs, masks)]
-
         rng = np.random.default_rng(42 + i)  # deterministic jitter per label
         xj = np.full(ys.shape, xpos[i], dtype=float) + rng.uniform(-0.20, 0.20, ys.size)
 
@@ -225,7 +220,11 @@ def add_data_points_to_plot(plot, order, sub, value_col, xpos):
                     color="black",
                     line=dict(width=0.3, color="black"),
                 ),
-                text=texts,
+                text=point_hover_texts(
+                    sub.loc[idx, "image #"],
+                    sub.loc[idx, "image"],
+                    sub.loc[idx, "mask #"],
+                ),
                 hovertemplate="%{text}<extra></extra>",
             )
         )
@@ -323,8 +322,9 @@ def build_analysis_df(records):
     """
 
     rows = []
-    # iterate through the image records
-    for k in ordered_keys():
+    # iterate through the image records (img_no matches the 1-based "No." shown
+    # in the image selection table)
+    for img_no, k in enumerate(ordered_keys(), start=1):
         rec = st.session_state.images[k]
         inst = rec.get("masks")
         # skip invalid masks
@@ -351,6 +351,7 @@ def build_analysis_df(records):
                     shape_metrics[col] *= pixel_scale**2
 
             row = {
+                "image #": img_no,
                 "image": rec["name"],
                 "mask #": iid,
                 "mask label": ("Unlabelled" if cls in (None, "No label") else cls),
