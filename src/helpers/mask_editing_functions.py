@@ -5,10 +5,11 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 from scipy import ndimage as ndi
 
-from src.helpers.state_ops import get_current_rec
+from src.helpers.state_ops import get_current_rec, snapshot_for_undo, apply_undo
 from src.helpers.classifying_functions import (
     classes_map_from_labels,
     create_colour_palette,
@@ -16,8 +17,6 @@ from src.helpers.classifying_functions import (
 from src.helpers.state_ops import normalize_image
 from src.helpers.sam2_functions import (
     segment_with_sam2,
-    _clear_boxes,
-    _remove_last_box,
     box_draw_fragment,
     integrate_new_mask,
 )
@@ -274,6 +273,7 @@ def _handle_draw_mask_mode(
     """Handle interactions when in 'Freehand' mask drawing mode."""
 
     def draw(xs, ys) -> None:
+        snapshot_for_undo(rec)
         mask_full = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
         _commit_mask(rec, mask_full)
 
@@ -311,6 +311,7 @@ def _handle_draw_ellipse_mode(
             y0, y1 = sorted(map(float, b["y"]))
             if x1 <= x0 or y1 <= y0:  # ignore zero-size drags
                 continue
+            snapshot_for_undo(rec)
             # display box -> full-res box (Plotly y 0 at bottom -> display y 0 at top)
             sx, sy = rec["W"] / disp_w, rec["H"] / disp_h
             mask_full = ellipse_box_to_mask(
@@ -383,15 +384,45 @@ def _handle_draw_box_mode(
     )
 
 
-def _handle_remove_mask_mode(base_img: ImageArray, disp_w: int) -> None:
-    """Handle interactions when in 'Remove mask' mode."""
+def _draw_boxes_on(img: ImageArray, rec: Record) -> ImageArray:
+    """Return a copy of img with the record's boxes drawn as red rectangles.
+
+    Boxes are stored in full-res image coords; they're scaled to img's size so
+    they can be seen and clicked in 'Remove' mode."""
+    boxes = rec.get("boxes", [])
+    if not boxes:
+        return img
+    im = Image.fromarray(img).convert("RGB")
+    d = ImageDraw.Draw(im)
+    h, w = img.shape[:2]
+    sx, sy = w / rec["W"], h / rec["H"]
+    for x0, y0, x1, y1 in boxes:
+        d.rectangle([x0 * sx, y0 * sy, x1 * sx, y1 * sy], outline=(255, 0, 0), width=2)
+    return np.array(im)
+
+
+def _refocus_main_document() -> None:
+    """Refocus the parent document so button shortcuts work after an iframe click.
+
+    The nonce forces the shim to re-run each rerun (identical HTML wouldn't)."""
+    nonce = st.session_state.get("_refocus_nonce", 0) + 1
+    st.session_state["_refocus_nonce"] = nonce
+    components.html(
+        f"<script>window.parent.focus();</script><!--{nonce}-->",
+        height=0,
+    )
+
+
+def _handle_remove_mask_mode(base_img: ImageArray, disp_w: int, rec: Record) -> None:
+    """Handle interactions when in 'Remove' mode (click a mask or box to delete it)."""
 
     streamlit_image_coordinates(
-        base_img,
+        _draw_boxes_on(base_img, rec),
         key="remove_click",
         width=disp_w,
         on_click=remove_clicked,
     )
+    _refocus_main_document()
 
 
 def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
@@ -403,6 +434,7 @@ def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
         width=disp_w,
         on_click=assign_clicked,
     )
+    _refocus_main_document()
 
 
 def _handle_merge_mask_mode(
@@ -476,6 +508,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
     m = rec["masks"]
     touched = np.unique(m[barrier])
     touched = touched[touched != 0]
+    snapshot_for_undo(rec)
 
     struct = np.ones((3, 3), dtype=bool)  # 8-connectivity
     labels = rec.setdefault("labels", {})
@@ -520,7 +553,7 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
 
 
 def remove_clicked():
-    """Remove mask at clicked location."""
+    """Remove the mask or box at the clicked location."""
 
     # check if there was a click
     if not st.session_state["remove_click"]:
@@ -544,27 +577,36 @@ def remove_clicked():
     # store last click
     st.session_state["last_remove_xy"] = xy
 
-    # remove mask at clicked location
+    # remove the box or mask at the clicked location (boxes take priority)
     x, y = xy
+
+    # remove the first box that contains the click, if any
+    for i, (bx0, by0, bx1, by1) in enumerate(rec.get("boxes", [])):
+        if bx0 <= x <= bx1 and by0 <= y <= by1:
+            snapshot_for_undo(rec)
+            rec["boxes"].pop(i)
+            if i < len(rec.get("boxes_display", [])):
+                rec["boxes_display"].pop(i)
+            st.session_state["remove_click"] = False
+            return
+
+    # no box here -> remove the mask at the click and compact the ids above it
     m = rec.get("masks")
+    iid = int(m[y, x]) if m is not None else 0
+    if iid != 0:
+        snapshot_for_undo(rec)
+        m = m.copy()
+        m[m == iid] = 0
+        gt = m > iid
+        if gt.any():
+            m[gt] -= 1
+        rec["masks"] = m
+        rec["labels"] = {
+            (k - 1 if k > iid else k): v
+            for k, v in rec.get("labels", {}).items()
+            if k != iid
+        }
 
-    iid = int(m[y, x])
-    if iid == 0:
-        return
-
-    m = m.copy()
-    m[m == iid] = 0
-    gt = m > iid
-    if gt.any():
-        m[gt] -= 1
-
-    # update record
-    rec["masks"] = m
-    rec["labels"] = {
-        (k - 1 if k > iid else k): v
-        for k, v in rec.get("labels", {}).items()
-        if k != iid
-    }
     st.session_state["remove_click"] = False  # prevent reprocessing on rerun
 
 
@@ -579,6 +621,7 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
     inside = set(np.unique(m[region])) - {0}
     outside = set(np.unique(m[~region]))
     selected = inside - outside  # masks lying completely within the selection
+    snapshot_for_undo(rec)
 
     merged_n = 0  # how many masks were combined
     groups = 0  # how many merged masks they became
@@ -641,6 +684,7 @@ def assign_clicked():
     if iid == 0:
         return
 
+    snapshot_for_undo(rec)
     # update label for this instance
     cur = st.session_state.get("side_current_class")
     labels = rec.setdefault("labels", {})
@@ -660,26 +704,6 @@ def assign_clicked():
 @st.fragment
 def render_cellpose_hyperparameters_fragment():
     """Render Cellpose hyperparameters editing fragment."""
-    # Channel 1
-    st.number_input(
-        "Channel 1",
-        value=st.session_state.get("cp_ch1"),
-        step=1,
-        format="%d",
-        key="w_cp_ch1",
-    )
-    st.session_state["cp_ch1"] = st.session_state.get("w_cp_ch1")
-
-    # Channel 2
-    st.number_input(
-        "Channel 2",
-        value=st.session_state.get("cp_ch2"),
-        step=1,
-        format="%d",
-        key="w_cp_ch2",
-    )
-    st.session_state["cp_ch2"] = st.session_state["w_cp_ch2"]
-
     # Diameter
     diam_val = st.number_input(
         "Mean cell diameter (pixels)",
@@ -745,9 +769,8 @@ def render_box_tools_fragment(key_ns="side"):
     # get current record
     rec = get_current_rec()
 
-    c1, c2 = st.columns([1, 1])
     # button to set mode to draw boxes on the image
-    if c1.button(
+    if st.button(
         "Draw box",
         width="stretch",
         key=f"{key_ns}_draw_boxes",
@@ -756,23 +779,6 @@ def render_box_tools_fragment(key_ns="side"):
     ):
         st.session_state["interaction_mode"] = "Draw box"
         st.rerun()
-    # button to remove only the last drawn box from the current image
-    if c2.button(
-        "Undo draw",
-        width="stretch",
-        key="remove_last_box_button",
-        help="Remove the most recently drawn box",
-    ):
-        _remove_last_box(rec)
-
-    # button to clear all boxes from the current image
-    if st.button(
-        "Clear boxes",
-        width="stretch",
-        key="clear_boxes_button",
-        help="Remove all boxes",
-    ):
-        _clear_boxes(rec)
 
     # button to segment with SAM2 the current boxes
     if st.button(
@@ -842,53 +848,62 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         st.rerun()
 
 
-def render_mask_tools_fragment(key_ns="side"):
-    """Render manual mask removal/clear button control fragment."""
+def render_common_tools_fragment(key_ns="tools"):
+    """Render the always-visible editing tools (Remove, Clear All, Undo), shown
+    outside the segmentation/classification tabs so they're available in both."""
 
     # get current record
     rec = get_current_rec()
 
-    # button to set mode to remove masks by clicking on them
+    # button to set mode to remove masks or boxes by clicking on them
     if st.button(
-        "Remove mask",
+        "Remove",
         width="stretch",
-        key=f"{key_ns}_remove_masks",
+        key=f"{key_ns}_remove",
         shortcut="D",
-        help="Click masks to remove them (shortcut: D)",
+        help="Click masks or boxes to remove them (shortcut: D)",
     ):
-        st.session_state["interaction_mode"] = "Remove mask"
+        st.session_state["interaction_mode"] = "Remove"
         st.rerun()
 
     row = st.container()
     c1, c2 = row.columns([1, 1])
 
-    # button to clear all masks from the current image
+    # button to clear all masks and boxes from the current image
     if c1.button(
-        "Clear masks",
+        "Clear All",
         width="stretch",
-        key=f"{key_ns}_clear_masks",
-        help="Remove all masks from image",
+        key=f"{key_ns}_clear_all",
+        help="Remove all masks and boxes from this image",
     ):
+        snapshot_for_undo(rec)
         rec["masks"] = np.zeros((rec["H"], rec["W"]), dtype=np.uint16)
         rec["labels"] = {}
+        rec["boxes"] = []
+        rec["boxes_display"] = []
         rec["last_click_xy"] = None
         st.session_state["edit_canvas_nonce"] += 1
         st.rerun()
 
-    # button to remove the last added mask
-    if c2.button(
-        "Undo mask",
+    # single-level undo of the last action
+    render_undo_button(c2, key_ns=key_ns)
+
+
+def render_undo_button(container=st, key_ns="side"):
+    """Render the undo button, reverting the last mask/box action via apply_undo
+    (single-level; only the most recent action is recoverable)."""
+    rec = get_current_rec()
+    if container.button(
+        "Undo",
         width="stretch",
-        key=f"{key_ns}_undo_mask",
-        help="Remove last mask",
+        key=f"{key_ns}_undo",
+        shortcut="ctrl+z",
+        help="Undo the last action — only the most recent action can be undone (shortcut: Ctrl+Z)",
     ):
-        max_id = int(rec["masks"].max())
-        if max_id > 0:
-            rec["masks"][rec["masks"] == max_id] = 0
-            rec.setdefault("labels", {}).pop(max_id, None)
-        st.session_state["pred_canvas_nonce"] += 1
-        st.session_state["edit_canvas_nonce"] += 1
-        st.rerun()
+        if apply_undo(rec):
+            st.session_state["pred_canvas_nonce"] += 1
+            st.session_state["edit_canvas_nonce"] += 1
+            st.rerun()
 
 
 # -----------------------------------------------------#
@@ -959,10 +974,11 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
             disp_h=disp_h,
             key_ns=key_ns,
         )
-    elif mode == "Remove mask":
+    elif mode == "Remove":
         _handle_remove_mask_mode(
             base_img=base_img,
             disp_w=disp_w,
+            rec=rec,
         )
     elif mode == "Assign class":
         _handle_assign_class_mode(

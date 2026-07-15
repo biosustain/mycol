@@ -6,7 +6,7 @@ import streamlit as st
 from cellpose import metrics, core
 import optuna
 
-from src.helpers.state_ops import ordered_keys, plot_loss_curve
+from src.helpers.state_ops import ordered_keys
 from src.helpers.densenet_functions import (
     load_labeled_patches,
     build_densenet_zip_bytes,
@@ -281,30 +281,6 @@ def render_cellpose_options(key_ns="train_cellpose"):
         help="Number of images per training batch. Larger batch sizes speed up training but require more memory.",
     )
 
-    with c3:
-        chan_col1, chan_col2 = st.columns(2)
-        with chan_col1:
-
-            ss["cp_training_ch1"] = st.number_input(
-                "Channel 1",
-                min_value=0,
-                max_value=4,
-                value=int(ss["cp_training_ch1"]),
-                step=1,
-                key="cp_training_ch1_input",
-                help="Set to 0 for grayscale images.",
-            )
-        with chan_col2:
-            ss["cp_training_ch2"] = st.number_input(
-                "Channel 2",
-                min_value=0,
-                max_value=4,
-                value=int(ss["cp_training_ch2"]),
-                step=1,
-                key="cp_training_ch2_input",
-                help="Set to 0 for grayscale images.",
-            )
-
     # --- Hyperparameter tuning toggle + grid inputs ---
     with c1:
         subcol1, subcol2 = st.columns([2, 3])
@@ -369,7 +345,8 @@ def get_train_setup():
     lr = float(ss.get("cp_learning_rate"))
     wd = float(ss.get("cp_weight_decay"))
     nimg = int(ss.get("cp_batch_size"))
-    channels = [ss.get("cp_training_ch1"), ss.get("cp_training_ch2")]
+    # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
+    channels = [0, 0]
     return recs, base_model, epochs, lr, wd, nimg, channels, min_cells
 
 
@@ -402,9 +379,6 @@ def run_optuna(images, masks, base_model, channels, model_name):
         return channels
 
     st.subheader("Hyperparameter tuning (Optuna)")
-    ch1 = int(st.session_state.get("cp_training_ch1"))
-    ch2 = int(st.session_state.get("cp_training_ch2"))
-    channels = [ch1, ch2]
 
     eval_model = get_tuned_model()
 

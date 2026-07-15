@@ -62,6 +62,7 @@ def build_session_zip(images, ok) -> bytes:
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
 
+        mask_suffix = ss.get("mask_suffix", "_masks")
         image_metadata = {}
         for k in ok:
             rec = images[k]
@@ -75,7 +76,7 @@ def build_session_zip(images, ok) -> bytes:
             if mask is not None:
                 mbuf = io.BytesIO()
                 tiff.imwrite(mbuf, mask.astype(np.uint16))
-                zf.writestr(f"masks/{name}.tif", mbuf.getvalue())
+                zf.writestr(f"masks/{name}{mask_suffix}.tif", mbuf.getvalue())
 
             image_metadata[name] = {
                 "orig_H": rec.get("orig_H", rec["H"]),
@@ -84,7 +85,10 @@ def build_session_zip(images, ok) -> bytes:
                 "boxes_display": rec.get("boxes_display", []),
             }
 
-        zf.writestr("image_metadata.json", json.dumps(image_metadata))
+        zf.writestr(
+            "image_metadata.json",
+            json.dumps({"mask_suffix": mask_suffix, "images": image_metadata}),
+        )
 
         cp_training_params = {
             "base_model": ss.get("cp_base_model"),
@@ -93,8 +97,9 @@ def build_session_zip(images, ok) -> bytes:
             "weight_decay": ss.get("cp_weight_decay"),
             "batch_size": ss.get("cp_batch_size"),
             "min_cells_per_image": ss.get("cp_min_cells_per_image"),
-            "training_ch1": ss.get("cp_training_ch1", 0),
-            "training_ch2": ss.get("cp_training_ch2", 0),
+            # images are converted to grayscale before Cellpose, so channels are fixed
+            "training_ch1": 0,
+            "training_ch2": 0,
             "do_gridsearch": ss.get("cp_do_gridsearch", False),
             "n_trials": ss.get("cp_n_trials", 20),
         }
@@ -115,8 +120,9 @@ def build_session_zip(images, ok) -> bytes:
         )
 
         cp_inference_params = {
-            "channel_1": ss.get("cp_ch1"),
-            "channel_2": ss.get("cp_ch2"),
+            # images are converted to grayscale before Cellpose, so channels are fixed
+            "channel_1": 0,
+            "channel_2": 0,
             "diameter": ss.get("cp_diameter"),
             "cellprob_threshold": ss.get("cp_cellprob_threshold"),
             "flow_threshold": ss.get("cp_flow_threshold"),

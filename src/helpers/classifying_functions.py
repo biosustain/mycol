@@ -2,7 +2,7 @@
 import numpy as np
 import streamlit as st
 
-from src.helpers.state_ops import ordered_keys, get_current_rec
+from src.helpers.state_ops import ordered_keys, get_current_rec, snapshot_for_undo
 from src.helpers.densenet_functions import (
     classify_cells_with_densenet,
     densenet_mapping_fragment,
@@ -233,6 +233,7 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
     def _assign_all():
         # assign ALL masks in the current image to this class
         rec = get_current_rec()
+        snapshot_for_undo(rec)
         mask_ids = [int(i) for i in np.unique(rec["masks"]) if i != 0]
         rec["labels"] = {mid: name for mid in mask_ids}
 
@@ -326,7 +327,7 @@ def batch_classify():
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        classify_cells_with_densenet(st.session_state.images.get(k))
+        classify_cells_with_densenet(st.session_state.images.get(k), snapshot=False)
         pb.progress(i / n, text=f"Classified {i}/{n}")
 
 

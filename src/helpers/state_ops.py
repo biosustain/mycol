@@ -20,7 +20,7 @@ _DEFAULTS = {
     "side_new_label": "",
     "show_overlay": True,
     "show_normalized": True,
-    "interaction_mode": "Remove mask",
+    "interaction_mode": "Remove",
     "side_interaction_mode": "Draw box",
     "skipped_files": [],
     "remove_click": False,
@@ -33,12 +33,7 @@ _DEFAULTS = {
     "cyto_to_train": "cyto3",
     "train_losses": [],
     "test_losses": [],
-    "cp_training_ch1": 0,
-    "cp_training_ch2": 0,
-
     # cellpose inference
-    "cp_ch1": 0,
-    "cp_ch2": 0,
     "cp_min_size": 0,
     "cp_niter": 500,
     "cp_flow_threshold": 0.3,
@@ -108,6 +103,43 @@ def require_images():
 def get_current_rec():
     k = st.session_state.get("current_key")
     return st.session_state.images.get(k) if k is not None else None
+
+
+def snapshot_for_undo(rec) -> None:
+    """Save the one app-wide undo snapshot for the current image.
+
+    Call immediately before any action that mutates the current record."""
+    if rec is None:
+        return
+    masks = rec.get("masks")
+    st.session_state["undo"] = {
+        "key": st.session_state.get("current_key"),
+        "masks": None if masks is None else masks.copy(),
+        "labels": dict(rec.get("labels", {})),
+        "boxes": list(rec.get("boxes", [])),
+        "boxes_display": list(rec.get("boxes_display", [])),
+    }
+
+
+def apply_undo(rec) -> bool:
+    """Restore the undo snapshot if it's for the current image; always consume it."""
+    snap = st.session_state.pop("undo", None)
+    if not snap or rec is None:
+        return False
+    if snap.get("key") != st.session_state.get("current_key"):
+        return False  # snapshot is for a different image
+    rec["masks"] = snap["masks"]
+    rec["labels"] = snap["labels"]
+    rec["boxes"] = snap["boxes"]
+    rec["boxes_display"] = snap["boxes_display"]
+    return True
+
+
+def reset_undo_on_navigation() -> None:
+    """Drop the undo snapshot if the displayed image changed since it was taken."""
+    snap = st.session_state.get("undo")
+    if snap and snap.get("key") != st.session_state.get("current_key"):
+        st.session_state.pop("undo", None)
 
 
 def set_current_by_index(idx: int):
