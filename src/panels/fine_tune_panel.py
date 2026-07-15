@@ -6,7 +6,8 @@ import streamlit as st
 from cellpose import metrics, core
 import optuna
 
-from src.helpers.state_ops import ordered_keys
+from src.helpers.grid_helpers import render_image_selection_table
+from src.helpers.state_ops import selected_training_keys
 from src.helpers.densenet_functions import (
     load_labeled_patches,
     build_densenet_zip_bytes,
@@ -40,14 +41,14 @@ ss = st.session_state
 # ========== DenseNet: options (light) + dataset summary (light-ish) + training (heavy) ==========
 
 
-@st.fragment
-def render_densenet_options(key_ns="train_densenet"):
-    """Light controls - lives outside fragments so changing options refreshes summary."""
-    st.header("Fine-tune a DenseNet classifier")
+def render_densenet_image_selection():
+    """Step 2 (classifier): choose which images contribute labelled cells."""
+    st.caption("Only labelled cells from the selected images are used.")
+    return render_image_selection_table("dn")
 
-    # show information about the training set
-    render_densenet_summary_fragment()
 
+def render_densenet_params():
+    """Step 3 (classifier): training hyperparameters."""
     c1, c2, c4 = st.columns(3)
     # options for densenet training with defaults already set
     ss["dn_input_size"] = c1.selectbox(
@@ -69,7 +70,6 @@ def render_densenet_options(key_ns="train_densenet"):
         step=5,
         key="max_epoch_densenet_ui",
     )
-    return True
 
 
 @st.fragment
@@ -85,9 +85,9 @@ def render_densenet_summary_fragment():
     freq_df = pd.DataFrame({"Class": list(classes), "Count": counts.astype(int)})
 
     st.info(
-        f"Training set: {int(counts.sum())} labelled cells across {len(classes)} classes."
+        f"Training set: {int(counts.sum())} labelled cells across {len(classes)} classes.",
+        width="stretch",
     )
-    # Pretty, form-like card with rounded edges
     st.dataframe(
         freq_df,
         width="stretch",
@@ -121,9 +121,6 @@ def render_densenet_train_fragment():
 
     dn_job = ss.get("dn_training_job")
     cp_job = ss.get("cp_training_job")
-    (dn_job and dn_job.get("status") == "running") or (
-        cp_job and cp_job.get("status") == "running"
-    )
 
     # Read hyperparameter options from session
     input_size = int(ss.get("dn_input_size"))
@@ -157,6 +154,9 @@ def render_densenet_train_fragment():
             "⚠️ Cellpose training is currently running. Wait for it to finish before starting DenseNet training."
         )
 
+    # training-set summary + class breakdown, shown just above the fine-tune button
+    render_densenet_summary_fragment()
+
     go = st.button(
         "Fine tune Densenet121",
         width="stretch",
@@ -179,45 +179,38 @@ def render_densenet_train_fragment():
 
 
 def show_densenet_training_plots():
-    """Render saved DenseNet training plots from session state (if available)."""
+    """Render saved DenseNet training plots (only reached once a model is trained)."""
+    classifier_training_plot_help()
 
-    # check for uploaded data
-    k1, k2 = "densenet_training_metrics", "densenet_training_metrics"
-    if (k1 not in st.session_state) and (k2 not in st.session_state):
-        st.info("No fine-tuning data available. Tune a model first.")
-        st.empty()
-        return
-
-    else:
-
-        st.header("DenseNet Training Summary")
-
-        classifier_training_plot_help()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.plotly_chart(
-                st.session_state["densenet_training_losses"],
-                width="stretch",
-            )
-        with col2:
-            st.plotly_chart(
-                st.session_state["densenet_training_metrics"],
-                width="stretch",
-            )
-
+    col1, col2 = st.columns(2)
+    with col1:
         st.plotly_chart(
-            st.session_state["densenet_confusion_matrix"],
+            st.session_state["densenet_training_losses"],
             width="stretch",
         )
+    with col2:
+        st.plotly_chart(
+            st.session_state["densenet_training_metrics"],
+            width="stretch",
+        )
+
+    st.plotly_chart(
+        st.session_state["densenet_confusion_matrix"],
+        width="stretch",
+    )
 
 
 # ========== Cellpose: options + training ==========
 
 
-def render_cellpose_options(key_ns="train_cellpose"):
-    st.header("Fine-tune a Cellpose segmenter")
+def render_cellpose_image_selection():
+    """Step 2 (segmenter): choose which images contribute masks."""
+    st.caption("Only masks from the selected images are used.")
+    return render_image_selection_table("cp")
 
+
+def render_cellpose_params():
+    """Step 3 (segmenter): training hyperparameters."""
     # --- show training options ---
     c1, c2, c3 = st.columns(3)
 
@@ -234,7 +227,7 @@ def render_cellpose_options(key_ns="train_cellpose"):
         options=["cyto", "cyto2", "cyto3", "nuclei", "scratch"],
         index=["cyto", "cyto2", "cyto3", "nuclei", "scratch"].index(
             ss["cp_base_model"]
-        ),  # this line sets the
+        ),
     )
     ss["cp_max_epoch"] = c2.number_input(
         "Max epochs",
@@ -273,7 +266,7 @@ def render_cellpose_options(key_ns="train_cellpose"):
         help="Images with fewer than this many annotated cells are excluded from training. Cellpose default is 5.",
     )
 
-    ss["cp_batch_size"] = c2.selectbox(
+    ss["cp_batch_size"] = c3.selectbox(
         "Batch size",
         options=[8, 16, 32, 64],
         index=[8, 16, 32, 64].index(ss["cp_batch_size"]),
@@ -286,7 +279,7 @@ def render_cellpose_options(key_ns="train_cellpose"):
         subcol1, subcol2 = st.columns([2, 3])
         with subcol1:
 
-            ss.setdefault("cp_do_gridsearch", False)
+            ss.setdefault("cp_do_gridsearch", True)
             ss["cp_do_gridsearch"] = st.checkbox(
                 "Optimise hyperparameters",
                 value=bool(ss["cp_do_gridsearch"]),
@@ -304,14 +297,17 @@ def render_cellpose_options(key_ns="train_cellpose"):
                     help="Number of hyperparameter combinations to try during optimisation. More trials may yield better results but take longer.",
                 )
 
-    # --- show dataset stats filtered by min_cells_per_image ---
+
+def render_cellpose_summary():
+    """Training-set summary for the selected Cellpose images (filtered by min cells per image)."""
+
     def is_mask(m):
         return isinstance(m, np.ndarray) and m.ndim == 2 and m.any()
 
-    min_cells = int(ss["cp_min_cells_per_image"])
+    min_cells = int(ss.get("cp_min_cells_per_image", 5))
     n_pass_images, n_pass_masks = 0, 0
     n_fail_images = 0
-    for k in ordered_keys():
+    for k in selected_training_keys("cp"):
         rec = st.session_state["images"][k]
         m = rec["masks"]
         n = int(len(np.unique(m)) - 1) if is_mask(m) else 0
@@ -321,15 +317,16 @@ def render_cellpose_options(key_ns="train_cellpose"):
         else:
             n_fail_images += 1
 
-    info_col1, info_col2 = st.columns(2)
-    info_col1.info(
+    st.info(
         f"Training set: {n_pass_masks} cell masks across {n_pass_images} images "
-        f"(≥ {min_cells} cells per image)."
+        f"(≥ {min_cells} cells per image).",
+        width="stretch",
     )
     if n_fail_images > 0:
-        info_col2.info(
+        st.info(
             f"{n_fail_images} image{'s' if n_fail_images != 1 else ''} excluded "
-            f"(fewer than {min_cells} annotated cells)."
+            f"(fewer than {min_cells} annotated cells).",
+            width="stretch",
         )
 
 
@@ -337,7 +334,7 @@ def get_train_setup():
     min_cells = int(ss.get("cp_min_cells_per_image", 5))
     recs = {
         k: st.session_state["images"][k]
-        for k in ordered_keys()
+        for k in selected_training_keys("cp")
         if int(len(np.unique(st.session_state["images"][k]["masks"])) - 1) >= min_cells
     }
     base_model = ss.get("cp_base_model")
@@ -522,6 +519,9 @@ def render_cellpose_train_fragment():
             "⚠️ DenseNet training is currently running. Wait for it to finish before starting Cellpose training."
         )
 
+    # training-set summary, shown just above the fine-tune button
+    render_cellpose_summary()
+
     go = st.button(
         "Fine-tune Cellpose",
         width="stretch",
@@ -540,61 +540,50 @@ def render_cellpose_train_fragment():
 
 
 def show_cellpose_training_plots():
-    """Render saved Cellpose plots from session state (if available)."""
+    """Render saved Cellpose plots (only reached once a model is trained)."""
+    cellpose_training_plot_help()
 
-    # check for previous fine-tuning data
-    if "cellpose_training_losses" not in st.session_state:
-        st.header("Cellpose Training Summary")
-        st.info("No fine-tuning data to show.")
-        return
+    col1, col2 = st.columns(2)
+    with col1:
 
-    else:
+        # plot training losses
+        st.plotly_chart(
+            st.session_state["cellpose_training_losses"],
+            width="stretch",
+        )
 
-        st.header("Cellpose Training Summary")
-        cellpose_training_plot_help()
-
-        col1, col2 = st.columns(2)
-        with col1:
-
-            # plot training losses
+        # plot original vs predicted counts
+        if "cellpose_original_counts_comparison" in st.session_state:
             st.plotly_chart(
-                st.session_state["cellpose_training_losses"],
+                st.session_state["cellpose_original_counts_comparison"],
                 width="stretch",
             )
 
-            # plot original vs predicted counts
-            if "cellpose_original_counts_comparison" in st.session_state:
-                st.plotly_chart(
-                    st.session_state["cellpose_original_counts_comparison"],
-                    width="stretch",
-                )
+    with col2:
 
-        with col2:
-
-            # plot iou comparison
-            if "cellpose_iou_comparison" in st.session_state:
-                st.plotly_chart(
-                    st.session_state["cellpose_iou_comparison"],
-                    width="stretch",
-                )
-
-            # plot tuned vs predicted counts
-            if "cellpose_tuned_counts_comparison" in st.session_state:
-                st.plotly_chart(
-                    st.session_state["cellpose_tuned_counts_comparison"],
-                    width="stretch",
-                )
-
-        # display grid search results if applicable
-        if ss.get("cp_do_gridsearch") and "cp_grid_results_df" in st.session_state:
-            st.dataframe(
-                st.session_state["cp_grid_results_df"],
-                hide_index=True,
+        # plot iou comparison
+        if "cellpose_iou_comparison" in st.session_state:
+            st.plotly_chart(
+                st.session_state["cellpose_iou_comparison"],
                 width="stretch",
             )
 
-        else:
-            st.info("No hyperparameter tuning performed.")
+        # plot tuned vs predicted counts
+        if "cellpose_tuned_counts_comparison" in st.session_state:
+            st.plotly_chart(
+                st.session_state["cellpose_tuned_counts_comparison"],
+                width="stretch",
+            )
+
+    # display grid search results if applicable
+    if ss.get("cp_do_gridsearch") and "cp_grid_results_df" in st.session_state:
+        st.dataframe(
+            st.session_state["cp_grid_results_df"],
+            hide_index=True,
+            width="stretch",
+        )
+    else:
+        st.info("No hyperparameter tuning performed.")
 
 
 @st.fragment(run_every=2)

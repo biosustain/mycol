@@ -17,7 +17,7 @@ from torchvision import models
 
 # ---- bring in existing app helpers ----
 from src.helpers.state_ops import (
-    ordered_keys,
+    selected_training_keys,
     normalize_image,
     add_plotly_as_png_to_zip,
     plot_loss_curve,
@@ -282,8 +282,9 @@ def load_labeled_patches(patch_size: int = 64):
         all_classes = ["class0", "class1"]
     name_to_idx = {c: i for i, c in enumerate(all_classes)}
 
+    # restrict to the images chosen on the training page (all when no selection yet)
     X, y = [], []
-    for k in ordered_keys():
+    for k in selected_training_keys("dn"):
         rec = ims.get(k) or {}
         img, M, labs = rec.get("image"), rec.get("masks"), rec.get("labels", {})
         if img is None or not isinstance(M, np.ndarray) or M.ndim != 2 or not np.any(M):

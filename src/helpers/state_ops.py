@@ -86,6 +86,18 @@ def ordered_keys():
     return sorted(st.session_state.images.keys())
 
 
+def selected_training_keys(namespace: str):
+    """Ordered image keys chosen for training in ``namespace`` (``'cp'``/``'dn'``).
+
+    Falls back to every image when no explicit selection has been made yet.
+    """
+    selected = st.session_state.get(f"{namespace}_selected_image_keys")
+    if selected is None:
+        return ordered_keys()
+    selected = set(selected)
+    return [k for k in ordered_keys() if k in selected]
+
+
 def require_images():
     """Stop the page with a warning if no images have been uploaded yet."""
     if not st.session_state["images"]:

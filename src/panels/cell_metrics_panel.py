@@ -1,131 +1,37 @@
 # panels/cell_metrics_panel.py
-import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from src.helpers.cell_metrics_functions import (
     build_analysis_df,
-    build_per_image_counts,
     plot_violin,
     plot_bar,
 )
+from src.helpers.grid_helpers import render_image_selection_table
 from src.helpers.help_panels import shape_metric_help
-from src.helpers.state_ops import ordered_keys
 
 
 def ui_image_selection_container() -> list[str]:
-    """Render an AgGrid table for selecting which images to include in plots.
-    Returns a list of selected image names."""
-    keys = ordered_keys()
-
-    opt, sorted_labels = build_per_image_counts(keys)
-    ids = opt["_key"].tolist()
-
-    sel = st.session_state.setdefault("cell_metrics_image_sel", {})
-
-    value_cols = ["Total masks"] + sorted_labels
-    display_df = opt[["Image"] + value_cols + ["_key"]].copy()
-
-    gb = GridOptionsBuilder.from_dataframe(display_df)
-    gb.configure_selection("multiple", use_checkbox=True, rowMultiSelectWithClick=True)
-    gb.configure_column("_key", hide=True)
-    gb.configure_column("Image", headerCheckboxSelection=True, checkboxSelection=True)
-    for col in value_cols:
-        gb.configure_column(col, editable=False, type=[])
-    grid_options = gb.build()
-
-    pre_selected_rows = [idx for idx, k in enumerate(ids) if sel.get(k, True)]
-    grid_response = AgGrid(
-        display_df,
-        gridOptions=grid_options,
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
-        pre_selected_rows=pre_selected_rows,
-        fit_columns_on_grid_load=True,
-        height=min(400, 55 + 35 * len(ids)),
-        width="100%",
-        key="cell_metrics_image_grid",
-    )
-
-    selected_rows = grid_response.get("selected_rows")
-    if selected_rows is None:
-        selected_keys = set()
-    elif isinstance(selected_rows, pd.DataFrame):
-        selected_keys = set(
-            selected_rows.get("_key", pd.Series([], dtype=str)).tolist()
-        )
-    elif isinstance(selected_rows, list):
-        if selected_rows and isinstance(selected_rows[0], dict):
-            selected_keys = {
-                row.get("_key") for row in selected_rows if row.get("_key")
-            }
-        else:
-            selected_keys = {row for row in selected_rows if isinstance(row, str)}
-    else:
-        selected_keys = set()
-
-    for k in ids:
-        sel[k] = k in selected_keys
-
-    return [st.session_state["images"][k]["name"] for k in ids if sel[k]]
+    """Render the shared image-selection table; return selected image names."""
+    selected_keys = render_image_selection_table("cell_metrics")
+    return [st.session_state["images"][k]["name"] for k in selected_keys]
 
 
 @st.fragment
 def render_plotting_options():
+    # ---- Step 1: select images to compare ----
     with st.container(border=True):
-        st.subheader("Select Images for Analysis")
+        st.subheader("Step 1: Select images to compare")
         selected_names = ui_image_selection_container()
         st.session_state["cell_metrics_selected_names"] = selected_names
 
-    col1, col2 = st.columns([2, 5])
-    with col1:
-        inner_col1, inner_col2 = st.columns(2, vertical_alignment="center")
-        # choose plot type
-        plot_type = inner_col1.pills(
-            "Plot type",
-            ["Violin", "Bar"],
-            default=st.session_state.get("analysis_plot_type", "Violin"),
-            selection_mode="single",
-            width="stretch",
-        )
-        if plot_type:
-            st.session_state.analysis_plot_type = plot_type
+    # build the analysis dataframe for the selected images
+    df = build_analysis_df(st.session_state["images"])
+    if selected_names is not None:
+        df = df[df["image"].isin(selected_names)]
 
-        # toggle overlay of datapoints in the plots
-        inner_col2.toggle(
-            "Overlay datapoints",
-            value=st.session_state.get("overlay_datapoints", False),
-            key="overlay_datapoints",
-        )
-
-        with st.popover(label="Descriptor Information", width="stretch"):
-            shape_metric_help()
-
-        # pixel-to-distance conversion
-        chk_col, px_col = st.columns([2, 2], vertical_alignment="center")
-        chk_col.checkbox(
-            "Convert pixels to distance",
-            value=st.session_state.get("convert_to_distance", False),
-            key="convert_to_distance",
-            help="Apply pixel size to convert measurements to physical units.",
-        )
-        if st.session_state.get("convert_to_distance"):
-            pixel_size = px_col.number_input(
-                "Pixel size",
-                min_value=0.0,
-                value=st.session_state.get("pixel_size", 1.0),
-                key="pixel_size_input",
-                help="Physical size of one pixel.",
-            )
-            st.session_state["pixel_size"] = pixel_size
-
-    with col2:
-        # build the analysis dataframe
-        df = build_analysis_df(st.session_state["images"])
-        selected_names = st.session_state.get("cell_metrics_selected_names")
-        if selected_names is not None:
-            df = df[df["image"].isin(selected_names)]
-
-        # Labels multiselect (single instance)
+    # ---- Step 2: select classes to compare ----
+    with st.container(border=True):
+        st.subheader("Step 2: Select classes to compare")
         label_options = sorted(
             df["mask label"].unique(), key=lambda x: (x != "Unlabelled", str(x))
         )
@@ -140,7 +46,9 @@ def render_plotting_options():
             key="analysis_labels",
         )
 
-        # Metrics multiselect (single instance)
+    # ---- Step 3: select attributes to compare ----
+    with st.container(border=True):
+        st.subheader("Step 3: Select attributes to compare")
         metric_options = [
             col for col in df.columns if col not in ["image", "mask #", "mask label"]
         ]
@@ -158,8 +66,62 @@ def render_plotting_options():
             width="stretch",
         )
 
-    if st.button("Generate Plots", width="stretch", type="primary"):
-        render_plotting_main()
+        with st.popover(label="Attribute Information"):
+            shape_metric_help()
+
+    # ---- Step 4: select plot parameters ----
+    with st.container(border=True):
+        st.subheader("Step 4: Select plot parameters")
+        # third column is reserved for the pixel-size input so the other
+        # controls don't shift when it appears
+        col_plot, col_opts, col_px = st.columns([2, 3, 2])
+
+        # choose plot type
+        plot_type = col_plot.pills(
+            "Plot type",
+            ["Violin", "Bar"],
+            default=st.session_state.get("analysis_plot_type", "Violin"),
+            selection_mode="single",
+            width="stretch",
+        )
+        if plot_type:
+            st.session_state.analysis_plot_type = plot_type
+
+        # overlay + unit-conversion options as pills in one row
+        OVERLAY, CONVERT = "Overlay datapoints", "Convert to distance"
+        default_opts = []
+        if st.session_state.get("overlay_datapoints", False):
+            default_opts.append(OVERLAY)
+        if st.session_state.get("convert_to_distance", False):
+            default_opts.append(CONVERT)
+        opts = (
+            col_opts.pills(
+                "Options",
+                [OVERLAY, CONVERT],
+                default=default_opts,
+                selection_mode="multi",
+                width="stretch",
+            )
+            or []
+        )
+        st.session_state["overlay_datapoints"] = OVERLAY in opts
+        st.session_state["convert_to_distance"] = CONVERT in opts
+
+        # pixel size lives in the reserved column, shown only when converting
+        if st.session_state["convert_to_distance"]:
+            st.session_state["pixel_size"] = col_px.number_input(
+                "Pixel size",
+                min_value=0.0,
+                value=st.session_state.get("pixel_size", 1.0),
+                key="pixel_size_input",
+                help="Physical size of one pixel.",
+            )
+
+    # ---- Step 5: generate and review the plots ----
+    with st.container(border=True):
+        st.subheader("Step 5: Generate plots")
+        if st.button("Generate Plots", width="stretch", type="primary"):
+            render_plotting_main()
 
 
 def render_plotting_main():

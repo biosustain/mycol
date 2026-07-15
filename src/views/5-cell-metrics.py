@@ -12,5 +12,4 @@ if not any(np.any(st.session_state["images"][k]["masks"]) for k in ordered_keys(
 
 
 with st.spinner("Loading Metrics..."):
-    with st.container(border=True):
-        cell_metrics_panel.render_plotting_options()
+    cell_metrics_panel.render_plotting_options()

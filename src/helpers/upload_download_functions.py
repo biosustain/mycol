@@ -25,6 +25,7 @@ from src.helpers.densenet_functions import (
     array_to_png_bytes,
 )
 from src.helpers.cell_metrics_functions import build_per_image_counts
+from src.helpers.grid_helpers import render_image_selection_table
 
 
 from src.helpers.state_ops import (
@@ -153,7 +154,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
             ss["cp_do_gridsearch"] = _cast(
-                p.get("do_gridsearch"), lambda v: str(v).lower() == "true", False
+                p.get("do_gridsearch"), lambda v: str(v).lower() == "true", True
             )
             ss["cp_n_trials"] = _cast(p.get("n_trials"), int, 20)
 
@@ -391,55 +392,31 @@ def load_model(name: str, data: bytes) -> str:
 
 
 def render_images_form():
-    """display the uploaded images table"""
-    ss, ok = st.session_state, sorted(st.session_state.images)
+    """display the uploaded images table with a remove-selected action"""
+    ss = st.session_state
 
-    # helper to check if mask present
-    def is_mask(m):
-        return isinstance(m, np.ndarray) and m.any()
+    # tick rows to remove
+    selected_keys = render_image_selection_table("uploads_remove")
 
-    rows = []
-    for i, k in enumerate(ok, start=1):
-        rec, m = ss.images[k], ss.images[k].get("masks")
-        has = is_mask(m)
-        n = int(len(np.unique(m)) - 1) if has else 0
-        nl = sum(v is not None for v in rec.get("labels", {}).values())
-        rows.append(
-            {
-                "No.": i,  # image id number
-                "Image": rec.get("name", k),  # image filename
-                "Mask Present": "✅" if has else "❌",  # whether mask is present
-                "Number of Masks": n,  # number of masks
-                "Labelled Masks": f"{nl}/{n}",  # number of labelled masks
-                "Remove": False,  # checkbox to remove image
-            }
-        )
+    if st.button(
+        "Remove selected images",
+        width="stretch",
+        disabled=not selected_keys,
+        type="primary",
+    ):
+        for k in selected_keys:
+            ss.images.pop(k, None)
 
-    # render the data editor
-    with st.form("images_form"):
-        edited = st.data_editor(
-            pd.DataFrame(rows, index=ok),
-            hide_index=True,
-            height=580,
-            width="stretch",
-            column_config={"Remove": st.column_config.CheckboxColumn()},
-            disabled=["Image", "Masks Present", "Number of Masks", "Number of Labels"],
-        )
-        # handle removals
-        if st.form_submit_button("Remove selected images", width="stretch"):
-            for k in edited.loc[edited["Remove"]].index:
-                ss.images.pop(k, None)
+        # rebuild the name-to-key mapping from the remaining records
+        ss.name_to_key = {
+            rec.get("name"): key
+            for key, rec in ss.images.items()
+            if rec.get("name")
+        }
 
-            # simplest/cleanest: rebuild mapping from current records only
-            ss.name_to_key = {
-                rec.get("name"): key
-                for key, rec in ss.images.items()
-                if rec.get("name")
-            }
-
-            ks = sorted(ss.images)
-            ss.current_key = ks[0] if ks else None
-            st.rerun()
+        ks = sorted(ss.images)
+        ss.current_key = ks[0] if ks else None
+        st.rerun()
 
 
 # --------------------------------------
