@@ -2,6 +2,7 @@
 import numpy as np
 import streamlit as st
 import cv2
+from scipy import ndimage
 import pandas as pd
 from PIL import Image
 import io
@@ -116,16 +117,12 @@ def resize_with_aspect_ratio(
 def generate_patches_with_ids(rec, patch_size=64):
     """returns list of cell patches and patch ids from input record"""
     M = rec.get("masks")
-    # extract the individual masks
-    ids = [int(v) for v in np.unique(M) if v != 0]
-
+    # one pass over the label image yields the bounding-box slice for every id
     patches, keep_ids = [], []
-    for iid in ids:
-        patches.append(
-            generate_cell_patch(
-                image=rec["image"], mask=M == iid, patch_size=patch_size
-            )
-        )
+    for iid, sl in enumerate(ndimage.find_objects(M), start=1):
+        if sl is None:  # id absent (gap left by a merge/cut)
+            continue
+        patches.append(generate_cell_patch(rec["image"][sl], M[sl] == iid, patch_size))
         keep_ids.append(iid)
 
     return patches, keep_ids
