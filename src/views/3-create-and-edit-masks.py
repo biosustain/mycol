@@ -108,21 +108,14 @@ with st.spinner("Loading Annotator..."):
             st.session_state["show_normalized"] = "Normalize" in _selected_views
             st.session_state["show_image"] = "Image" in _selected_views
 
-            # choose between segmentation and classification control panels
-            _ctrl_default = st.session_state.get("_ctrl_panel", "Segmentation Controls")
-            controls = st.segmented_control(
-                "",
-                ["Segmentation Controls", "Classification Controls"],
-                default=_ctrl_default,
-                selection_mode="single",
-                width="stretch",
+            # segmentation / classification controls as tabs: both panels render
+            # into the DOM so their button keyboard shortcuts work from either tab
+            seg_tab, classify_tab = st.tabs(
+                ["Segmentation Controls", "Classification Controls"], width="stretch"
             )
-            if controls is not None:
-                st.session_state["_ctrl_panel"] = controls
-
-            if controls == "Segmentation Controls":
+            with seg_tab:
                 mask_editing_panel.render_segment_sidebar(key_ns="edit_side")
-            else:
+            with classify_tab:
                 mask_editing_panel.render_classify_sidebar(key_ns="classify_side")
 
             # editing tools available in both tabs

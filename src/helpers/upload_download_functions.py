@@ -382,7 +382,10 @@ def load_model(name: str, data: bytes) -> str:
         # Cellpose UNet
         ss["cellpose_model_bytes"] = data
         ss["cellpose_model_name"] = name
-        return f"Loaded Cellpose model: {name}"
+        return (
+            f"Loaded Cellpose model: {name}. Remember to upload the hyperparameters csv (from training) or set them on "
+            "the Annotate Images page for high prediction accuracy."
+        )
 
     raise ValueError(f"Could not identify model type for: {name}")
 

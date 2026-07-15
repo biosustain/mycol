@@ -199,8 +199,17 @@ def segment_with_cellpose(
     }  # reset/realign
 
 
+@st.cache_resource(show_spinner="Loading Cellpose model…")
+def _load_cellpose_model(pretrained_model: str, gpu: bool):
+    """Load a Cellpose model once and reuse it across reruns"""
+    from cellpose import models as cp_models, io
+
+    _ = io.logger_setup()
+    return cp_models.CellposeModel(gpu=gpu, pretrained_model=pretrained_model)
+
+
 class CellposeModel3Proxy:
-    """A proxy class that runs Cellpose 3 inference via background worker"""
+    """Thin in-process wrapper around a (cached) Cellpose 3 model."""
 
     def __init__(self, pretrained_model, gpu=True):
         self.pretrained_model = pretrained_model
@@ -224,15 +233,10 @@ class CellposeModel3Proxy:
         niter=200,
         **kwargs,
     ):
-        from cellpose import models as cp_models, io
-
         is_list = isinstance(x, (list, tuple))
         images = x if is_list else [x]
 
-        _ = io.logger_setup()
-        cell_model = cp_models.CellposeModel(
-            gpu=self.gpu, pretrained_model=self.pretrained_model
-        )
+        cell_model = _load_cellpose_model(self.pretrained_model, self.gpu)
         masks, flows, styles = cell_model.eval(
             images,
             channels=channels if channels is not None else [0, 0],
@@ -465,6 +469,9 @@ def check_cellpose_training_status():
         ss = st.session_state
         ss["cellpose_model_bytes"] = buf.getvalue()
         ss["cellpose_model_name"] = model_name
+
+        # a clear old model from cache
+        _load_cellpose_model.clear()
         ss["model_to_fine_tune"] = job["base_model"]
         ss["train_losses"] = train_losses
         ss["test_losses"] = test_losses
