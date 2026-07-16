@@ -59,13 +59,12 @@ def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 6
     crop, mc = im[y0:y1, x0:x1], m[y0:y1, x0:x1]
     crop = (crop * mc[..., None] if crop.ndim == 3 else crop * mc).astype(im.dtype)
 
-    # checks to make sure crop is the correct format
+    # coerce to 3 channels; images enter the app as RGB (add_image converts on
+    # upload), so a 3-channel crop is already RGB and must not be reordered
     if crop.ndim == 2:
         crop = np.stack([crop] * 3, axis=-1)
     elif crop.ndim == 3 and crop.shape[2] == 4:
         crop = cv2.cvtColor(crop, cv2.COLOR_RGBA2RGB)
-    elif crop.ndim == 3 and crop.shape[2] == 3:
-        crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
     else:
         crop = crop[..., :3]
 
