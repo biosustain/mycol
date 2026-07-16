@@ -44,7 +44,7 @@ with st.container(border=True):
         st.subheader("Tables")
         if has_images:
             option_row("Per-image cell counts", True, "dl_include_summary", "CSV listing how many cells of each class appear in each image.", on_change=_invalidate)
-            option_row("Cell metrics", True, "dl_include_cell_metrics", "CSV of morphological descriptors (area, circularity, elongation, etc.) for every cell.", on_change=_invalidate)
+            option_row("Cell metrics", True, "dl_include_cell_metrics", "CSV of morphological descriptors (area, circularity, eccentricity, etc.) for every cell.", on_change=_invalidate)
         else:
             st.caption("No data available yet.")
 

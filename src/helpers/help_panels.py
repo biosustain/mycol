@@ -241,21 +241,28 @@ def shape_metric_help():
             ),
         },
         {
-            "Name": "circularity / compactness / roundness",
+            "Name": "feret diameter",
             "What it describes": (
-                "Three related measures of how circle-like and compact a shape is. "
-                "Circularity and roundness are high (≈ 1) for circle-like objects and decrease with "
-                "elongation or irregular boundaries. Compactness is the inverse of circularity and "
-                "increases with boundary irregularity."
+                "The largest distance between any two points on the object's boundary, "
+                "as if measured with callipers. Unlike the major axis length it assumes "
+                "no particular shape, so it is the more reliable size measure for "
+                "irregular or bent objects."
             ),
         },
         {
-            "Name": "aspect ratio / elongation / eccentricity",
+            "Name": "circularity / roundness",
             "What it describes": (
-                "Three related measures of how stretched the best-fit ellipse is. "
-                "Aspect ratio compares the major and minor axis lengths (≥ 1). "
-                "Elongation normalizes the difference between axes into the range 0 to 1. "
-                "Eccentricity measures how far the ellipse deviates from a circle, also ranging from 0 to 1."
+                "Two related measures of how circle-like and compact a shape is. "
+                "Both are high (≈ 1) for circle-like objects and decrease with "
+                "elongation or irregular boundaries."
+            ),
+        },
+        {
+            "Name": "eccentricity",
+            "What it describes": (
+                "How stretched the best-fit ellipse is, from 0 to 1. A value of 0 is a "
+                "perfect circle; values approaching 1 are increasingly elongated. It "
+                "compares the two axes, so it does not change with the size of the cell."
             ),
         },
         {
@@ -281,20 +288,30 @@ def shape_metric_help():
         with st.expander(m["Name"]):
             st.markdown(f"**What it describes:** {m['What it describes']}")
 
-            if m["Name"] == "circularity / compactness / roundness":
+            if m["Name"] == "circularity / roundness":
                 st.image(
-                    DIAGRAM_DIR / "circularity_compactness_roundness.svg",
+                    DIAGRAM_DIR / "circularity_roundness.svg",
                     width="stretch",
                 )
 
                 st.caption(
                     "For the same area A, shapes with longer perimeters P have lower circularity "
-                    "and roundness, and higher compactness. All three metrics summarize how "
+                    "and roundness. Both metrics summarize how "
                     "circle-like and compact the boundary is."
                 )
 
             if m["Name"] == "major / minor axis lengths":
                 st.image(DIAGRAM_DIR / "axes.svg", width="stretch")
+
+            if m["Name"] == "feret diameter":
+                st.image(DIAGRAM_DIR / "feret_diameter.svg", width="stretch")
+
+                st.caption(
+                    "A calliper reading depends on the direction it is taken in: Fh "
+                    "across and Fv down. Turning the same object changes both. Mycol "
+                    "reports the maximum Feret diameter, the largest reading over every "
+                    "direction, so it does not depend on how the cell happens to lie."
+                )
 
                 st.caption(
                     "The major axis is the longest diameter of the best-fit ellipse; "
@@ -302,16 +319,16 @@ def shape_metric_help():
                     "Their lengths are reported as major_axis_length and minor_axis_length."
                 )
 
-            if m["Name"] == "aspect ratio / elongation / eccentricity":
+            if m["Name"] == "eccentricity":
                 st.image(
-                    DIAGRAM_DIR / "elongation_eccentricity_aspect_ratio.svg",
+                    DIAGRAM_DIR / "eccentricity.svg",
                     width="stretch",
                 )
 
                 st.caption(
-                    "All three metrics describe how stretched the best-fit ellipse is. "
-                    "As the major axis increases relative to the minor axis, aspect ratio, "
-                    "elongation, and eccentricity all increase."
+                    "Eccentricity describes how stretched the best-fit ellipse is. "
+                    "As the major axis grows relative to the minor axis, eccentricity "
+                    "rises from 0 towards 1."
                 )
 
             if m["Name"] == "solidity":

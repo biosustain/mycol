@@ -109,6 +109,10 @@ def restore_session(zip_bytes: bytes) -> str | None:
             add_mask(rec, entry, zf.read(entry))
 
         # ── Labels (from cell_metrics.csv) ────────────────────────────────────
+        # Version compatibility lives here: only these three columns are read, and
+        # every descriptor is recomputed from the masks by build_analysis_df. So a
+        # zip saved by any version loads, whatever descriptor columns it does or
+        # does not carry. Keep this read restricted to labels.
         if "cell_metrics.csv" in names:
             stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
             df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
