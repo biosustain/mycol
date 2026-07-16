@@ -266,15 +266,6 @@ def mask_shape_metrics(prop):
     else:
         roundness = float("nan")
 
-    # Aspect ratio (elongated shapes >> 1)
-    aspect_ratio = safe_div(major, minor) if minor > 0 else float("nan")
-
-    # Elongation in [0, 1):
-    #   0 -> circle-like, ->1 very elongated
-    elongation = (
-        safe_div(major - minor, major + minor) if (major + minor) > 0 else float("nan")
-    )
-
     # Solidity = area / convex_area (1 for convex shapes)
     solidity = float(getattr(prop, "solidity", float("nan")))
 
@@ -284,22 +275,22 @@ def mask_shape_metrics(prop):
     # Eccentricity of the ellipse that has the same second-moments
     eccentricity = float(getattr(prop, "eccentricity", float("nan")))
 
-    # Compactness (inverse of circularity, higher = less compact)
-    compactness = safe_div(perimeter**2, 4.0 * np.pi * area)
+    # Maximum Feret (caliper) diameter: the longest distance between any two points
+    # on the boundary. Unlike major axis length it makes no ellipse assumption.
+    # getattr so older skimage builds without the property report nan, not raise.
+    feret = float(getattr(prop, "feret_diameter_max", float("nan")))
 
     return {
         "area": area,
         "perimeter": perimeter,
         "major axis length": major,
         "minor axis length": minor,
+        "feret diameter": feret,
         "circularity": circularity,
         "roundness": roundness,
-        "aspect ratio": aspect_ratio,
-        "elongation": elongation,
         "solidity": solidity,
         "extent": extent,
         "eccentricity": eccentricity,
-        "compactness": compactness,
     }
 
 
@@ -370,8 +361,11 @@ def build_analysis_df(records):
     return pd.DataFrame(rows)
 
 
-# Columns that represent distances (multiply by pixel_size)
-_DIST_COLS = {"perimeter", "major axis length", "minor axis length"}
+# Columns that represent distances (multiply by pixel_size).
+# Any new distance metric must be listed here, or it is left in stored pixels:
+# build_analysis_df uses these sets to undo the upload resize, and _scale_col /
+# apply_pixel_scaling use them again to convert to physical units.
+_DIST_COLS = {"perimeter", "major axis length", "minor axis length", "feret diameter"}
 # Columns that represent areas (multiply by pixel_size²)
 _AREA_COLS = {"area"}
 

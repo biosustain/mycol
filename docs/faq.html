@@ -764,49 +764,68 @@
           </div>
         </div>
 
-        <!-- circularity / compactness / roundness -->
+        <!-- feret diameter -->
         <div class="desc-item">
           <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Circularity, Compactness &amp; Roundness</span>
+            <span class="desc-name">Feret Diameter</span>
             <span class="desc-chevron">&#9660;</span>
           </button>
           <div class="desc-body">
             <p>
-              <strong>What it describes:</strong> Three related measures of how circle-like and compact a
-              shape is. Circularity and roundness are close to 1 for near-circular cells and decrease with
-              elongation or irregular boundaries. Compactness is the inverse of circularity and increases
-              with boundary irregularity.
+              <strong>What it describes:</strong> The largest distance between any two points on the
+              cell&rsquo;s boundary, as if measured with callipers. Unlike the major axis length it assumes
+              no particular shape, so it is the more reliable size measure for irregular or bent cells.
             </p>
             <div class="desc-figure">
-              <img src="descriptor_diagrams/circularity_compactness_roundness.svg"
-                   alt="Circularity compactness roundness diagram" />
+              <img src="descriptor_diagrams/feret_diameter.svg" alt="Feret diameter diagram" />
               <p class="desc-caption">
-                For the same area A, shapes with longer perimeters P have lower circularity and roundness,
-                and higher compactness.
+                A calliper reading depends on the direction it is taken in: Fh across and Fv down.
+                Turning the same cell changes both. Mycol reports the maximum Feret diameter, the
+                largest reading over every direction, so it does not depend on how the cell lies.
               </p>
             </div>
           </div>
         </div>
 
-        <!-- aspect ratio / elongation / eccentricity -->
+        <!-- circularity / roundness -->
         <div class="desc-item">
           <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Aspect Ratio, Elongation &amp; Eccentricity</span>
+            <span class="desc-name">Circularity &amp; Roundness</span>
             <span class="desc-chevron">&#9660;</span>
           </button>
           <div class="desc-body">
             <p>
-              <strong>What it describes:</strong> Three related measures of how stretched the best-fit ellipse
-              is. Aspect ratio compares the major and minor axes (&ge;&nbsp;1). Elongation normalizes the
-              difference between axes into the range 0&ndash;1. Eccentricity measures how far the ellipse
-              deviates from a circle, also ranging from 0 to 1.
+              <strong>What it describes:</strong> Two related measures of how circle-like and compact a
+              shape is. Both are close to 1 for near-circular cells and decrease with
+              elongation or irregular boundaries.
             </p>
             <div class="desc-figure">
-              <img src="descriptor_diagrams/elongation_eccentricity_aspect_ratio.svg"
-                   alt="Elongation eccentricity aspect ratio diagram" />
+              <img src="descriptor_diagrams/circularity_roundness.svg"
+                   alt="Circularity roundness diagram" />
               <p class="desc-caption">
-                As the major axis grows relative to the minor axis, aspect ratio, elongation, and eccentricity
-                all increase.
+                For the same area A, shapes with longer perimeters P have lower circularity and roundness.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- eccentricity -->
+        <div class="desc-item">
+          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+            <span class="desc-name">Eccentricity</span>
+            <span class="desc-chevron">&#9660;</span>
+          </button>
+          <div class="desc-body">
+            <p>
+              <strong>What it describes:</strong> How stretched the best-fit ellipse is, from 0 to 1. A value
+              of 0 is a perfect circle; values approaching 1 are increasingly elongated. It compares the two
+              axes, so it does not change with the size of the cell.
+            </p>
+            <div class="desc-figure">
+              <img src="descriptor_diagrams/eccentricity.svg"
+                   alt="Eccentricity diagram" />
+              <p class="desc-caption">
+                As the major axis grows relative to the minor axis, eccentricity rises from 0 towards 1.
               </p>
             </div>
           </div>
