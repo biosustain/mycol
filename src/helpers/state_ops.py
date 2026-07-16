@@ -254,7 +254,7 @@ def plot_loss_curve(train_losses, test_losses):
         yaxis_title="Loss",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=400,
+        height=450,
         width=450,
     )
     return fig

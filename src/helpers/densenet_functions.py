@@ -463,7 +463,7 @@ def plot_densenet_metrics(metrics):
         title="Validation metrics",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        height=400,
+        height=450,
         width=450,
     )
     return fig

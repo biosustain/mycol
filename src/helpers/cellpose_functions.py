@@ -345,6 +345,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         plot_bgcolor="white",
         paper_bgcolor="white",
         showlegend=False,
+        height=450,
     )
     fig.update_xaxes(showgrid=True)
     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.1)")
@@ -403,6 +404,7 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
         plot_bgcolor="white",
         paper_bgcolor="white",
         showlegend=False,
+        height=450,
     )
 
     # set axes ranges and grid
