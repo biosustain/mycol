@@ -314,6 +314,22 @@ def mask_shape_metrics(prop):
     }
 
 
+# Fixed set of metric columns build_analysis_df emits, so the attribute picker needs no DataFrame.
+METRIC_COLS = list(mask_shape_metrics(regionprops(np.ones((3, 3), np.uint8))[0]).keys())
+
+
+def available_labels(keys):
+    """Distinct class labels across the given images, read cheaply from per-image label dicts."""
+    if not keys:
+        return []
+    classes = set()
+    for k in keys:
+        for cls in (st.session_state["images"][k].get("labels") or {}).values():
+            if cls not in (None, "No label"):
+                classes.add(cls)
+    return sorted(classes | {"Unlabelled"}, key=lambda x: (x != "Unlabelled", str(x)))
+
+
 @st.cache_data(show_spinner="Building analysis DataFrame...")
 def build_analysis_df(records):
     """

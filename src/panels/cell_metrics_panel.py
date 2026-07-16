@@ -3,6 +3,8 @@ import streamlit as st
 
 from src.helpers.cell_metrics_functions import (
     build_analysis_df,
+    available_labels,
+    METRIC_COLS,
     plot_violin,
     plot_bar,
 )
@@ -10,10 +12,9 @@ from src.helpers.grid_helpers import render_image_selection_table
 from src.helpers.help_panels import shape_metric_help
 
 
-def ui_image_selection_container() -> list[str]:
-    """Render the shared image-selection table; return selected image names."""
-    selected_keys = render_image_selection_table("cell_metrics")
-    return [st.session_state["images"][k]["name"] for k in selected_keys]
+def ui_image_selection_container() -> list:
+    """Render the shared image-selection table; return the selected image keys."""
+    return render_image_selection_table("cell_metrics")
 
 
 @st.fragment
@@ -21,20 +22,15 @@ def render_plotting_options():
     # ---- Step 1: select images to compare ----
     with st.container(border=True):
         st.subheader("Step 1: Select images to compare")
-        selected_names = ui_image_selection_container()
+        selected_keys = ui_image_selection_container()
+        selected_names = [st.session_state["images"][k]["name"] for k in selected_keys]
         st.session_state["cell_metrics_selected_names"] = selected_names
-
-    # build the analysis dataframe for the selected images
-    df = build_analysis_df(st.session_state["images"])
-    if selected_names is not None:
-        df = df[df["image"].isin(selected_names)]
 
     # ---- Step 2: select classes to compare ----
     with st.container(border=True):
         st.subheader("Step 2: Select classes to compare")
-        label_options = sorted(
-            df["mask label"].unique(), key=lambda x: (x != "Unlabelled", str(x))
-        )
+        # labels come from the tiny per-image label dicts, so pickers never rebuild the DataFrame
+        label_options = available_labels(selected_keys)
         default_labels = st.session_state.get("analysis_labels", label_options)
         default_labels = [
             label for label in default_labels if label in label_options
@@ -49,11 +45,7 @@ def render_plotting_options():
     # ---- Step 3: select attributes to compare ----
     with st.container(border=True):
         st.subheader("Step 3: Select attributes to compare")
-        metric_options = [
-            col
-            for col in df.columns
-            if col not in ["image #", "image", "mask #", "mask label"]
-        ]
+        metric_options = METRIC_COLS
         default_metrics = st.session_state.get("analysis_metrics", metric_options)
         default_metrics = [
             m for m in default_metrics if m in metric_options
@@ -128,7 +120,7 @@ def render_plotting_options():
 
 def render_plotting_main():
 
-    # build dataframes
+    # build dataframes (only runs here, on the Generate Plots button click)
     df = build_analysis_df(st.session_state["images"])
     selected_names = st.session_state.get("cell_metrics_selected_names")
     if selected_names is not None:
