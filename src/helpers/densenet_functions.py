@@ -49,11 +49,11 @@ def get_device():
 
 
 def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 64):
-    """takes an image and boolean mask input and a normalized square patch image from the mask"""
+    """Crop the mask's bounding box out of `image` and return it as a square
+    patch_size patch, background blacked out. `mask` must have at least one pixel set."""
     # extract bounding box crop
     im, m = np.asarray(image), np.asarray(mask, bool)
 
-    # handle empty mask case
     ys, xs = np.where(m)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     crop, mc = im[y0:y1, x0:x1], m[y0:y1, x0:x1]
@@ -279,10 +279,9 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
 
 
 def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
-    """Convert a preprocessed HWC uint8 patch to a normalised CHW float32 tensor in [0, 1].
+    """Convert an HWC patch to a normalised CHW float32 tensor in [0, 1].
 
-    This is the single authoritative preprocessing step that must be called
-    identically by both the training pipeline and the inference pipeline.
+    Must be applied identically by the training and inference pipelines.
     """
     patch = normalize_image(patch)  # scale mean → 127.5, clip to [0,255], uint8
     chw = np.transpose(patch, (2, 0, 1))  # HWC → CHW

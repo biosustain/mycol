@@ -185,8 +185,8 @@ def set_current_by_index(idx: int):
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
     """
-    Normalizes image intensities for Cellpose input.
-    Scales mean intensity to ~127.5 or full uint8 range if mean <= 0.
+    Normalize image intensities to uint8, for Cellpose, DenseNet patches and downloads.
+    Scales mean intensity to ~127.5, or to the full uint8 range if mean <= 0.
     """
     im = image.astype(np.float32)
     if im.size == 0:

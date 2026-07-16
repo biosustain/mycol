@@ -42,7 +42,8 @@ def create_image_mask_overlay_inner(
     alpha,
 ):
     """
-    Creates image-mask overlay for display, using bytes for caching.
+    Rebuild the arrays from bytes and delegate to create_image_mask_overlay.
+    Assumes a uint8 image and a uint16 mask; other mask dtypes fail to reshape.
     """
 
     image = np.frombuffer(image_bytes, dtype=np.uint8).reshape(image_shape)
@@ -55,7 +56,7 @@ def create_image_mask_overlay_inner(
 def create_image_mask_overlay(image, mask, classes_map, palette, alpha=0.5):
     """
     Create an overlay of instance masks on an image using class colours.
-    image_u8:  uint8 RGB image, shape (H, W, 3)
+    image: uint8 RGB image, shape (H, W, 3)
     mask: uint{8,16,32} label image, shape (H, W), 0=background, 1..N=instances
     classes_map: dict[int -> class_name]
     palette: dict[class_name -> (r,g,b) in 0..1]
@@ -115,7 +116,6 @@ def cached_image_mask_overlay(
     palette: dict,
     alpha: float,
 ) -> np.ndarray:
-    # Convert unhashable types to something cacheable
     image_key = image.tobytes()
     mask_key = mask.tobytes()
     classes_key = tuple(sorted(classes_map.items()))

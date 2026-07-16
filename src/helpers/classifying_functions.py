@@ -1,4 +1,3 @@
-# panels/classify_cells.py
 import numpy as np
 import streamlit as st
 
@@ -92,7 +91,7 @@ def rename_class_everywhere(old_name: str, new_name: str):
       - st.session_state['all_classes']
       - per-image rec['labels'] dicts
       - st.session_state['side_current_class'] if it was old_name
-      - emoji map st.session_state['class_emojis']
+      - colour map st.session_state['class_colors']
     """
     ss = st.session_state
     if not old_name or old_name == "No label":
@@ -109,9 +108,7 @@ def rename_class_everywhere(old_name: str, new_name: str):
     # Ensure class list exists
     all_classes = ss.setdefault("all_classes", ["No label"])
 
-    # Track whether target already exists (merge)
-
-    # Update labels in every image record)
+    # Update labels in every image record
     changed_labels = 0
     for _, rec in yield_all_image_records():
         lab = rec.get("labels")
@@ -127,18 +124,16 @@ def rename_class_everywhere(old_name: str, new_name: str):
         all_classes = [c for c in all_classes if c != old_name]  # drop old
     if new_name not in all_classes:
         all_classes.append(new_name)
-    # Keep "No label" first if you prefer; otherwise keep as-is
-    # Re-assign back
     ss["all_classes"] = all_classes
 
     # --- Update current selection if needed ---
     if ss.get("side_current_class") == old_name:
         ss["side_current_class"] = new_name
 
-    # after emoji handling
+    # Release the old name's colour so it can be reused
     cmap = ss.setdefault("class_colors", {})
-    if new_name in ss["all_classes"]:  # target_exists logic above already computed
-        cmap.pop(old_name, None)  # merge: keep target color
+    if new_name in ss["all_classes"]:
+        cmap.pop(old_name, None)  # merge: keep the target's colour
     else:
         if old_name in cmap:
             cmap[new_name] = cmap.pop(old_name)
@@ -152,14 +147,14 @@ def remove_class_everywhere(name: str):
       - st.session_state['all_classes'] (removes the class)
       - per-image rec['labels'] values (name -> None)
       - st.session_state['side_current_class'] (fallback to "No label" if needed)
-      - emoji map st.session_state['class_emojis'] (removes entry)
+      - colour map st.session_state['class_colors'] (frees the colour)
     """
     ss = st.session_state
 
     ss.setdefault("class_emojis", {}).pop(name, None)
     ss.setdefault("class_colors", {}).pop(name, None)  # free color
 
-    # Ensure class list exists and cant remove "No label"
+    # "No label" is reserved and cannot be removed
     if name == "No label":
         return
     all_classes = ss.setdefault("all_classes", ["No label"])
@@ -201,8 +196,9 @@ def create_colour_palette(class_names):
 
 def classes_map_from_labels(masks, labels):
     """
-    Given masks array and labels dict {inst_id: class_name}, return
-    {inst_id: class_name} for all inst_ids in masks (excluding 0
+    Given a masks array and a labels dict {inst_id: class_name}, return
+    {inst_id: class_name} for every inst_id in masks (excluding 0).
+    Unlabelled instances map to "No label".
     """
     inst = np.asarray(masks)
     if inst.ndim != 2 or inst.size == 0:
@@ -261,7 +257,6 @@ def add_label_from_input(labels, new_label_ss):
     new_label = new_label_ss.strip()
     if not new_label:
         return
-    # assumes `labels` is in scope; consider storing it in st.session_state if needed
     if new_label not in labels:
         labels.append(new_label)
     st.session_state["side_current_class"] = new_label

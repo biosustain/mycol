@@ -1,4 +1,3 @@
-# helpers/image_io.py
 from PIL import Image
 import io
 import json
@@ -469,7 +468,7 @@ def build_masks_images_zip(
             mask_suffix = ss["mask_suffix"]
             zf.writestr(f"masks/{name}{mask_suffix}.tif", tbuf.getvalue())
 
-            # write iamge
+            # write image
             img = np.asarray(rec["image"])
 
             # optionally normalize image

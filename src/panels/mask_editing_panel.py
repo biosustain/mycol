@@ -1,4 +1,3 @@
-# panels/edit_masks.py
 import streamlit as st
 
 from src.helpers.state_ops import ordered_keys

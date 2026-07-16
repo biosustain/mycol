@@ -13,8 +13,8 @@ import plotly.graph_objects as go
 from src.helpers.state_ops import snapshot_for_undo
 
 
-# masks can be cut when adding them to the existing array (new masks lose priority).
-# therefore, add mask, rextract to see if it is cut, if so, take it out and re-add the largest section
+# new masks lose priority where they overlap existing ones, so a mask can be cut
+# into pieces on insert; integrate_new_mask uses this to keep only the largest.
 def keep_largest_part(mask: np.ndarray) -> np.ndarray:
     """Return only the largest connected component of a boolean mask."""
     if not np.any(mask):
@@ -27,7 +27,6 @@ def keep_largest_part(mask: np.ndarray) -> np.ndarray:
     return lab == sizes.argmax()
 
 
-# duplicated function from mas_editing_functions to avoid circular import
 def integrate_new_mask(original: np.ndarray, new_binary: np.ndarray):
     """
     Add a new mask into a label image.
@@ -68,7 +67,7 @@ def integrate_new_mask(original: np.ndarray, new_binary: np.ndarray):
     return out, new_id
 
 
-# duplicated function from mas_editing_functions to avoid circular import
+# duplicated from mask_editing_functions to avoid a circular import
 def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
     """
     Create a Plotly figure with a background image and fixed pixel size.
@@ -276,8 +275,9 @@ def _load_sam2():
 
 
 def segment_with_sam2(rec: dict):
-    """input is record for prediction. boxes to guide prediction will be extracted wtih "boxes" key.
-    Return a list of (H,W) boolean masks (best mask per box."""
+    """Segment the cells in rec['boxes'] with SAM2, merging each into rec['masks'].
+
+    The record's boxes are cleared once their masks have been integrated."""
 
     # get boxes
     boxes = np.asarray(rec.get("boxes", []), dtype=np.float32)

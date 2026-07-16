@@ -17,7 +17,7 @@ import streamlit as st
 
 
 # -----------------------------------------------------------------------------
-# Worker path resolution (folds the old portable / frozen / dev dispatch)
+# Worker path resolution (portable / frozen / dev)
 # -----------------------------------------------------------------------------
 
 

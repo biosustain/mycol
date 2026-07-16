@@ -19,9 +19,9 @@ def hex_for_plot_label(label: str) -> str:
 
 def _scale_col(df: pd.DataFrame, col: str):
     """
-    Return (scaled_series, axis_label) for `col`, applying pixel scaling from
-    session state if pixel_size is set. Accounts for per-image resize scale stored
-    in the '_pixel_scale' column. Dimensionless metrics are returned as-is.
+    Return (scaled_series, axis_label) for `col`, converting to physical units when
+    'convert_to_distance' and 'pixel_size' are set in session state.
+    Dimensionless metrics are returned as-is.
     """
     pixel_size = st.session_state.get("pixel_size")
     vals = df[col].copy()
@@ -241,20 +241,9 @@ def safe_div(num, den):
 
 def mask_shape_metrics(prop):
     """
-    Compute a set of shape metrics for a single skimage regionprops object.
+    Compute shape metrics for a single skimage regionprops object (one instance).
 
-    Parameters
-    ----------
-    prop : skimage.measure._regionprops.RegionProperties
-        Region properties for a single labeled instance.
-    max_edge_to_edge : float or None
-        Optional precomputed longest internal chord length.
-        If provided, will be used for a normalized metric.
-
-    Returns
-    -------
-    dict
-        Keys are metric names (strings), values are floats (or np.nan).
+    Returns {metric_name: float}, with np.nan where a metric is undefined.
     """
 
     area = float(prop.area)

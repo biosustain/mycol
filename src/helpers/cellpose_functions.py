@@ -175,8 +175,7 @@ def segment_with_cellpose(
     else:
         cell_model = get_cellpose_model()
 
-    # reset diameter to None for automatic estimation
-    # this is necessary be in the online version of the app only
+    # the UI uses 0 to mean "estimate automatically"; Cellpose expects None
     if diameter == 0:
         diameter = None
 
@@ -478,7 +477,7 @@ def check_cellpose_training_status():
         ss["cellpose_model_bytes"] = buf.getvalue()
         ss["cellpose_model_name"] = model_name
 
-        # a clear old model from cache
+        # drop the previous model so the newly trained weights are loaded
         _load_cellpose_model.clear()
         ss["model_to_fine_tune"] = job["base_model"]
         ss["train_losses"] = train_losses
