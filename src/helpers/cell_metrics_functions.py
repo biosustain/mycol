@@ -310,7 +310,7 @@ def available_labels(keys):
     return sorted(classes | {"Unlabelled"}, key=lambda x: (x != "Unlabelled", str(x)))
 
 
-@st.cache_data(show_spinner="Building analysis DataFrame...")
+@st.cache_data(show_spinner="Building analysis DataFrame...", max_entries=2)
 def build_analysis_df(records):
     """
     Build a DataFrame with per-mask metrics for all images in session state.
