@@ -8,7 +8,7 @@ import tifffile as tiff
 import streamlit as st
 import plotly.io as pio
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
 
 from src.helpers.upload_download_functions import build_masks_images_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
@@ -49,23 +49,23 @@ def build_download_zip(images, ok) -> tuple[bytes, str]:
                 build_cell_metrics_csv(tuple(ss.get("analysis_labels") or ())),
             )
 
+        # nested zips are already compressed, so they are stored rather than deflated
         if ss.get("dl_include_cellpose", True) and (ss.get("cp_zip_bytes") or ss.get("cellpose_model_bytes")):
             cp_bytes = ss.get("cp_zip_bytes") or build_cellpose_zip_bytes()
             if cp_bytes:
-                zf.writestr("cellpose_training.zip", cp_bytes)
+                zf.writestr("cellpose_training.zip", cp_bytes, compress_type=ZIP_STORED)
 
         if ss.get("dl_include_densenet", True) and (ss.get("dn_zip_bytes") or ss.get("densenet_model") is not None):
             dn_bytes = ss.get("dn_zip_bytes") or build_densenet_zip_bytes(ss.get("dn_input_size"))
             if dn_bytes:
-                zf.writestr("densenet_training.zip", dn_bytes)
+                zf.writestr("densenet_training.zip", dn_bytes, compress_type=ZIP_STORED)
 
-        # nested so the whole page needs only one download button
         if images and ss.get("dl_save_session", True):
-            zf.writestr(SESSION_ZIP_NAME, build_session_zip(images, ok))
+            zf.writestr(SESSION_ZIP_NAME, build_session_zip(images, ok), compress_type=ZIP_STORED)
 
     data = buf.getvalue()
 
-    # nothing to wrap: serve a session-only download as the session zip itself
+    # a session-only download is served unwrapped
     with ZipFile(io.BytesIO(data)) as zf:
         if zf.namelist() == [SESSION_ZIP_NAME]:
             return zf.read(SESSION_ZIP_NAME), SESSION_ZIP_NAME

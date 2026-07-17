@@ -108,7 +108,7 @@ def create_image_mask_overlay(image, mask, classes_map, palette, alpha=0.5):
     return (np.clip(out, 0, 1) * 255).astype(np.uint8)
 
 
-# Only the current and previous mask are ever re-requested (the latter by undo).
+# Caches the current and previous mask overlay.
 @st.cache_data(show_spinner=False, max_entries=2)
 def cached_image_mask_overlay(
     image: np.ndarray,

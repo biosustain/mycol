@@ -2,13 +2,8 @@ import streamlit as st
 
 
 def option_row(label, default, key, caption, disabled=False, on_change=None):
-    """Render a checkbox with an explanatory caption; return whether it is ticked.
-
-    The tick is mirrored in the plain key ``key``, which is what the zip builders
-    read and what survives page navigation; Streamlit drops the widget's own state
-    on any rerun where the widget isn't rendered. Seeding the widget key only when
-    it is absent restores the tick on returning to the page.
-    """
+    """Checkbox with an explanatory caption; returns whether it is ticked."""
+    # The tick is stored under `key`, which survives page navigation.
     wkey = f"{key}_widget"
     st.session_state.setdefault(wkey, st.session_state.get(key, default))
 

@@ -49,10 +49,8 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
 
     Shared by the training, Cell Metrics and uploads pages so they look identical.
     Persists the user's choice in ``ss[f'{namespace}_selected_image_keys']`` and
-    returns the ordered list of selected image keys.
-
-    Untouched images follow ``default_all``; pass ``False`` where a pre-ticked
-    table would arm a destructive action.
+    returns the ordered list of selected image keys. Untouched images follow
+    ``default_all``.
     """
     keys = ordered_keys()
     if not keys:
@@ -62,7 +60,7 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
     df = _build_image_table(keys)
     ids = df["_key"].tolist()
 
-    # Plain key: survives page navigation, unlike the widget's own state.
+    # Ticks stored per image key; survives page navigation.
     sel_key = f"{namespace}_selection"
     sel = st.session_state.setdefault(sel_key, {})
 
@@ -77,7 +75,7 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
         height=min(400, 38 + 35 * len(ids)),
         on_select="rerun",
         selection_mode="multi-row",
-        # Applied only when the widget has no state, i.e. returning from another page.
+        # Seeds the ticks when the widget has no state of its own.
         selection_default={
             "selection": {
                 "rows": [i for i, k in enumerate(ids) if sel.get(k, default_all)]
