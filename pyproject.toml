@@ -5,7 +5,10 @@ description = "A Streamlit app for cell segmentation and classification"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "streamlit==1.59.2",  # >=1.56 for st.dataframe(selection_default=...)
+    # Floor: 1.56 first shipped st.dataframe(selection_default=...).
+    # Ceiling: 1.59 only renders a popover's contents while it is open, so button
+    # shortcuts inside popovers (B/G/F/E/S/M) stop working unless it is open.
+    "streamlit==1.58.0",
     "cellpose>=3.0.0,<4.0.0",
     "torch>=2.5.1",
     "torchvision>=0.20.1",
