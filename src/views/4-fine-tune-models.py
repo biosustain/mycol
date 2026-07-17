@@ -18,7 +18,7 @@ with st.spinner("Loading Training Panel..."):
     # ---- Step 1: choose what to fine-tune ----
     with st.container(border=True):
         st.subheader("Step 1: Choose which model to fine-tune")
-        training_tab = st.segmented_control(
+        training_tab = st.pills(
             "Model type",
             options=[CELLPOSE, DENSENET],
             default=CELLPOSE,
