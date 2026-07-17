@@ -18,7 +18,11 @@ from src.helpers.densenet_functions import build_densenet_zip_bytes
 ss = st.session_state
 
 
-def build_download_zip(images, ok) -> bytes:
+SESSION_ZIP_NAME = "mycol_saved_session.zip"
+
+
+def build_download_zip(images, ok) -> tuple[bytes, str]:
+    """Build the download and return its bytes plus the file name to serve it as."""
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
 
@@ -55,7 +59,18 @@ def build_download_zip(images, ok) -> bytes:
             if dn_bytes:
                 zf.writestr("densenet_training.zip", dn_bytes)
 
-    return buf.getvalue()
+        # nested so the whole page needs only one download button
+        if images and ss.get("dl_save_session", True):
+            zf.writestr(SESSION_ZIP_NAME, build_session_zip(images, ok))
+
+    data = buf.getvalue()
+
+    # nothing to wrap: serve a session-only download as the session zip itself
+    with ZipFile(io.BytesIO(data)) as zf:
+        if zf.namelist() == [SESSION_ZIP_NAME]:
+            return zf.read(SESSION_ZIP_NAME), SESSION_ZIP_NAME
+
+    return data, "mycol_downloads.zip"
 
 
 def build_session_zip(images, ok) -> bytes:
