@@ -576,6 +576,7 @@ def show_cellpose_training_plots():
 
     # display grid search results if applicable
     if ss.get("cp_do_gridsearch") and "cp_grid_results_df" in st.session_state:
+        st.subheader("Tested hyperparameters")
         st.dataframe(
             st.session_state["cp_grid_results_df"],
             hide_index=True,
