@@ -42,7 +42,14 @@ def render_segment_sidebar(*, key_ns: str = "side"):
             type="primary",
         ):
 
-            model_options = ["Cyto3", "Cyto2", "Fine-tuned Model"]
+            model_type_map = {
+                "Cyto3": "cyto3",
+                "Cyto2": "cyto2",
+                "Cyto": "cyto",
+                "Nuclei": "nuclei",
+                "Fine-tuned Model": None,
+            }
+            model_options = list(model_type_map)
             finetuned_available = st.session_state["cellpose_model_bytes"] is not None
             default_index = (
                 model_options.index("Fine-tuned Model") if finetuned_available else 0
@@ -51,7 +58,6 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                 "Select model", model_options, index=default_index
             )
 
-            model_type_map = {"Cyto3": "cyto3", "Cyto2": "cyto2", "Fine-tuned Model": None}
             model_type = model_type_map[model_family]
             disabled = model_type is None and st.session_state["cellpose_model_bytes"] is None
 
