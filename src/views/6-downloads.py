@@ -1,5 +1,6 @@
 import streamlit as st
 from src.helpers.state_ops import ordered_keys, require_images
+from src.helpers.cell_metrics_functions import METRIC_COLS
 from src.helpers.downloads_functions import build_download_zip
 from src.panels.downloads_panel import option_row
 
@@ -38,7 +39,7 @@ with table_col:
     st.subheader("Tables", text_alignment="center")
     if has_images:
         option_row("Per-image cell counts", True, "dl_include_summary", "CSV listing how many cells of each class appear in each image.", on_change=_invalidate)
-        option_row("Cell metrics", True, "dl_include_cell_metrics", "CSV of morphological descriptors (area, circularity, eccentricity, etc.) for every cell.", on_change=_invalidate)
+        option_row("Cell metrics", True, "dl_include_cell_metrics", f"CSV of {len(METRIC_COLS)} morphological descriptors ({', '.join(METRIC_COLS[:3])}, etc.) for every cell.", on_change=_invalidate)
     else:
         st.caption("No data available yet.")
 
