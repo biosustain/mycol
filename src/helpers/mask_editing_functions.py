@@ -252,7 +252,7 @@ def _lasso_select_fragment(
         key=chart_key,
         on_select=handle,
         selection_mode="lasso",
-        use_container_width=False,
+        width="content",
         config={
             # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
             # image refresh; use the browser's own pinch-zoom instead.
@@ -328,7 +328,7 @@ def _handle_draw_ellipse_mode(
         key=chart_key,
         on_select=add_ellipse,
         selection_mode="box",
-        use_container_width=False,
+        width="content",
         config={
             # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
             # image refresh; use the browser's own pinch-zoom instead.
