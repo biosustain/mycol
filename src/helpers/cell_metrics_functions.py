@@ -67,7 +67,7 @@ def plot_violin(df: pd.DataFrame, value_col: str):
                 y=vals,
                 name=str(lab),
                 legendgroup=str(lab),
-                box_visible=True,
+                box_visible=False,
                 meanline_visible=True,
                 line_color="black",
                 fillcolor=color_map[lab],
