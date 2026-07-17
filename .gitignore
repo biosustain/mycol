@@ -7,6 +7,9 @@ case_study_2/
 case_study_3/
 .claude/
 
+# Streamlit agent skills (environment-specific symlinks)
+.agents/skills/developing-with-streamlit
+
 # Ignore a specific file
 
 # Ignore all .log files anywhere

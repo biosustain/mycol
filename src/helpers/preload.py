@@ -1,6 +1,6 @@
 import streamlit as st
 
-
+@st.spinner("Loading AI libraries (Torch, Cellpose, SAM2)...")
 def eager_load_heavy_libs():
     """
     Eagerly import heavy libraries to avoid lag when switching tabs

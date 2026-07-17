@@ -402,8 +402,8 @@ def render_images_form():
     """display the uploaded images table with a remove-selected action"""
     ss = st.session_state
 
-    # tick rows to remove
-    selected_keys = render_image_selection_table("uploads_remove")
+    # tick rows to remove; starts empty so the removal button isn't pre-armed
+    selected_keys = render_image_selection_table("uploads_remove", default_all=False)
 
     if st.button(
         "Remove selected images",

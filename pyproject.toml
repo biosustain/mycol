@@ -5,7 +5,7 @@ description = "A Streamlit app for cell segmentation and classification"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "streamlit==1.52.2",
+    "streamlit==1.59.2",  # >=1.56 for st.dataframe(selection_default=...)
     "cellpose>=3.0.0,<4.0.0",
     "torch>=2.5.1",
     "torchvision>=0.20.1",
@@ -24,7 +24,6 @@ dependencies = [
     "huggingface_hub==1.1.2",
     "kaleido",
     "pywebview>=6.1",
-    "streamlit-aggrid>=1.2.1.post2",
 ]
 
 [[tool.uv.index]]
