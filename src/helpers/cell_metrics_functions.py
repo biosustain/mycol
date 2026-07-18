@@ -294,8 +294,57 @@ def mask_shape_metrics(prop):
     }
 
 
+def white_balance_by_background(
+    image: np.ndarray, inst: np.ndarray, eps: float = 1e-6
+) -> np.ndarray:
+    """
+    White-balance `image` so its background (inst == 0) is neutral gray, making
+    cell colour comparable across images with slight lighting differences.
+    Referencing the background, not the cells, keeps real cell-colour differences
+    intact. Returns float32; unchanged if grayscale or no usable background.
+    """
+    im = image.astype(np.float32)
+    if im.ndim != 3:  # grayscale: nothing to balance
+        return im
+    bg = inst == 0
+    if not bg.any():
+        return im
+    bg_means = im[bg].mean(axis=0)  # per-channel background mean
+    if not np.all(bg_means > eps):
+        return im
+    im *= bg_means.mean() / bg_means  # flatten each channel's background to gray
+    return im
+
+
+def mask_color_metrics(prop):
+    """
+    Per-region chromaticity from foreground pixels only. `prop` must carry a
+    (white-balanced) intensity_image. Returns brightness-independent channel
+    fractions that sum to 1, nan where undefined.
+    """
+    keys = ("redness", "greenness", "blueness")
+    px = prop.image_intensity[prop.image]  # foreground pixels only
+
+    if px.size == 0:
+        return dict.fromkeys(keys, float("nan"))
+    if px.ndim == 1:  # grayscale: no colour, split evenly
+        return dict.fromkeys(keys, 1.0 / 3.0)
+
+    means = px.mean(axis=0)  # per-channel mean
+    total = float(means.sum())
+    if total <= 0:  # black region: undefined
+        return dict.fromkeys(keys, float("nan"))
+
+    return dict(zip(keys, (float(m / total) for m in means[:3])))
+
+
 # Fixed set of metric columns build_analysis_df emits, so the attribute picker needs no DataFrame.
-METRIC_COLS = list(mask_shape_metrics(regionprops(np.ones((3, 3), np.uint8))[0]).keys())
+_DUMMY = regionprops(
+    np.ones((3, 3), np.uint8), intensity_image=np.ones((3, 3, 3), np.uint8)
+)[0]
+METRIC_COLS = list(mask_shape_metrics(_DUMMY).keys()) + list(
+    mask_color_metrics(_DUMMY).keys()
+)
 
 
 def available_labels(keys):
@@ -332,8 +381,11 @@ def build_analysis_df(records):
         orig_W = rec.get("orig_W", rec["W"])
         pixel_scale = max(orig_H, orig_W) / max(rec["H"], rec["W"])
 
+        # white-balance so cell colour is comparable across images
+        wb_img = white_balance_by_background(rec["image"], inst)
+
         labdict = rec.get("labels", {})  # dict {instance_id -> class/None}
-        for prop in regionprops(inst):  # prop.label is the instance id
+        for prop in regionprops(inst, intensity_image=wb_img):  # prop.label is the instance id
             iid = int(prop.label)
             cls = labdict.get(iid)
 
@@ -353,8 +405,9 @@ def build_analysis_df(records):
                 "mask label": ("Unlabelled" if cls in (None, "No label") else cls),
             }
 
-            # merge in the shape metrics
+            # merge in shape + colour metrics
             row.update(shape_metrics)
+            row.update(mask_color_metrics(prop))
 
             rows.append(row)
 
