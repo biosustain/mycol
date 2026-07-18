@@ -2,6 +2,7 @@ import copy
 from pathlib import Path
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.io as pio
 import plotly.graph_objects as go
 
@@ -204,6 +205,16 @@ def normalize_image(image: np.ndarray) -> np.ndarray:
     # ensure valid uint8 range
     im = np.clip(im, 0, 255)
     return im.astype(np.uint8)
+
+
+def params_to_csv(params: dict) -> str:
+    """Serialize a {name: value} dict to a two-column parameter/value CSV string."""
+    return (
+        pd.Series(params)
+        .rename_axis("parameter")
+        .reset_index(name="value")
+        .to_csv(index=False)
+    )
 
 
 def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default_h=400):

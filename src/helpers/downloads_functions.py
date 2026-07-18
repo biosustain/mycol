@@ -1,7 +1,5 @@
 import io
 import json
-import os
-import tempfile
 import numpy as np
 import pandas as pd
 import tifffile as tiff
@@ -16,7 +14,11 @@ from src.helpers.cellpose_functions import (
     build_cellpose_zip_bytes,
     write_cellpose_param_csvs,
 )
-from src.helpers.densenet_functions import build_densenet_zip_bytes
+from src.helpers.densenet_functions import (
+    build_densenet_zip_bytes,
+    write_densenet_param_csvs,
+    densenet_model_bytes,
+)
 
 ss = st.session_state
 
@@ -109,30 +111,13 @@ def build_session_zip(images, ok) -> bytes:
         )
 
         write_cellpose_param_csvs(zf)
-
-        dn_training_params = {
-            "input_size": ss.get("dn_input_size", 64),
-            "batch_size": ss.get("dn_batch_size", 32),
-            "max_epoch": ss.get("dn_max_epoch", 100),
-            "val_split": ss.get("dn_val_split", 0.2),
-        }
-        zf.writestr(
-            "densenet_training_hyperparameters.csv",
-            pd.Series(dn_training_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
-        )
+        write_densenet_param_csvs(zf)
 
         if bool(ss.get("cellpose_model_bytes")):
             zf.writestr("cellpose_model.pt", ss["cellpose_model_bytes"])
 
         if ss.get("densenet_model") is not None:
-            import torch
-            tmp = tempfile.NamedTemporaryFile(suffix=".pth", delete=False)
-            tmp_path = tmp.name
-            tmp.close()
-            torch.save(ss["densenet_model"].state_dict(), tmp_path)
-            with open(tmp_path, "rb") as f:
-                zf.writestr("densenet_model.pth", f.read())
-            os.remove(tmp_path)
+            zf.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
         densenet_class_map = ss.get("densenet_class_map")
         if densenet_class_map:

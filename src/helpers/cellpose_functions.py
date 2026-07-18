@@ -16,6 +16,7 @@ from src.helpers.state_ops import (
     get_current_rec,
     normalize_image,
     add_plotly_as_png_to_zip,
+    params_to_csv,
     plot_loss_curve,
     snapshot_for_undo,
     image_number_lookup,
@@ -598,16 +599,6 @@ def is_not_empty_mask(m):
     return isinstance(m, np.ndarray) and m.any()
 
 
-def _params_to_csv(params: dict) -> str:
-    """Serialize a {name: value} dict to a two-column parameter/value CSV string."""
-    return (
-        pd.Series(params)
-        .rename_axis("parameter")
-        .reset_index(name="value")
-        .to_csv(index=False)
-    )
-
-
 def cellpose_training_params() -> dict:
     """Snapshot the Cellpose *training* hyperparameters from session state."""
     ss = st.session_state
@@ -645,11 +636,11 @@ def write_cellpose_param_csvs(zf) -> None:
     """Write the Cellpose training, inference and grid-search CSVs into `zf`."""
     zf.writestr(
         "cellpose_training_hyperparameters.csv",
-        _params_to_csv(cellpose_training_params()),
+        params_to_csv(cellpose_training_params()),
     )
     zf.writestr(
         "cellpose_inference_hyperparameters.csv",
-        _params_to_csv(cellpose_inference_params()),
+        params_to_csv(cellpose_inference_params()),
     )
     grid = st.session_state.get("cp_grid_results_df")
     if grid is not None:
