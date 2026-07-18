@@ -598,12 +598,14 @@
           or a tiff where each cell is a different integer value.
         </p>
 
-        <h3>Hyperparameter CSV <em>(optional)</em></h3>
+        <h3>Cellpose inference hyperparameters CSV <em>(optional)</em></h3>
         <p>
-          A comma-separated file that specifies the seared hyperparameter space during Cellpose training.
-          The hyperparamters can significantly affect model performanace so setting Cellpose hyperparameters
-          in the Annotation page can improve your results. By uploading the searched hyperparameter csv, you
-          can automatically set the hyperparameters to the optimal values each session.
+          A small two-column <code>parameter,value</code> file listing the Cellpose inference
+          settings &mdash; diameter, cell-probability threshold, flow threshold, minimum size,
+          and number of iterations. These significantly affect segmentation, so uploading the
+          <code>cellpose_inference_hyperparameters.csv</code> (found in a downloaded model or a
+          saved-session zip) automatically applies those settings on the Annotation page,
+          letting you reproduce a previous segmentation without re-entering each value by hand.
         </p>
 
         <h3>Saved Session <em>(optional)</em></h3>

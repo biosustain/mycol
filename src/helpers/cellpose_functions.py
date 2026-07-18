@@ -598,60 +598,75 @@ def is_not_empty_mask(m):
     return isinstance(m, np.ndarray) and m.any()
 
 
+def _params_to_csv(params: dict) -> str:
+    """Serialize a {name: value} dict to a two-column parameter/value CSV string."""
+    return (
+        pd.Series(params)
+        .rename_axis("parameter")
+        .reset_index(name="value")
+        .to_csv(index=False)
+    )
+
+
+def cellpose_training_params() -> dict:
+    """Snapshot the Cellpose *training* hyperparameters from session state."""
+    ss = st.session_state
+    return {
+        "base_model": ss.get("cp_base_model"),
+        "max_epoch": ss.get("cp_max_epoch"),
+        "learning_rate": ss.get("cp_learning_rate"),
+        "weight_decay": ss.get("cp_weight_decay"),
+        "batch_size": ss.get("cp_batch_size"),
+        "min_cells_per_image": ss.get("cp_min_cells_per_image"),
+        # images are converted to grayscale before Cellpose, so channels are fixed
+        "training_ch1": 0,
+        "training_ch2": 0,
+        "do_gridsearch": ss.get("cp_do_gridsearch", False),
+        "n_trials": ss.get("cp_n_trials", 20),
+    }
+
+
+def cellpose_inference_params() -> dict:
+    """Snapshot the Cellpose *inference* hyperparameters from session state."""
+    ss = st.session_state
+    return {
+        # images are converted to grayscale before Cellpose, so channels are fixed
+        "channel_1": 0,
+        "channel_2": 0,
+        "diameter": ss.get("cp_diameter"),
+        "cellprob_threshold": ss.get("cp_cellprob_threshold"),
+        "flow_threshold": ss.get("cp_flow_threshold"),
+        "min_size": ss.get("cp_min_size"),
+        "niter": ss.get("cp_niter"),
+    }
+
+
+def write_cellpose_param_csvs(zf) -> None:
+    """Write the Cellpose training, inference and grid-search CSVs into `zf`."""
+    zf.writestr(
+        "cellpose_training_hyperparameters.csv",
+        _params_to_csv(cellpose_training_params()),
+    )
+    zf.writestr(
+        "cellpose_inference_hyperparameters.csv",
+        _params_to_csv(cellpose_inference_params()),
+    )
+    grid = st.session_state.get("cp_grid_results_df")
+    if grid is not None:
+        zf.writestr("cellpose_grid_search_results.csv", grid.to_csv(index=False))
+
+
 def build_cellpose_zip_bytes():
-    """Builds a zip file containing the fine-tuned Cellpose model, training parameters,
-    images, masks, and plots. Returns the zip file as bytes."""
+    """Build a zip with the fine-tuned Cellpose model, parameters, images, masks,
+    and plots. Returns the zip as bytes."""
 
     ok = ordered_keys()
     ss = st.session_state
-    n_masks = sum(
-        int(
-            len(np.unique(ss["images"][k].get("masks", np.array([], dtype=np.uint16))))
-            - 1
-        )
-        for k in ok
-    )
 
-    # extract training parameters; an uploaded (vs trained) model has none of
-    # these set, so coerce only when present and skip missing entries
-    def _coerce(key, cast):
-        val = ss.get(key)
-        return cast(val) if val is not None else None
-
-    params = {
-        k: v
-        for k, v in dict(
-            base_model=ss.get("cp_base_model"),
-            epochs=_coerce("cp_max_epoch", int),
-            learning_rate=_coerce("cp_learning_rate", float),
-            weight_decay=_coerce("cp_weight_decay", float),
-            batch_size=_coerce("cp_batch_size", int),
-            images_used=len(ok),
-            masks_used=n_masks,
-        ).items()
-        if v is not None
-    }
-
-    # Build zip in memory
     buf = IO.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("cellpose_model.pt", ss["cellpose_model_bytes"])
-
-        # Optional: grid search results
-        if ss.get("cp_do_gridsearch") and ss.get("cp_grid_results_df") is not None:
-            z.writestr(
-                "hyperparameter_search.csv",
-                ss["cp_grid_results_df"].to_csv(index=False),
-            )
-
-        # Training parameters table
-        z.writestr(
-            "params.csv",
-            pd.Series(params)
-            .rename_axis("parameter")
-            .reset_index(name="value")
-            .to_csv(index=False),
-        )
+        write_cellpose_param_csvs(z)
 
         # Images and masks
         for k in ok:

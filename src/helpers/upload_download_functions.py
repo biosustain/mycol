@@ -58,14 +58,45 @@ def load_demo_data():
         st.rerun()
 
 
+def _cast(v, t, default):
+    """Cast v to type t, falling back to default on NaN / failure."""
+    try:
+        return default if pd.isna(v) else t(v)
+    except (ValueError, TypeError):
+        return default
+
+
+def apply_cellpose_inference_params(p: dict) -> bool:
+    """Set the Cellpose inference hyperparameters from a {parameter: value} mapping.
+    Returns True if the mapping contained inference keys."""
+    if not {"diameter", "cellprob_threshold", "flow_threshold", "min_size", "niter"} & set(p):
+        return False
+    ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
+    ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
+    ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
+    ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
+    ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+    return True
+
+
+def apply_hyperparameter_csv(df) -> str | None:
+    """Apply a cellpose_inference_hyperparameters.csv (parameter/value table) to state.
+    Returns a short summary of what was applied, or None if it is not a recognized
+    inference-params table."""
+    if {"parameter", "value"}.issubset(df.columns):
+        p = dict(zip(df["parameter"], df["value"]))
+        if apply_cellpose_inference_params(p):
+            return (
+                f"Inference params set: diameter={ss['cp_diameter']}, "
+                f"cellprob={ss['cp_cellprob_threshold']:.2f}, "
+                f"flow={ss['cp_flow_threshold']:.2f}, "
+                f"min_size={ss['cp_min_size']}, niter={ss['cp_niter']}"
+            )
+    return None
+
+
 def restore_session(zip_bytes: bytes) -> str | None:
     """Restore a saved session zip into session state. Returns an error string or None on success."""
-
-    def _cast(v, t, default):
-        try:
-            return default if pd.isna(v) else t(v)
-        except (ValueError, TypeError):
-            return default
 
     with ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = set(zf.namelist())
@@ -137,12 +168,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             df = pd.read_csv(
                 io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode())
             )
-            p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
-            ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
-            ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
-            ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
-            ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+            apply_cellpose_inference_params(dict(zip(df["parameter"], df["value"])))
 
         # ── Cellpose training hyperparameters ─────────────────────────────────
         if "cellpose_training_hyperparameters.csv" in names:
