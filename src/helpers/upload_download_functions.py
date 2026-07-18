@@ -32,6 +32,9 @@ from src.helpers.state_ops import (
     stem,
     set_current_by_index,
     reset_global_state_defaults,
+    write_image_to_zip,
+    write_mask_to_zip,
+    SESSION_PLOT_KEYS,
 )
 
 from src.helpers.state_ops import normalize_image
@@ -220,23 +223,10 @@ def restore_session(zip_bytes: bytes) -> str | None:
         # ── Training plots ────────────────────────────────────────────────────
         import plotly.io as pio
 
-        for filename, state_key in [
-            ("cellpose_training_losses.json", "cellpose_training_losses"),
-            ("cellpose_iou_comparison.json", "cellpose_iou_comparison"),
-            (
-                "cellpose_original_counts_comparison.json",
-                "cellpose_original_counts_comparison",
-            ),
-            (
-                "cellpose_tuned_counts_comparison.json",
-                "cellpose_tuned_counts_comparison",
-            ),
-            ("densenet_training_losses.json", "densenet_training_losses"),
-            ("densenet_training_metrics.json", "densenet_training_metrics"),
-            ("densenet_confusion_matrix.json", "densenet_confusion_matrix"),
-        ]:
+        for fig_key in SESSION_PLOT_KEYS:
+            filename = f"{fig_key}.json"
             if filename in names:
-                ss[state_key] = pio.from_json(zf.read(filename).decode())
+                ss[fig_key] = pio.from_json(zf.read(filename).decode())
 
         # ── Cellpose grid search results ──────────────────────────────────────
         if "cellpose_grid_search_results.csv" in names:
@@ -483,6 +473,7 @@ def build_masks_images_zip(
         counts_df, class_cols = build_per_image_counts(key_order)
         counts_by_key = {r["_key"]: r for r in counts_df.to_dict("records")}
         summary_rows = []
+        mask_suffix = ss["mask_suffix"]
 
         # iterate through records
         for k in key_order:
@@ -492,11 +483,7 @@ def build_masks_images_zip(
             counts = {c: int(crow.get(c, 0)) for c in class_cols}
 
             # write mask
-            mask = rec.get("masks")
-            tbuf = io.BytesIO()
-            tiff.imwrite(tbuf, mask.astype(np.uint16))
-            mask_suffix = ss["mask_suffix"]
-            zf.writestr(f"masks/{name}{mask_suffix}.tif", tbuf.getvalue())
+            write_mask_to_zip(zf, name, rec.get("masks"), mask_suffix)
 
             # write image
             img = np.asarray(rec["image"])
@@ -545,9 +532,7 @@ def build_masks_images_zip(
             summary_rows.append(row)
 
             # write processed image to zip file
-            ibuf = io.BytesIO()
-            tiff.imwrite(ibuf, img, photometric="rgb", compression="deflate")
-            zf.writestr(f"images/{name}.tif", ibuf.getvalue())
+            write_image_to_zip(zf, name, img)
 
         # optionally write cell patches into zip
         if include_patches:

@@ -17,6 +17,8 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
+    write_image_to_zip,
+    write_mask_to_zip,
     plot_loss_curve,
     snapshot_for_undo,
     image_number_lookup,
@@ -599,29 +601,23 @@ def is_not_empty_mask(m):
     return isinstance(m, np.ndarray) and m.any()
 
 
-def cellpose_training_params() -> dict:
-    """Snapshot the Cellpose *training* hyperparameters from session state."""
+def write_cellpose_param_csvs(zf) -> None:
+    """Write the Cellpose training, inference and grid-search CSVs into `zf`."""
     ss = st.session_state
-    return {
+    # images are converted to grayscale before Cellpose, so channels are fixed at 0
+    training = {
         "base_model": ss.get("cp_base_model"),
         "max_epoch": ss.get("cp_max_epoch"),
         "learning_rate": ss.get("cp_learning_rate"),
         "weight_decay": ss.get("cp_weight_decay"),
         "batch_size": ss.get("cp_batch_size"),
         "min_cells_per_image": ss.get("cp_min_cells_per_image"),
-        # images are converted to grayscale before Cellpose, so channels are fixed
         "training_ch1": 0,
         "training_ch2": 0,
         "do_gridsearch": ss.get("cp_do_gridsearch", False),
         "n_trials": ss.get("cp_n_trials", 20),
     }
-
-
-def cellpose_inference_params() -> dict:
-    """Snapshot the Cellpose *inference* hyperparameters from session state."""
-    ss = st.session_state
-    return {
-        # images are converted to grayscale before Cellpose, so channels are fixed
+    inference = {
         "channel_1": 0,
         "channel_2": 0,
         "diameter": ss.get("cp_diameter"),
@@ -630,19 +626,9 @@ def cellpose_inference_params() -> dict:
         "min_size": ss.get("cp_min_size"),
         "niter": ss.get("cp_niter"),
     }
-
-
-def write_cellpose_param_csvs(zf) -> None:
-    """Write the Cellpose training, inference and grid-search CSVs into `zf`."""
-    zf.writestr(
-        "cellpose_training_hyperparameters.csv",
-        params_to_csv(cellpose_training_params()),
-    )
-    zf.writestr(
-        "cellpose_inference_hyperparameters.csv",
-        params_to_csv(cellpose_inference_params()),
-    )
-    grid = st.session_state.get("cp_grid_results_df")
+    zf.writestr("cellpose_training_hyperparameters.csv", params_to_csv(training))
+    zf.writestr("cellpose_inference_hyperparameters.csv", params_to_csv(inference))
+    grid = ss.get("cp_grid_results_df")
     if grid is not None:
         zf.writestr("cellpose_grid_search_results.csv", grid.to_csv(index=False))
 
@@ -660,17 +646,12 @@ def build_cellpose_zip_bytes():
         write_cellpose_param_csvs(z)
 
         # Images and masks
+        mask_suffix = ss.get("mask_suffix", "_masks")
         for k in ok:
             rec = ss["images"][k]
             img_name = Path(rec.get("name")).stem
-
-            b = IO.BytesIO()
-            Image.fromarray(np.asarray(rec["image"])).save(b, "TIFF")
-            z.writestr(f"images/{img_name}.tif", b.getvalue())
-
-            c = IO.BytesIO()
-            Image.fromarray(np.asarray(rec["masks"])).save(c, "TIFF")
-            z.writestr(f"masks/{img_name}_masks.tif", c.getvalue())
+            write_image_to_zip(z, img_name, rec["image"])
+            write_mask_to_zip(z, img_name, rec["masks"], mask_suffix)
 
         # Plots
         add_plotly_as_png_to_zip(

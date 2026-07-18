@@ -512,23 +512,16 @@ def build_patchset_zip(patch_size: int = 64) -> bytes | None:
     return buf.getvalue()
 
 
-def densenet_training_params(input_size=None) -> dict:
-    """Snapshot the DenseNet training hyperparameters from session state."""
+def write_densenet_param_csvs(zf, input_size=None) -> None:
+    """Write the DenseNet training hyperparameters CSV into `zf`."""
     ss = st.session_state
-    return {
+    params = {
         "input_size": int(input_size) if input_size is not None else ss.get("dn_input_size", 64),
         "batch_size": ss.get("dn_batch_size", 32),
         "max_epoch": ss.get("dn_max_epoch", 100),
         "val_split": ss.get("dn_val_split", 0.2),
     }
-
-
-def write_densenet_param_csvs(zf, input_size=None) -> None:
-    """Write the DenseNet training hyperparameters CSV into `zf`."""
-    zf.writestr(
-        "densenet_training_hyperparameters.csv",
-        params_to_csv(densenet_training_params(input_size)),
-    )
+    zf.writestr("densenet_training_hyperparameters.csv", params_to_csv(params))
 
 
 def densenet_model_bytes(model) -> bytes:
