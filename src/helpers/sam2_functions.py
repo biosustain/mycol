@@ -302,11 +302,14 @@ def segment_with_sam2(rec: dict):
         else nullcontext()
     )
 
+    # embed the image
+    with torch.inference_mode(), amp:
+        predictor.set_image(img_float)
+
     # batched predictions to prevent online crashes
     box_batches = [boxes[i : i + 8] for i in range(0, len(boxes), 8)]
     for batch in box_batches:
         with torch.inference_mode(), amp:
-            predictor.set_image(img_float)
             masks, scores, _ = predictor.predict(
                 point_coords=None, point_labels=None, box=batch, multimask_output=True
             )
