@@ -485,31 +485,28 @@ def array_to_png_bytes(arr: np.ndarray) -> bytes:
     return bio.getvalue()
 
 
-def build_patchset_zip(patch_size: int = 64) -> bytes | None:
+def _write_patchset(zf, patch_size: int = 64) -> int:
+    """Write cell-patch PNGs and their labels CSV directly into an open ZipFile.
+
+    Returns the number of patches written (0 when there are no labelled cells)."""
     X, y, classes = load_labeled_patches(patch_size=patch_size)
     if X.shape[0] == 0:
-        return None
+        return 0
 
-    buf, rows = io.BytesIO(), []
+    rows = []
+    for i in range(X.shape[0]):
+        fname = f"patch_{i+1:04d}.png"
+        label_idx = int(y[i])
+        label_name = classes[label_idx] if 0 <= label_idx < len(classes) else "unknown"
 
-    with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
-        for i in range(X.shape[0]):
-            fname = f"patch_{i+1:04d}.png"
-            label_idx = int(y[i])
-            label_name = (
-                classes[label_idx] if 0 <= label_idx < len(classes) else "unknown"
-            )
+        zf.writestr(f"cell_patches/{fname}", array_to_png_bytes(X[i]))
+        rows.append({"filename": fname, "label_idx": label_idx, "label": label_name})
 
-            zf.writestr(f"cell_patches/{fname}", array_to_png_bytes(X[i]))
-            rows.append(
-                {"filename": fname, "label_idx": label_idx, "label": label_name}
-            )
-
-        zf.writestr(
-            "cell_patch_labels.csv",
-            pd.DataFrame(rows).to_csv(index=False).encode("utf-8"),
-        )
-    return buf.getvalue()
+    zf.writestr(
+        "cell_patch_labels.csv",
+        pd.DataFrame(rows).to_csv(index=False).encode("utf-8"),
+    )
+    return X.shape[0]
 
 
 def write_densenet_param_csvs(zf, input_size=None) -> None:
@@ -534,19 +531,17 @@ def densenet_model_bytes(model) -> bytes:
 def build_densenet_zip_bytes(psize):
     """Assemble the DenseNet training ZIP from session state."""
     ss = st.session_state
-    pzip = build_patchset_zip(psize)
-    if not pzip:
-        return None
 
     buf = io.BytesIO()
-    with ZipFile(io.BytesIO(pzip)) as zin, ZipFile(buf, "w", ZIP_DEFLATED) as zout:
+    with ZipFile(buf, "w", ZIP_DEFLATED) as zout:
+        # patches are written into the final zip 
+        if _write_patchset(zout, psize) == 0:
+            return None
+
         if ss.get("densenet_model") is not None:
             zout.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
         write_densenet_param_csvs(zout, input_size=psize)
-
-        for n in zin.namelist():
-            zout.writestr(n, zin.read(n))
 
         add_plotly_as_png_to_zip(
             "densenet_training_losses", zout, "plots/densenet_training_losses.png"
