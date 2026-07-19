@@ -36,6 +36,8 @@ from src.helpers.job_runner import (
 from pathlib import Path
 import plotly.graph_objects as go
 
+ss = st.session_state
+
 # -----------------------------------------------------#
 # ---------------- IMAGE PREPROCESSING --------------- #
 # -----------------------------------------------------#
@@ -103,7 +105,6 @@ def convert_cellpose_mask_to_single_array(mask_output, H, W):
 # --- materialize session model bytes to a stable temp path ---
 def get_cellpose_weights() -> str | None:
     """writes Cellpose model bytes from session state to a temp file and returns the path"""
-    ss = st.session_state
     b = ss.get("cellpose_model_bytes", None)
     name = ss.get("cellpose_model_name", None)
     if not b or not name:
@@ -121,7 +122,6 @@ def get_cellpose_weights() -> str | None:
 
 
 def get_cellpose_model():
-    ss = st.session_state
     tag = (
         hashlib.sha1(ss["cellpose_model_bytes"]).hexdigest()[:12]
         if ss.get("cellpose_model_bytes")
@@ -477,7 +477,6 @@ def check_cellpose_training_status():
 
         buf = IO.BytesIO()
         torch.save(state_dict, buf)
-        ss = st.session_state
         ss["cellpose_model_bytes"] = buf.getvalue()
         ss["cellpose_model_name"] = model_name
 
@@ -531,7 +530,6 @@ def check_cellpose_validation_status():
     """Check validation status and load results when complete."""
 
     def _on_complete(data, job):
-        ss = st.session_state
         optuna_results = data.get("optuna_results")
         best_params = data["best_params"].item()
         validation_metrics = data["validation_metrics"].item()
@@ -604,7 +602,6 @@ def is_not_empty_mask(m):
 
 def write_cellpose_param_csvs(zf) -> None:
     """Write the Cellpose training, inference and grid-search CSVs into `zf`."""
-    ss = st.session_state
     # images are converted to grayscale before Cellpose, so channels are fixed at 0
     training = {
         "base_model": ss.get("cp_base_model"),
@@ -639,7 +636,6 @@ def build_cellpose_zip_bytes():
     and plots. Returns the zip as bytes."""
 
     ok = ordered_keys()
-    ss = st.session_state
 
     buf = IO.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -688,7 +684,7 @@ def segment_current_and_refresh(model_type: str | None = None):
         # snapshot so this single-image segmentation can be undone (batch path doesn't)
         snapshot_for_undo(rec)
         segment_with_cellpose(rec, model_type=model_type, **params)
-        st.session_state["edit_canvas_nonce"] += 1
+        ss["edit_canvas_nonce"] += 1
     st.rerun()
 
 
@@ -700,7 +696,7 @@ def batch_segment_and_refresh(model_type: str | None = None):
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
         segment_with_cellpose(
-            st.session_state.images.get(k), model_type=model_type, **params
+            ss.images.get(k), model_type=model_type, **params
         )
         pb.progress(i / n, text=f"Segmented {i}/{n}")
 
@@ -709,13 +705,13 @@ def get_cellpose_hparams_from_state():
     """calls hparam values from session state"""
     # Build kwargs matching segment_rec_with_cellpose signature
     # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
-    diameter = st.session_state.get("cp_diameter")
+    diameter = ss.get("cp_diameter")
 
     return dict(
         channels=(0, 0),
         diameter=diameter,
-        cellprob_threshold=float(st.session_state.get("cp_cellprob_threshold")),
-        flow_threshold=float(st.session_state.get("cp_flow_threshold")),
-        min_size=int(st.session_state.get("cp_min_size")),
-        niter=int(st.session_state.get("cp_niter")),
+        cellprob_threshold=float(ss.get("cp_cellprob_threshold")),
+        flow_threshold=float(ss.get("cp_flow_threshold")),
+        min_size=int(ss.get("cp_min_size")),
+        niter=int(ss.get("cp_niter")),
     )

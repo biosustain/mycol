@@ -18,14 +18,16 @@ from src.helpers.cellpose_functions import (
     batch_segment_and_refresh,
 )
 
+ss = st.session_state
+
 # ---------- Rendering functions ----------
 
 
 def _mode_display_text() -> str:
     """Return the current mode text, with class name if in Assign class mode."""
-    mode = st.session_state["interaction_mode"]
+    mode = ss["interaction_mode"]
     if mode == "Assign class":
-        cls = st.session_state.get("side_current_class", "No label")
+        cls = ss.get("side_current_class", "No label")
         return f"{mode} ({cls})"
     return mode
 
@@ -50,7 +52,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                 "Fine-tuned Model": None,
             }
             model_options = list(model_type_map)
-            finetuned_available = st.session_state["cellpose_model_bytes"] is not None
+            finetuned_available = ss["cellpose_model_bytes"] is not None
             default_index = (
                 model_options.index("Fine-tuned Model") if finetuned_available else 0
             )
@@ -59,7 +61,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
             )
 
             model_type = model_type_map[model_family]
-            disabled = model_type is None and st.session_state["cellpose_model_bytes"] is None
+            disabled = model_type is None and ss["cellpose_model_bytes"] is None
 
             col1, col2 = st.columns(2)
 

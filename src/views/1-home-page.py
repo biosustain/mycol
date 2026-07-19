@@ -2,6 +2,8 @@ from pathlib import Path
 import base64
 import streamlit as st
 
+ss = st.session_state
+
 # ---------- Config ----------
 SVG_DIR = Path("src/intro_images")
 HELP_DIR = Path("src/help_texts")
@@ -80,8 +82,8 @@ st.markdown(
 
 # ---------- Load ----------
 files = list_svgs()
-if "idx" not in st.session_state:
-    st.session_state.idx = 0
+if "idx" not in ss:
+    ss.idx = 0
 if not files:
     st.error("No SVG files found in `intro_images/`.")
     st.stop()
@@ -93,7 +95,7 @@ with st.spinner("Loading Home Page..."):
     with col1:
         with st.container(border=True, height=680):
             # determine current slide
-            current_path = files[st.session_state.idx]
+            current_path = files[ss.idx]
 
             # display text first
             with st.container(border=False, height=560):
@@ -102,15 +104,15 @@ with st.spinner("Loading Home Page..."):
             # then buttons (visually below text, but still inside bordered container)
             col_a, col_b = st.columns(2)
             if col_a.button("⟵ Prev", width="stretch"):
-                st.session_state.idx = prev_index(st.session_state.idx, len(files))
+                ss.idx = prev_index(ss.idx, len(files))
                 st.rerun()
             if col_b.button("Next ⟶", width="stretch"):
-                st.session_state.idx = next_index(st.session_state.idx, len(files))
+                ss.idx = next_index(ss.idx, len(files))
                 st.rerun()
 
     # ---------- SVG Viewer ----------
     with col2:
-        current_path = files[st.session_state.idx]
+        current_path = files[ss.idx]
         data_uri = read_svg_data_uri(current_path)
         st.markdown(
             f"""

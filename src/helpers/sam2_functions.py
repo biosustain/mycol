@@ -12,6 +12,8 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 from src.helpers.state_ops import snapshot_for_undo
 from src.helpers.plot_helpers import make_base_figure
 
+ss = st.session_state
+
 
 # new masks lose priority where they overlap existing ones, so a mask can be cut
 # into pieces on insert; integrate_new_mask uses this to keep only the largest.
@@ -69,7 +71,7 @@ def integrate_new_mask(original: np.ndarray, new_binary: np.ndarray):
 
 def _update_boxes(chart_key: str, rec: dict):
     """Callback run when a selection is made on the Plotly chart."""
-    event = st.session_state.get(chart_key)
+    event = ss.get(chart_key)
     sel = getattr(event, "selection", None)
     if not sel or not sel.box:
         return
@@ -80,7 +82,7 @@ def _update_boxes(chart_key: str, rec: dict):
     boxes_orig = rec.setdefault("boxes", [])
 
     # Try to recover display geometry + scale
-    disp_w = st.session_state.get("disp_w")
+    disp_w = ss.get("disp_w")
     if disp_w is not None and rec.get("W"):
         scale = float(disp_w / rec["W"])
         disp_h = int(round(rec["H"] * scale))

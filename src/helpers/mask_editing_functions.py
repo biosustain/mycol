@@ -21,6 +21,8 @@ from src.helpers.sam2_functions import (
     integrate_new_mask,
 )
 
+ss = st.session_state
+
 ImageArray = np.ndarray  # (H, W, 3) uint8/float32
 MaskArray = np.ndarray  # (H, W) int / bool
 Record = dict[str, any]
@@ -134,14 +136,14 @@ def create_image_display(rec, max_display_width=768):
 
     mask = rec.get("masks")
 
-    if st.session_state.get("show_overlay", False) and mask is not None and mask.any():
-        labels = st.session_state.setdefault("all_classes", ["No label"])
+    if ss.get("show_overlay", False) and mask is not None and mask.any():
+        labels = ss.setdefault("all_classes", ["No label"])
         palette = create_colour_palette(labels)
         classes_map = classes_map_from_labels(rec["masks"], rec["labels"])
 
         # Build the overlay at display resolution (much fewer pixels than full res).
         # This is display-only; rec["masks"] stays full-res for all measurements.
-        if not st.session_state.get("show_image", True):
+        if not ss.get("show_image", True):
             background = np.zeros((disp_h, disp_w, 3), dtype=np.uint8)
         else:
             background = np.array(
@@ -194,7 +196,7 @@ def _lasso_select_fragment(
     chart_key = f"{key_ns}_plotly_{name}_{img_hash}"
 
     def handle() -> None:
-        event = st.session_state.get(chart_key)
+        event = ss.get(chart_key)
         sel = getattr(event, "selection", None)
         for stroke in getattr(sel, "lasso", None) or []:
             # Plotly coords (0 at bottom) -> display coords (0 at top)
@@ -264,7 +266,7 @@ def _handle_draw_ellipse_mode(
 
     # callback to turn each box-drag into a filled ellipse
     def add_ellipse() -> None:
-        event = st.session_state.get(chart_key)
+        event = ss.get(chart_key)
         sel = getattr(event, "selection", None)
         for b in getattr(sel, "box", None) or []:
             x0, x1 = sorted(map(float, b["x"]))
@@ -365,8 +367,8 @@ def _refocus_main_document() -> None:
     """Refocus the parent document so button shortcuts work after an iframe click.
 
     The nonce forces the shim to re-run each rerun (identical HTML wouldn't)."""
-    nonce = st.session_state.get("_refocus_nonce", 0) + 1
-    st.session_state["_refocus_nonce"] = nonce
+    nonce = ss.get("_refocus_nonce", 0) + 1
+    ss["_refocus_nonce"] = nonce
     components.html(
         f"<script>window.parent.focus();</script><!--{nonce}-->",
         height=0,
@@ -517,26 +519,26 @@ def remove_clicked():
     """Remove the mask or box at the clicked location."""
 
     # check if there was a click
-    if not st.session_state["remove_click"]:
+    if not ss["remove_click"]:
         return
 
     # get current record and display scale
     rec = get_current_rec()
-    disp_w = st.session_state["disp_w"]
+    disp_w = ss["disp_w"]
 
     # map click to original image coords
     s = float(disp_w / rec["W"])
     xy = (
-        int(round(st.session_state["remove_click"]["x"] / s)),
-        int(round(st.session_state["remove_click"]["y"] / s)),
+        int(round(ss["remove_click"]["x"] / s)),
+        int(round(ss["remove_click"]["y"] / s)),
     )
 
     # ignore click from previous run
-    if xy == st.session_state["last_remove_xy"]:
+    if xy == ss["last_remove_xy"]:
         return
 
     # store last click
-    st.session_state["last_remove_xy"] = xy
+    ss["last_remove_xy"] = xy
 
     # remove the box or mask at the clicked location (boxes take priority)
     x, y = xy
@@ -548,7 +550,7 @@ def remove_clicked():
             rec["boxes"].pop(i)
             if i < len(rec.get("boxes_display", [])):
                 rec["boxes_display"].pop(i)
-            st.session_state["remove_click"] = False
+            ss["remove_click"] = False
             return
 
     # no box here -> remove the mask at the click and compact the ids above it
@@ -568,7 +570,7 @@ def remove_clicked():
             if k != iid
         }
 
-    st.session_state["remove_click"] = False  # prevent reprocessing on rerun
+    ss["remove_click"] = False  # prevent reprocessing on rerun
 
 
 def merge_in_lasso(rec: Record, region: MaskArray) -> None:
@@ -617,26 +619,26 @@ def assign_clicked():
     """Assign class to mask at clicked location."""
 
     # check if there was a click
-    if not st.session_state["class_click"]:
+    if not ss["class_click"]:
         return
 
     # get current record and display scale
     rec = get_current_rec()
-    disp_w = st.session_state["disp_w"]
+    disp_w = ss["disp_w"]
 
     # map click to original image coords
     s = float(disp_w / rec["W"])
     xy = (
-        int(round(st.session_state["class_click"]["x"] / s)),
-        int(round(st.session_state["class_click"]["y"] / s)),
+        int(round(ss["class_click"]["x"] / s)),
+        int(round(ss["class_click"]["y"] / s)),
     )
 
     # ignore click from previous run
-    if xy == st.session_state["last_class_xy"]:
+    if xy == ss["last_class_xy"]:
         return
 
     # store last click
-    st.session_state["last_class_xy"] = xy
+    ss["last_class_xy"] = xy
 
     # assign class to mask at clicked location
     x, y = xy
@@ -648,14 +650,14 @@ def assign_clicked():
 
     snapshot_for_undo(rec)
     # update label for this instance
-    cur = st.session_state.get("side_current_class")
+    cur = ss.get("side_current_class")
     labels = rec.setdefault("labels", {})
     if cur == "No label" or cur is None:
         labels.pop(iid, None)
     else:
         labels[iid] = cur
 
-    st.session_state["class_click"] = False  # prevent reprocessing on rerun
+    ss["class_click"] = False  # prevent reprocessing on rerun
 
 
 # -----------------------------------------------------#
@@ -670,59 +672,59 @@ def render_cellpose_hyperparameters_fragment():
     diam_val = st.number_input(
         "Mean cell diameter (pixels)",
         min_value=0,
-        value=int(st.session_state.get("cp_diameter", 0)),
+        value=int(ss.get("cp_diameter", 0)),
         step=1,
         help="Leave as 0 for Cellpose to estimate diameter, or set a manual value.",
         key="w_cp_diameter",
     )
-    st.session_state["cp_diameter"] = diam_val
+    ss["cp_diameter"] = diam_val
 
     # cellprob threshold
     cellprob = st.number_input(
         "Cell probability threshold",
-        value=float(st.session_state.get("cp_cellprob_threshold")),
+        value=float(ss.get("cp_cellprob_threshold")),
         step=0.1,
         min_value=-2.0,
         max_value=2.0,
         key="w_cp_cellprob_threshold",
         help="Higher -> fewer cells.",
     )
-    st.session_state["cp_cellprob_threshold"] = cellprob
+    ss["cp_cellprob_threshold"] = cellprob
 
     # Flow threshold
     flowthr = st.number_input(
         "Flow threshold",
-        value=float(st.session_state.get("cp_flow_threshold")),
+        value=float(ss.get("cp_flow_threshold")),
         step=0.1,
         min_value=-2.0,
         max_value=2.0,
         key="w_cp_flow_threshold",
         help="Lower -> more permissive flows.",
     )
-    st.session_state["cp_flow_threshold"] = flowthr
+    ss["cp_flow_threshold"] = flowthr
 
     # Minimum size threshold
     min_size = st.number_input(
         "Minimum cell size (pixels)",
-        value=int(st.session_state.get("cp_min_size")),
+        value=int(ss.get("cp_min_size")),
         min_value=0,
         step=10,
         key="w_cp_min_size",
         help="Remove masks smaller than this area.",
     )
-    st.session_state["cp_min_size"] = min_size
+    ss["cp_min_size"] = min_size
 
     # Niter
     niter = st.number_input(
         "Niter",
-        value=int(st.session_state["cp_niter"]),
+        value=int(ss["cp_niter"]),
         min_value=0,
         max_value=2000,
         step=10,
         key="w_cp_niter",
         help="Higher values favour longer, stringier, cells.",
     )
-    st.session_state["cp_niter"] = niter
+    ss["cp_niter"] = niter
 
 
 def render_box_tools_fragment(key_ns="side"):
@@ -739,7 +741,7 @@ def render_box_tools_fragment(key_ns="side"):
         shortcut="B",
         help="Click and drag boxes around cells (shortcut: B)",
     ):
-        st.session_state["interaction_mode"] = "Draw box"
+        ss["interaction_mode"] = "Draw box"
         st.rerun()
 
     # button to segment with SAM2 the current boxes
@@ -753,8 +755,8 @@ def render_box_tools_fragment(key_ns="side"):
         # create new masks from boxes and add them to rec["mask"]
         segment_with_sam2(rec)
 
-        st.session_state["pred_canvas_nonce"] += 1
-        st.session_state["edit_canvas_nonce"] += 1
+        ss["pred_canvas_nonce"] += 1
+        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
 
@@ -771,7 +773,7 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         shortcut="F",
         help="Click and hold to draw a freehand mask (shortcut: F)",
     ):
-        st.session_state["interaction_mode"] = "Freehand"
+        ss["interaction_mode"] = "Freehand"
         st.rerun()
 
     # button to set mode to ellipse mask drawing
@@ -782,7 +784,7 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         shortcut="E",
         help="Drag a box around a colony to fill it with a rough ellipse (shortcut: E)",
     ):
-        st.session_state["interaction_mode"] = "Ellipse"
+        ss["interaction_mode"] = "Ellipse"
         st.rerun()
 
     c3, c4 = st.columns([1, 1])
@@ -795,7 +797,7 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         shortcut="S",
         help="Click and drag a line all the way through a mask to split it in two (shortcut: S)",
     ):
-        st.session_state["interaction_mode"] = "Split masks"
+        ss["interaction_mode"] = "Split masks"
         st.rerun()
 
     # button to set mode to merging two touching masks
@@ -806,7 +808,7 @@ def render_draw_mask_tools_fragment(key_ns="side"):
         shortcut="M",
         help="Draw a lasso around touching masks to merge them into one (shortcut: M)",
     ):
-        st.session_state["interaction_mode"] = "Merge masks"
+        ss["interaction_mode"] = "Merge masks"
         st.rerun()
 
 
@@ -825,7 +827,7 @@ def render_common_tools_fragment(key_ns="tools"):
         shortcut="D",
         help="Click masks or boxes to remove them (shortcut: D)",
     ):
-        st.session_state["interaction_mode"] = "Remove"
+        ss["interaction_mode"] = "Remove"
         st.rerun()
 
     row = st.container()
@@ -844,7 +846,7 @@ def render_common_tools_fragment(key_ns="tools"):
         rec["boxes"] = []
         rec["boxes_display"] = []
         rec["last_click_xy"] = None
-        st.session_state["edit_canvas_nonce"] += 1
+        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
     # single-level undo of the last action
@@ -863,8 +865,8 @@ def render_undo_button(container=st, key_ns="side"):
         help="Undo the last action — only the most recent action can be undone (shortcut: Ctrl+Z)",
     ):
         if apply_undo(rec):
-            st.session_state["pred_canvas_nonce"] += 1
-            st.session_state["edit_canvas_nonce"] += 1
+            ss["pred_canvas_nonce"] += 1
+            ss["edit_canvas_nonce"] += 1
             st.rerun()
 
 
@@ -882,7 +884,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
 
     # display image with masks overlay and interaction
     rec_for_disp = rec
-    if st.session_state.get(
+    if ss.get(
         "show_normalized"
     ):  # normalize background image if selected
         im = normalize_image(rec["image"])
@@ -892,10 +894,10 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     base_img, display_for_ui, disp_w, disp_h = create_image_display(
         rec_for_disp, max_display_width
     )
-    st.session_state["disp_w"] = disp_w
+    ss["disp_w"] = disp_w
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)
-    mode = st.session_state.get("interaction_mode", "Draw box")  # default to draw box
+    mode = ss.get("interaction_mode", "Draw box")  # default to draw box
     if mode == "Freehand":
         _handle_draw_mask_mode(
             rec=rec,

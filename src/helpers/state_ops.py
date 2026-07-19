@@ -7,6 +7,8 @@ import pandas as pd
 import tifffile as tiff
 import plotly.io as pio
 
+ss = st.session_state
+
 # Plotly figures persisted in the session zip as "{key}.json".
 SESSION_PLOT_KEYS = [
     "cellpose_training_losses",
@@ -84,7 +86,6 @@ def reset_global_state_defaults() -> None:
     Idempotent: existing values are preserved, missing ones get a fresh copy of
     their default. Safe to call on every Streamlit rerun.
     """
-    ss = st.session_state
     for k, v in _DEFAULTS.items():
         ss.setdefault(k, copy.deepcopy(v))
 
@@ -94,13 +95,13 @@ def stem(p: str) -> str:
 
 
 def ordered_keys():
-    return sorted(st.session_state.images.keys())
+    return sorted(ss.images.keys())
 
 
 def image_number_lookup():
     """Map each image name to its 1-based 'No.' in the image selection table."""
     return {
-        st.session_state["images"][k]["name"]: i
+        ss["images"][k]["name"]: i
         for i, k in enumerate(ordered_keys(), start=1)
     }
 
@@ -110,7 +111,7 @@ def selected_training_keys(namespace: str):
 
     Falls back to every image when no explicit selection has been made yet.
     """
-    selected = st.session_state.get(f"{namespace}_selected_image_keys")
+    selected = ss.get(f"{namespace}_selected_image_keys")
     if selected is None:
         return ordered_keys()
     selected = set(selected)
@@ -119,7 +120,7 @@ def selected_training_keys(namespace: str):
 
 def require_images():
     """Stop the page with a warning if no images have been uploaded yet."""
-    if not st.session_state["images"]:
+    if not ss["images"]:
         st.markdown(
             """<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
             <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NO IMAGES UPLOADED</p>
@@ -132,8 +133,8 @@ def require_images():
 
 
 def get_current_rec():
-    k = st.session_state.get("current_key")
-    return st.session_state.images.get(k) if k is not None else None
+    k = ss.get("current_key")
+    return ss.images.get(k) if k is not None else None
 
 
 def snapshot_for_undo(rec) -> None:
@@ -143,8 +144,8 @@ def snapshot_for_undo(rec) -> None:
     if rec is None:
         return
     masks = rec.get("masks")
-    st.session_state["undo"] = {
-        "key": st.session_state.get("current_key"),
+    ss["undo"] = {
+        "key": ss.get("current_key"),
         "masks": None if masks is None else masks.copy(),
         "labels": dict(rec.get("labels", {})),
         "boxes": list(rec.get("boxes", [])),
@@ -154,10 +155,10 @@ def snapshot_for_undo(rec) -> None:
 
 def apply_undo(rec) -> bool:
     """Restore the undo snapshot if it's for the current image; always consume it."""
-    snap = st.session_state.pop("undo", None)
+    snap = ss.pop("undo", None)
     if not snap or rec is None:
         return False
-    if snap.get("key") != st.session_state.get("current_key"):
+    if snap.get("key") != ss.get("current_key"):
         return False  # snapshot is for a different image
     rec["masks"] = snap["masks"]
     rec["labels"] = snap["labels"]
@@ -168,16 +169,16 @@ def apply_undo(rec) -> bool:
 
 def reset_undo_on_navigation() -> None:
     """Drop the undo snapshot if the displayed image changed since it was taken."""
-    snap = st.session_state.get("undo")
-    if snap and snap.get("key") != st.session_state.get("current_key"):
-        st.session_state.pop("undo", None)
+    snap = ss.get("undo")
+    if snap and snap.get("key") != ss.get("current_key"):
+        ss.pop("undo", None)
 
 
 def set_current_by_index(idx: int):
     ok = ordered_keys()
     if not ok:
         return
-    st.session_state.current_key = ok[idx % len(ok)]
+    ss.current_key = ok[idx % len(ok)]
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -232,7 +233,7 @@ def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default
 
     Silently skips figures that were never created (e.g. when a model was uploaded
     rather than trained, so no training plots exist)."""
-    fig = st.session_state.get(fig_key)
+    fig = ss.get(fig_key)
     if fig is None:
         return
     png = pio.to_image(
