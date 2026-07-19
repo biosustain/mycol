@@ -22,35 +22,9 @@ def main():
             images_in = data["images"]
             masks_in = data["masks"]
 
-            # debug prints
-            print(
-                f"DEBUG: loaded images_in type={type(images_in)} shape={getattr(images_in, 'shape', 'N/A')} dtype={getattr(images_in, 'dtype', 'N/A')}"
-            )
-            print(
-                f"DEBUG: loaded masks_in type={type(masks_in)} shape={getattr(masks_in, 'shape', 'N/A')} dtype={getattr(masks_in, 'dtype', 'N/A')}"
-            )
-
             # Ensure we have a list of numpy arrays with numeric dtypes
-            if isinstance(images_in, np.ndarray) and images_in.dtype == object:
-                images = [np.asanyarray(im).astype(np.float32) for im in images_in]
-            elif isinstance(images_in, np.ndarray):
-                images = [im.astype(np.float32) for im in images_in]
-            else:
-                images = [np.asanyarray(im).astype(np.float32) for im in images_in]
-
-            if isinstance(masks_in, np.ndarray) and masks_in.dtype == object:
-                masks = [np.asanyarray(ma).astype(np.uint16) for ma in masks_in]
-            elif isinstance(masks_in, np.ndarray):
-                masks = [ma.astype(np.uint16) for ma in masks_in]
-            else:
-                masks = [np.asanyarray(ma).astype(np.uint16) for ma in masks_in]
-
-            print(
-                f"DEBUG: processed images len={len(images)} first_type={type(images[0])} first_shape={images[0].shape} first_dtype={images[0].dtype}"
-            )
-            print(
-                f"DEBUG: processed masks len={len(masks)} first_type={type(masks[0])} first_shape={masks[0].shape} first_dtype={masks[0].dtype}"
-            )
+            images = [np.asanyarray(im).astype(np.float32) for im in images_in]
+            masks = [np.asanyarray(ma).astype(np.uint16) for ma in masks_in]
 
             base_model = str(data["base_model"])
             epochs = int(data["epochs"])
