@@ -2,9 +2,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from cellpose import metrics, core
-import optuna
-
 from src.helpers.grid_helpers import render_image_selection_table
 from src.helpers.state_ops import selected_training_keys
 from src.helpers.densenet_functions import (
@@ -15,19 +12,12 @@ from src.helpers.densenet_functions import (
     cancel_densenet_training,
 )
 from src.helpers.cellpose_functions import (
-    compute_prediction_ious,
-    plot_iou_comparison,
-    plot_pred_vs_true_counts,
-    get_cellpose_model,
-    get_tuned_model,
-    build_cellpose_zip_bytes,
     start_cellpose_training,
     check_cellpose_training_status,
     cancel_cellpose_training,
     start_cellpose_validation,
     check_cellpose_validation_status,
     cancel_cellpose_validation,
-    CellposeModel3Proxy,
 )
 from src.helpers.help_panels import (
     classifier_training_plot_help,
@@ -361,135 +351,6 @@ def prepare_eval_data(recs, max_n=40):
         masks = [masks[i] for i in idx]
         names = [names[i] for i in idx]
     return images, masks, names
-
-
-def set_cp_hparams(src):
-    ss["cp_cellprob_threshold"] = float(src["cellprob"])
-    ss["cp_flow_threshold"] = float(src["flow_threshold"])
-    ss["cp_min_size"] = int(src["min_size"])
-    ss["cp_niter"] = int(src["niter"])
-
-
-def run_optuna(images, masks, base_model, channels, model_name):
-    if not ss.get("cp_do_gridsearch"):
-        return channels
-
-    st.subheader("Hyperparameter tuning (Optuna)")
-
-    eval_model = get_tuned_model()
-
-    pb = st.progress(0.0, text="Starting Optuna optimisation…")
-    results = []
-    n_trials = st.session_state.get("cp_n_trials")
-
-    def objective(trial: optuna.trial.Trial) -> float:
-        cellprob = trial.suggest_float("cellprob", -0.2, 0.6, step=0.2)
-        flowthresh = trial.suggest_float("flow_threshold", -0.2, 0.6, step=0.2)
-        niter = trial.suggest_int("niter", 100, 1000, step=100)
-        min_size = trial.suggest_int("min_size", 0, 500, step=50)
-
-        i = trial.number + 1
-        pb.progress(
-            min(i / n_trials, 1.0),
-            text=(
-                f"Trial {i}/{n_trials} "
-                f"(cell probability threshold = {cellprob:.3f}, flow threshold = {flowthresh:.3f}, "
-                f"niter = {niter}, minimum cell size = {min_size})"
-            ),
-        )
-
-        masks_pred, _, _ = eval_model.eval(
-            images,
-            channels=channels,
-            diameter=None,
-            cellprob_threshold=cellprob,
-            flow_threshold=flowthresh,
-            niter=niter,
-            min_size=min_size,
-        )
-        ap = metrics.average_precision(masks, masks_pred)[0]
-        score = float(np.nanmean(ap[:, 0]))
-
-        results.append(
-            {
-                "cellprob": cellprob,
-                "flow_threshold": flowthresh,
-                "niter": niter,
-                "min_size": min_size,
-                "ap_iou_0.5": score,
-            }
-        )
-        return score
-
-    sampler = optuna.samplers.TPESampler(seed=42)
-    study = optuna.create_study(direction="maximize", sampler=sampler)
-    study.enqueue_trial(
-        {"cellprob": 0.2, "flow_threshold": 0.4, "niter": 1000, "min_size": 100}
-    )
-    study.optimize(objective, n_trials=n_trials)
-    pb.empty()
-
-    df = pd.DataFrame(results).sort_values(
-        by="ap_iou_0.5", ascending=False, na_position="last"
-    )
-    st.session_state["cp_grid_results_df"] = df
-
-    set_cp_hparams(study.best_trial.params)
-
-    if not df.empty and np.isfinite(df["ap_iou_0.5"].iloc[0]):
-        best = df.iloc[0]
-        set_cp_hparams(best)
-        st.success(
-            f"Best hyperparameters set: cellprob={best['cellprob']}, "
-            f"flow={best['flow_threshold']}, min_size={int(best['min_size'])}, "
-            f"niter={int(best['niter'])}"
-        )
-    else:
-        st.info("No valid result to set best hyperparameters.")
-
-    return channels
-
-
-def validate_and_compare(images, masks, channels):
-    with st.spinner(
-        "Validating model... Not long to go! Don't click yet, you will interupt training."
-    ):
-        base_model = CellposeModel3Proxy(
-            pretrained_model=ss["cp_base_model"], gpu=core.use_gpu()
-        )
-
-        hp = dict(
-            diameter=None,
-            cellprob_threshold=float(ss.get("cp_cellprob_threshold")),
-            flow_threshold=float(ss.get("cp_flow_threshold")),
-            niter=int(ss.get("cp_niter")),
-            min_size=int(ss.get("cp_min_size")),
-        )
-
-        base_preds, _, _ = base_model.eval(images, channels=channels, **hp)
-        tuned_model = get_cellpose_model()
-        tuned_preds, _, _ = tuned_model.eval(images, channels=channels, **hp)
-
-        base_ious = compute_prediction_ious(
-            images=images, masks=masks, model=base_model, channels=channels
-        )
-        tuned_ious = compute_prediction_ious(
-            images=images, masks=masks, model=tuned_model, channels=channels
-        )
-        ss["cellpose_iou_comparison"] = plot_iou_comparison(base_ious, tuned_ious)
-
-        gt_counts = [int(np.count_nonzero(np.unique(mask))) for mask in masks]
-        base_counts = [int(np.count_nonzero(np.unique(pred))) for pred in base_preds]
-        tuned_counts = [int(np.count_nonzero(np.unique(pred))) for pred in tuned_preds]
-
-        ss["cellpose_original_counts_comparison"] = plot_pred_vs_true_counts(
-            gt_counts, base_counts, title="Base Model Predictions"
-        )
-        ss["cellpose_tuned_counts_comparison"] = plot_pred_vs_true_counts(
-            gt_counts, tuned_counts, title="Tuned Model Predictions"
-        )
-
-        ss["cp_zip_bytes"] = build_cellpose_zip_bytes()
 
 
 def render_cellpose_train_fragment():
