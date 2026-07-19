@@ -69,8 +69,6 @@ _DEFAULTS = {
     # UI defaults / nonces
     "pred_canvas_nonce": 0,
     "edit_canvas_nonce": 0,
-    "mask_uploader_nonce": 0,
-    "image_uploader_nonce": 0,
     "side_panel": "Upload data",
 
     # class defaults
