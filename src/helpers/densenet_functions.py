@@ -7,7 +7,6 @@ import pandas as pd
 from PIL import Image
 import io
 from zipfile import ZipFile, ZIP_DEFLATED
-import plotly.graph_objects as go
 
 import torch
 import torch.nn as nn
@@ -19,8 +18,12 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
-    plot_loss_curve,
     snapshot_for_undo,
+)
+from src.helpers.plot_helpers import (
+    plot_loss_curve,
+    plot_confusion_matrix,
+    plot_densenet_metrics,
 )
 from src.helpers.job_runner import (
     start_worker_job,
@@ -412,58 +415,6 @@ def cancel_densenet_training():
 # -------------------------------
 #  Visualization Functions
 # -------------------------------
-
-
-def plot_confusion_matrix(cm, class_names):
-    n = len(class_names)
-    text = [[f"{cm[i,j]}" for j in range(n)] for i in range(n)]
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=cm,
-            x=class_names,
-            y=class_names,
-            text=text,
-            textfont=dict(size=20),
-            texttemplate="%{text}",
-            colorscale="Blues",
-            hoverongaps=False,
-            showscale=False,
-        )
-    )
-    fig.update_layout(
-        title="Class Confusion Matrix",
-        xaxis=dict(title="Predicted Class", tickangle=45),
-        yaxis=dict(title="True Class", autorange="reversed"),
-        width=max(500, 80 * n),
-        height=max(400, 80 * n),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        margin=dict(l=80, r=80, t=40, b=80),
-    )
-    return fig
-
-
-def plot_densenet_metrics(metrics):
-    labels, values = list(metrics.keys()), list(metrics.values())
-    fig = go.Figure(layout=dict(barcornerradius=10))
-    fig.add_bar(
-        x=labels,
-        y=values,
-        text=[f"{v:.3f}" for v in values],
-        textposition="outside",
-        marker=dict(color=["#EBF1F8"] * 4, line=dict(color="#004280", width=2)),
-        name="metrics",
-    )
-    fig.update_yaxes(range=[0, 1.2])
-    fig.update_layout(
-        title="Validation metrics",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=450,
-        width=450,
-    )
-    return fig
 
 
 def array_to_png_bytes(arr: np.ndarray) -> bytes:

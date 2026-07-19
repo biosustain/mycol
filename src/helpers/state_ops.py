@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import plotly.io as pio
-import plotly.graph_objects as go
 
 # Plotly figures persisted in the session zip as "{key}.json".
 SESSION_PLOT_KEYS = [
@@ -104,20 +103,6 @@ def image_number_lookup():
         st.session_state["images"][k]["name"]: i
         for i, k in enumerate(ordered_keys(), start=1)
     }
-
-
-def point_hover_texts(numbers, names, patches=None):
-    """Per-point hover labels — image number, image name and (optionally) patch
-    number, each on its own line. Shared by the cell-metrics and fine-tuning plots."""
-    if patches is None:
-        patches = [None] * len(names)
-    texts = []
-    for num, name, patch in zip(numbers, names, patches):
-        line = f"Image number: {num}<br>Image name: {name}"
-        if patch is not None:
-            line += f"<br>Patch number: {patch}"
-        texts.append(line)
-    return texts
 
 
 def selected_training_keys(namespace: str):
@@ -258,39 +243,3 @@ def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default
         height=int(getattr(fig.layout, "height", default_h) or default_h),
     )
     zip_file.writestr(out_path, png)
-
-
-def plot_loss_curve(train_losses, test_losses):
-    epochs = list(range(1, len(train_losses) + 1))
-    fig = go.Figure()
-    fig.add_scatter(
-        x=epochs,
-        y=train_losses,
-        mode="lines+markers",
-        name="train",
-        line=dict(color="#D3E4F4", width=2),
-        marker=dict(color="#D3E4F4", size=6),
-    )
-
-    # Cellpose only evaluates validation loss every 10 epochs; skip zero entries
-    val_pairs = [(i + 1, v) for i, v in enumerate(test_losses) if v != 0]
-    e_val = [p[0] for p in val_pairs]
-    val_scores = [p[1] for p in val_pairs]
-    fig.add_scatter(
-        x=e_val,
-        y=val_scores,
-        mode="lines+markers",
-        name="val",
-        line=dict(color="#004280", width=2),
-        marker=dict(color="#004280", size=6),
-    )
-    fig.update_layout(
-        title="Training vs. Validation Loss",
-        xaxis_title="Epoch",
-        yaxis_title="Loss",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=450,
-        width=450,
-    )
-    return fig

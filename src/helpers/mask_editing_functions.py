@@ -3,7 +3,6 @@
 import hashlib
 from streamlit_image_coordinates import streamlit_image_coordinates
 import numpy as np
-import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
@@ -15,6 +14,7 @@ from src.helpers.classifying_functions import (
     create_colour_palette,
 )
 from src.helpers.state_ops import normalize_image
+from src.helpers.plot_helpers import make_base_figure
 from src.helpers.sam2_functions import (
     segment_with_sam2,
     box_draw_fragment,
@@ -163,47 +163,6 @@ def create_image_display(rec, max_display_width=768):
     return base_img, display_for_ui, disp_w, disp_h
 
 
-def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
-    """
-    Create a Plotly figure with a background image and fixed pixel size.
-    Used by the box, freehand and ellipse drawing modes.
-    """
-
-    # build figure with background image
-    fig = go.Figure()
-    fig.add_layout_image(
-        dict(
-            source=bg_img,
-            xref="x",
-            yref="y",
-            x=0,
-            y=disp_h,
-            sizex=disp_w,
-            sizey=disp_h,
-            sizing="stretch",
-            layer="below",
-        )
-    )
-
-    # set axes to image size and disable ticks
-    fig.update_xaxes(visible=False, range=[0, disp_w], constrain="domain")
-    fig.update_yaxes(
-        visible=False,
-        range=[0, disp_h],
-        scaleanchor="x",
-        scaleratio=1,
-    )
-    # set overall figure layout
-    fig.update_layout(
-        dragmode=dragmode,
-        margin=dict(l=0, r=0, t=0, b=0),
-        width=disp_w,
-        height=disp_h,
-    )
-
-    return fig
-
-
 def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
     """Integrate a full-resolution bool mask into rec['masks']."""
     inst, new_id = integrate_new_mask(rec["masks"], mask_full)
@@ -241,7 +200,7 @@ def _lasso_select_fragment(
             # Plotly coords (0 at bottom) -> display coords (0 at top)
             on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
 
-    fig = _make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
+    fig = make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
     if show_line:
         fig.update_layout(
             newselection=dict(line=dict(color="red", width=1)),
@@ -321,7 +280,7 @@ def _handle_draw_ellipse_mode(
             _commit_mask(rec, mask_full)
 
     # Build figure using the shared helper: same size as box mode
-    fig = _make_base_figure(bg, disp_w, disp_h, dragmode="select")
+    fig = make_base_figure(bg, disp_w, disp_h, dragmode="select")
 
     # render the plotly chart with box selection
     st.plotly_chart(

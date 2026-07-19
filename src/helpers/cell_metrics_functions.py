@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from src.helpers.state_ops import ordered_keys, point_hover_texts
+from src.helpers.state_ops import ordered_keys
+from src.helpers.plot_helpers import point_hover_texts
 from skimage.measure import regionprops
 from src.helpers.classifying_functions import color_hex_for
 

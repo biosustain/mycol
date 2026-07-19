@@ -19,10 +19,14 @@ from src.helpers.state_ops import (
     params_to_csv,
     write_image_to_zip,
     write_mask_to_zip,
-    plot_loss_curve,
     snapshot_for_undo,
     image_number_lookup,
+)
+from src.helpers.plot_helpers import (
+    plot_loss_curve,
     point_hover_texts,
+    NAVY,
+    PALE_BLUE,
 )
 from src.helpers.job_runner import (
     start_worker_job,
@@ -310,11 +314,8 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         width=0.6,
         error_y=dict(type="data", array=sds, visible=True),
         marker=dict(
-            color=[
-                "#EBF1F8",
-                "#EBF1F8",
-            ],
-            line=dict(color="#004280", width=2),
+            color=[PALE_BLUE, PALE_BLUE],
+            line=dict(color=NAVY, width=2),
         ),
     )
 
@@ -324,7 +325,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         x=(np.full(len(base_ious), x[0]) + (np.random.rand(len(base_ious)) - 0.5) * j),
         y=base_ious,
         mode="markers",
-        marker=dict(color="#004280", size=6),
+        marker=dict(color=NAVY, size=6),
         text=hover,
         hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
@@ -334,7 +335,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
         ),
         y=tuned_ious,
         mode="markers",
-        marker=dict(color="#004280", size=6),
+        marker=dict(color=NAVY, size=6),
         text=hover,
         hovertemplate="%{text}<br>Mean IoU: %{y:.3f}<extra></extra>",
     )
@@ -372,7 +373,7 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
         x=gt_counts,
         y=base_counts,
         mode="markers",
-        marker=dict(size=8, opacity=0.85, color="#004280"),
+        marker=dict(size=8, opacity=0.85, color=NAVY),
         name="Original",
         text=hover,
         hovertemplate="%{text}<br>True: %{x}<br>Predicted: %{y}<extra></extra>",
