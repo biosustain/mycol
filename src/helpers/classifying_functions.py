@@ -35,7 +35,7 @@ def color_hex_for(name: str) -> str:
     """
     if name == "No label":
         return "#E5E5E5"
-    cmap = st.session_state.setdefault("class_colors", {})
+    cmap = ss.setdefault("class_colors", {})
     if name not in cmap:
         # pick the first palette color not currently used; wrap if all are used
         used = set(cmap.values())
@@ -58,7 +58,6 @@ def color_chip_md(hex_color: str, size: int = 14) -> str:
 
 def rename_class_from_input(old_key: str, new_key: str):
     """Rename class based on input box value; clears input box after use."""
-    ss = st.session_state
     old = ss.get(old_key)
     new = (ss.get(new_key, "") or "").strip()
     if not old or not new or old == new:
@@ -76,7 +75,7 @@ def rename_class_from_input(old_key: str, new_key: str):
 
 def yield_all_image_records():
     """Yield all image records from session state safely."""
-    ims = st.session_state.get("images", {}) or {}
+    ims = ss.get("images", {}) or {}
     for k in ordered_keys():
         rec = ims.get(k)
         if isinstance(rec, dict):
@@ -93,7 +92,6 @@ def rename_class_everywhere(old_name: str, new_name: str):
       - st.session_state['side_current_class'] if it was old_name
       - colour map st.session_state['class_colors']
     """
-    ss = st.session_state
     if not old_name or old_name == "No label":
         st.warning("That class cannot be renamed.")
         return
@@ -149,7 +147,6 @@ def remove_class_everywhere(name: str):
       - st.session_state['side_current_class'] (fallback to "No label" if needed)
       - colour map st.session_state['class_colors'] (frees the colour)
     """
-    ss = st.session_state
 
     ss.setdefault("class_emojis", {}).pop(name, None)
     ss.setdefault("class_colors", {}).pop(name, None)  # free color
@@ -223,8 +220,8 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
 
     def _select():
         # pick this class and switch the main panel to Assign class mode
-        st.session_state["pending_class"] = name
-        st.session_state["interaction_mode"] = "Assign class"
+        ss["pending_class"] = name
+        ss["interaction_mode"] = "Assign class"
 
     def _assign_all():
         # assign ALL masks in the current image to this class
@@ -259,8 +256,8 @@ def add_label_from_input(labels, new_label_ss):
         return
     if new_label not in labels:
         labels.append(new_label)
-    st.session_state["side_current_class"] = new_label
-    st.session_state["side_new_label"] = ""
+    ss["side_current_class"] = new_label
+    ss["side_new_label"] = ""
     st.rerun()
 
 
@@ -281,7 +278,7 @@ def densenet_help(has_model, needs_mapping):
 def classify_actions_fragment():
 
     needs_mapping = all(
-        label == "No label" for label in st.session_state["densenet_class_map"].values()
+        label == "No label" for label in ss["densenet_class_map"].values()
     )
 
     rec = get_current_rec()
@@ -289,13 +286,13 @@ def classify_actions_fragment():
     # buttons to classify masks in current image or batch classify all images
     col1, col2 = st.columns(2)
     with col1:
-        help = densenet_help(st.session_state["densenet_model"] is None, needs_mapping)
+        help = densenet_help(ss["densenet_model"] is None, needs_mapping)
         # classify masks in the current image
         if st.button(
             "Classify",
             width="stretch",
             help=help,
-            disabled=(st.session_state["densenet_model"] is None) or needs_mapping,
+            disabled=(ss["densenet_model"] is None) or needs_mapping,
         ):
             classify_cells_with_densenet(rec)
             st.rerun()
@@ -306,7 +303,7 @@ def classify_actions_fragment():
             key="btn_batch_classify_cellpose",
             width="stretch",
             help=help,
-            disabled=st.session_state["densenet_model"] is None or needs_mapping,
+            disabled=ss["densenet_model"] is None or needs_mapping,
         ):
             batch_classify()
             st.rerun()
@@ -318,7 +315,7 @@ def batch_classify():
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):
-        classify_cells_with_densenet(st.session_state.images.get(k), snapshot=False)
+        classify_cells_with_densenet(ss.images.get(k), snapshot=False)
         pb.progress(i / n, text=f"Classified {i}/{n}")
 
 
@@ -330,7 +327,6 @@ def batch_classify():
 def class_selection_fragment():
 
     # Create class selection rows
-    ss = st.session_state
     if "pending_class" in ss:
         pc = ss.pop("pending_class")
         if pc not in ss["all_classes"]:
@@ -350,7 +346,6 @@ def class_selection_fragment():
 
 
 def class_manage_fragment(key_ns="side"):
-    ss = st.session_state
     labels = ss.setdefault("all_classes", ["No label"])
 
     # Apply any pending rename select value before creating widgets

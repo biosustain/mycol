@@ -174,17 +174,17 @@ def show_densenet_training_plots():
     col1, col2 = st.columns(2)
     with col1:
         st.plotly_chart(
-            st.session_state["densenet_training_losses"],
+            ss["densenet_training_losses"],
             width="stretch",
         )
     with col2:
         st.plotly_chart(
-            st.session_state["densenet_training_metrics"],
+            ss["densenet_training_metrics"],
             width="stretch",
         )
 
     st.plotly_chart(
-        st.session_state["densenet_confusion_matrix"],
+        ss["densenet_confusion_matrix"],
         width="stretch",
     )
 
@@ -297,7 +297,7 @@ def render_cellpose_summary():
     n_pass_images, n_pass_masks = 0, 0
     n_fail_images = 0
     for k in selected_training_keys("cp"):
-        rec = st.session_state["images"][k]
+        rec = ss["images"][k]
         m = rec["masks"]
         n = int(len(np.unique(m)) - 1) if is_mask(m) else 0
         if n >= min_cells:
@@ -322,9 +322,9 @@ def render_cellpose_summary():
 def get_train_setup():
     min_cells = int(ss.get("cp_min_cells_per_image", 5))
     recs = {
-        k: st.session_state["images"][k]
+        k: ss["images"][k]
         for k in selected_training_keys("cp")
-        if int(len(np.unique(st.session_state["images"][k]["masks"])) - 1) >= min_cells
+        if int(len(np.unique(ss["images"][k]["masks"])) - 1) >= min_cells
     }
     base_model = ss.get("cp_base_model")
     epochs = int(ss.get("cp_max_epoch"))
@@ -408,38 +408,38 @@ def show_cellpose_training_plots():
 
         # plot training losses
         st.plotly_chart(
-            st.session_state["cellpose_training_losses"],
+            ss["cellpose_training_losses"],
             width="stretch",
         )
 
         # plot original vs predicted counts
-        if "cellpose_original_counts_comparison" in st.session_state:
+        if "cellpose_original_counts_comparison" in ss:
             st.plotly_chart(
-                st.session_state["cellpose_original_counts_comparison"],
+                ss["cellpose_original_counts_comparison"],
                 width="stretch",
             )
 
     with col2:
 
         # plot iou comparison
-        if "cellpose_iou_comparison" in st.session_state:
+        if "cellpose_iou_comparison" in ss:
             st.plotly_chart(
-                st.session_state["cellpose_iou_comparison"],
+                ss["cellpose_iou_comparison"],
                 width="stretch",
             )
 
         # plot tuned vs predicted counts
-        if "cellpose_tuned_counts_comparison" in st.session_state:
+        if "cellpose_tuned_counts_comparison" in ss:
             st.plotly_chart(
-                st.session_state["cellpose_tuned_counts_comparison"],
+                ss["cellpose_tuned_counts_comparison"],
                 width="stretch",
             )
 
     # display grid search results if applicable
-    if ss.get("cp_do_gridsearch") and "cp_grid_results_df" in st.session_state:
+    if ss.get("cp_do_gridsearch") and "cp_grid_results_df" in ss:
         st.subheader("Tested hyperparameters")
         st.dataframe(
-            st.session_state["cp_grid_results_df"],
+            ss["cp_grid_results_df"],
             hide_index=True,
             width="stretch",
         )
@@ -450,7 +450,7 @@ def show_cellpose_training_plots():
 @st.fragment(run_every=2)
 def render_densenet_status_fragment():
     """Real-time status and log viewer for DenseNet training."""
-    dn_job = st.session_state.get("dn_training_job")
+    dn_job = ss.get("dn_training_job")
     if not dn_job or dn_job.get("status") != "running":
         return
 
@@ -492,8 +492,8 @@ def render_densenet_status_fragment():
 @st.fragment(run_every=10)
 def render_cellpose_status_fragment():
     """Real-time status and log viewer for Cellpose training and validation"""
-    cp_job = st.session_state.get("cp_training_job")
-    val_job = st.session_state.get("cp_validation_job")
+    cp_job = ss.get("cp_training_job")
+    val_job = ss.get("cp_validation_job")
 
     from src.helpers.cellpose_functions import (
         build_cellpose_zip_bytes,

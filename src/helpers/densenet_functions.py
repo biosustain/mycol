@@ -149,7 +149,6 @@ def get_densenet_num_classes(model) -> int | None:
 
 def _ensure_assignable_classes(n_classes: int) -> list[str]:
     """Return at least n non-'No label' classes, creating ClassN names as needed."""
-    ss = st.session_state
     all_classes = ss.setdefault("all_classes", ["No label"])
     real_classes = [c for c in all_classes if c != "No label"]
 
@@ -168,7 +167,6 @@ def _ensure_assignable_classes(n_classes: int) -> list[str]:
 
 def initialize_densenet_class_map() -> dict[int, str]:
     """Rebuild the DenseNet output-to-class map for a newly uploaded model."""
-    ss = st.session_state
     n_classes = get_densenet_num_classes(ss.get("densenet_model"))
     if n_classes is None:
         ss["densenet_class_map"] = {}
@@ -182,7 +180,6 @@ def initialize_densenet_class_map() -> dict[int, str]:
 
 def ensure_densenet_class_map() -> dict[int, str | None]:
     """Ensure each model class index has a valid, non-'No label' mapping."""
-    ss = st.session_state
     model = ss.get("densenet_model")
     n_classes = get_densenet_num_classes(model)
     if n_classes is None:
@@ -202,7 +199,6 @@ def ensure_densenet_class_map() -> dict[int, str | None]:
 
 
 def densenet_mapping_fragment():
-    ss = st.session_state
     model = ss.get("densenet_model")
     if model is None:
         return
@@ -234,7 +230,6 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     """Classify segmented cell masks in `rec` using a DenseNet-121 model.
 
     Pass ``snapshot=False`` for batch runs so they aren't recorded for undo."""
-    ss = st.session_state
     model = ss.get("densenet_model")
     M = rec.get("masks")
 
@@ -312,9 +307,9 @@ def load_labeled_patches(patch_size: int = 64):
     """
     Build X, y from all loaded images with labels.
     """
-    ims = st.session_state.get("images", {}) or {}
+    ims = ss.get("images", {}) or {}
     all_classes = [
-        c for c in st.session_state.get("all_classes", []) if c != "No label"
+        c for c in ss.get("all_classes", []) if c != "No label"
     ]
     if not all_classes:
         all_classes = ["class0", "class1"]
@@ -391,7 +386,6 @@ def check_densenet_training_status():
         model = build_densenet(num_classes=len(classes))
         model.load_state_dict(model_state)
 
-        ss = st.session_state
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
 
@@ -462,7 +456,6 @@ def _write_patchset(zf, patch_size: int = 64) -> int:
 
 def write_densenet_param_csvs(zf, input_size=None) -> None:
     """Write the DenseNet training hyperparameters CSV into `zf`."""
-    ss = st.session_state
     params = {
         "input_size": int(input_size) if input_size is not None else ss.get("dn_input_size", 64),
         "batch_size": ss.get("dn_batch_size", 32),
@@ -481,7 +474,6 @@ def densenet_model_bytes(model) -> bytes:
 
 def build_densenet_zip_bytes(psize):
     """Assemble the DenseNet training ZIP from session state."""
-    ss = st.session_state
 
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zout:

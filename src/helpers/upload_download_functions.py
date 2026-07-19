@@ -103,7 +103,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
 
     with ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = set(zf.namelist())
-        st.session_state.clear()
+        ss.clear()
         reset_global_state_defaults()
 
         # ── Images ───────────────────────────────────────────────────────────
@@ -416,7 +416,6 @@ def load_model(name: str, data: bytes) -> str:
 
 def render_images_form():
     """display the uploaded images table with a remove-selected action"""
-    ss = st.session_state
 
     # tick rows to remove
     selected_keys = render_image_selection_table("uploads_remove", default_all=False)
@@ -463,7 +462,7 @@ def build_masks_images_zip(
         # Class color palette (only if overlays requested)
         palette = (
             create_colour_palette(
-                st.session_state.setdefault("all_classes", ["No label"])
+                ss.setdefault("all_classes", ["No label"])
             )
             if include_overlay
             else None
@@ -489,7 +488,7 @@ def build_masks_images_zip(
             img = np.asarray(rec["image"])
 
             # optionally normalize image
-            if st.session_state["dl_normalize_download"]:
+            if ss["dl_normalize_download"]:
                 img = normalize_image(img)
 
             # optional overlay (colored masks) for image
