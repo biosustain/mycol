@@ -12,17 +12,12 @@ from src.helpers.grid_helpers import render_image_selection_table
 from src.helpers.help_panels import shape_metric_help
 
 
-def ui_image_selection_container() -> list:
-    """Render the shared image-selection table; return the selected image keys."""
-    return render_image_selection_table("cell_metrics")
-
-
 @st.fragment
 def render_plotting_options():
     # ---- Step 1: select images to compare ----
     with st.container(border=True):
         st.subheader("Step 1: Select images to compare")
-        selected_keys = ui_image_selection_container()
+        selected_keys = render_image_selection_table("cell_metrics")
         selected_names = [st.session_state["images"][k]["name"] for k in selected_keys]
         st.session_state["cell_metrics_selected_names"] = selected_names
 
