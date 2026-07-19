@@ -124,9 +124,7 @@ def render_plotting_main():
         df = df[df["image"].isin(selected_names)]
 
     df_filt = df.copy()
-    df_filt["mask label"] = (
-        df_filt["mask label"].replace("Remove label", None).fillna("Unlabelled")
-    )
+    df_filt["mask label"] = df_filt["mask label"].fillna("Unlabelled")
 
     # filter by selected labels
     labels_to_plot = ss.get("analysis_labels", None)
