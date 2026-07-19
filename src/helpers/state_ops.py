@@ -1,9 +1,23 @@
 import copy
+import io
 from pathlib import Path
 import streamlit as st
 import numpy as np
+import pandas as pd
+import tifffile as tiff
 import plotly.io as pio
 import plotly.graph_objects as go
+
+# Plotly figures persisted in the session zip as "{key}.json".
+SESSION_PLOT_KEYS = [
+    "cellpose_training_losses",
+    "cellpose_iou_comparison",
+    "cellpose_original_counts_comparison",
+    "cellpose_tuned_counts_comparison",
+    "densenet_training_losses",
+    "densenet_training_metrics",
+    "densenet_confusion_matrix",
+]
 
 
 _DEFAULTS = {
@@ -204,6 +218,30 @@ def normalize_image(image: np.ndarray) -> np.ndarray:
     # ensure valid uint8 range
     im = np.clip(im, 0, 255)
     return im.astype(np.uint8)
+
+
+def params_to_csv(params: dict) -> str:
+    """Serialize a {name: value} dict to a two-column parameter/value CSV string."""
+    return (
+        pd.Series(params)
+        .rename_axis("parameter")
+        .reset_index(name="value")
+        .to_csv(index=False)
+    )
+
+
+def write_image_to_zip(zip_file, name, image) -> None:
+    """Write an RGB image array to `zip_file` as images/{name}.tif (deflate-compressed)."""
+    buf = io.BytesIO()
+    tiff.imwrite(buf, np.asarray(image), photometric="rgb", compression="deflate")
+    zip_file.writestr(f"images/{name}.tif", buf.getvalue())
+
+
+def write_mask_to_zip(zip_file, name, mask, mask_suffix) -> None:
+    """Write a label mask array to `zip_file` as masks/{name}{mask_suffix}.tif (uint16)."""
+    buf = io.BytesIO()
+    tiff.imwrite(buf, mask.astype(np.uint16))
+    zip_file.writestr(f"masks/{name}{mask_suffix}.tif", buf.getvalue())
 
 
 def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default_h=400):

@@ -7,8 +7,6 @@ import pandas as pd
 from PIL import Image
 import io
 from zipfile import ZipFile, ZIP_DEFLATED
-import os
-import tempfile
 import plotly.graph_objects as go
 
 import torch
@@ -20,6 +18,7 @@ from src.helpers.state_ops import (
     selected_training_keys,
     normalize_image,
     add_plotly_as_png_to_zip,
+    params_to_csv,
     plot_loss_curve,
     snapshot_for_undo,
 )
@@ -513,6 +512,25 @@ def build_patchset_zip(patch_size: int = 64) -> bytes | None:
     return buf.getvalue()
 
 
+def write_densenet_param_csvs(zf, input_size=None) -> None:
+    """Write the DenseNet training hyperparameters CSV into `zf`."""
+    ss = st.session_state
+    params = {
+        "input_size": int(input_size) if input_size is not None else ss.get("dn_input_size", 64),
+        "batch_size": ss.get("dn_batch_size", 32),
+        "max_epoch": ss.get("dn_max_epoch", 100),
+        "val_split": ss.get("dn_val_split", 0.2),
+    }
+    zf.writestr("densenet_training_hyperparameters.csv", params_to_csv(params))
+
+
+def densenet_model_bytes(model) -> bytes:
+    """Serialize a DenseNet model's state_dict to .pth bytes."""
+    buf = io.BytesIO()
+    torch.save(model.state_dict(), buf)
+    return buf.getvalue()
+
+
 def build_densenet_zip_bytes(psize):
     """Assemble the DenseNet training ZIP from session state."""
     ss = st.session_state
@@ -520,59 +538,24 @@ def build_densenet_zip_bytes(psize):
     if not pzip:
         return None
 
-    with ZipFile(io.BytesIO(pzip)) as zin:
-        labels = pd.read_csv(io.BytesIO(zin.read("cell_patch_labels.csv")))
+    buf = io.BytesIO()
+    with ZipFile(io.BytesIO(pzip)) as zin, ZipFile(buf, "w", ZIP_DEFLATED) as zout:
+        if ss.get("densenet_model") is not None:
+            zout.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
-        # an uploaded (vs trained) model has no training params set, so coerce
-        # only when present and skip missing entries
-        def _coerce(key, cast):
-            val = ss.get(key)
-            return cast(val) if val is not None else None
+        write_densenet_param_csvs(zout, input_size=psize)
 
-        params = {
-            k: v
-            for k, v in dict(
-                input_size=int(psize) if psize is not None else None,
-                epochs=_coerce("dn_max_epoch", int),
-                batch_size=_coerce("dn_batch_size", int),
-                val_split=_coerce("dn_val_split", float),
-                patches=len(labels),
-                classes=labels["label"].nunique(),
-            ).items()
-            if v is not None
-        }
+        for n in zin.namelist():
+            zout.writestr(n, zin.read(n))
 
-        buf = io.BytesIO()
-        with ZipFile(buf, "w", ZIP_DEFLATED) as zout:
-            if ss.get("densenet_model") is not None:
-                tmp = tempfile.NamedTemporaryFile(suffix=".pth", delete=False)
-                tmp_path = tmp.name
-                tmp.close()
-                torch.save(ss["densenet_model"].state_dict(), tmp_path)
-                with open(tmp_path, "rb") as f:
-                    zout.writestr("densenet_finetuned.pth", f.read())
-                os.remove(tmp_path)
-
-            zout.writestr(
-                "training_params.csv",
-                pd.Series(params)
-                .rename_axis("parameter")
-                .reset_index(name="value")
-                .to_csv(index=False),
-            )
-            for n in zin.namelist():
-                zout.writestr(n, zin.read(n))
-
-            add_plotly_as_png_to_zip(
-                "densenet_training_losses", zout, "plots/densenet_training_losses.png"
-            )
-            add_plotly_as_png_to_zip(
-                "densenet_training_metrics",
-                zout,
-                "plots/densenet_performance_metrics.png",
-            )
-            add_plotly_as_png_to_zip(
-                "densenet_confusion_matrix", zout, "plots/densenet_confusion.png"
-            )
+        add_plotly_as_png_to_zip(
+            "densenet_training_losses", zout, "plots/densenet_training_losses.png"
+        )
+        add_plotly_as_png_to_zip(
+            "densenet_training_metrics", zout, "plots/densenet_performance_metrics.png"
+        )
+        add_plotly_as_png_to_zip(
+            "densenet_confusion_matrix", zout, "plots/densenet_confusion.png"
+        )
 
     return buf.getvalue()

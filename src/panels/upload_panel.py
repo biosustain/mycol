@@ -8,6 +8,7 @@ from src.helpers.upload_download_functions import (
     load_demo_data,
     restore_session,
     load_model,
+    apply_hyperparameter_csv,
 )
 import os
 import pandas as pd
@@ -121,32 +122,16 @@ def render_main():
 
             for model_file in model_files:
                 if model_file.name.lower().endswith(".csv"):
-                    # treat as Cellpose hyperparameter results
+                    # Cellpose inference hyperparameters (parameter/value table,
+                    # e.g. cellpose_inference_hyperparameters.csv)
                     try:
-                        hp_df = pd.read_csv(model_file)
-                        required_cols = {
-                            "cellprob",
-                            "flow_threshold",
-                            "niter",
-                            "min_size",
-                        }
-                        if required_cols.issubset(hp_df.columns):
-                            best = hp_df.iloc[0]
-                            ss["cp_cellprob_threshold"] = float(best["cellprob"])
-                            ss["cp_flow_threshold"] = float(best["flow_threshold"])
-                            ss["cp_min_size"] = int(best["min_size"])
-                            ss["cp_niter"] = int(best["niter"])
-                            ss["cp_grid_results_df"] = hp_df
-                            ss["_model_toast"] = (
-                                f"HP set: cellprob={best['cellprob']:.2f}, "
-                                f"flow={best['flow_threshold']:.2f}, "
-                                f"min_size={int(best['min_size'])}, "
-                                f"niter={int(best['niter'])}"
-                            )
+                        msg = apply_hyperparameter_csv(pd.read_csv(model_file))
+                        if msg:
+                            ss["_model_toast"] = msg
                         else:
-                            missing = required_cols - set(hp_df.columns)
                             ss["_model_error"] = (
-                                f"Missing columns: {', '.join(missing)}"
+                                "Unrecognized CSV. Expected a Cellpose inference "
+                                "hyperparameters file (a parameter/value table)."
                             )
                     except Exception as e:
                         ss["_model_error"] = f"Failed to load HP CSV: {e}"
