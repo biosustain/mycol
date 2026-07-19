@@ -32,6 +32,9 @@ from src.helpers.state_ops import (
     stem,
     set_current_by_index,
     reset_global_state_defaults,
+    write_image_to_zip,
+    write_mask_to_zip,
+    SESSION_PLOT_KEYS,
 )
 
 from src.helpers.state_ops import normalize_image
@@ -58,14 +61,45 @@ def load_demo_data():
         st.rerun()
 
 
+def _cast(v, t, default):
+    """Cast v to type t, falling back to default on NaN / failure."""
+    try:
+        return default if pd.isna(v) else t(v)
+    except (ValueError, TypeError):
+        return default
+
+
+def apply_cellpose_inference_params(p: dict) -> bool:
+    """Set the Cellpose inference hyperparameters from a {parameter: value} mapping.
+    Returns True if the mapping contained inference keys."""
+    if not {"diameter", "cellprob_threshold", "flow_threshold", "min_size", "niter"} & set(p):
+        return False
+    ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
+    ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
+    ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
+    ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
+    ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+    return True
+
+
+def apply_hyperparameter_csv(df) -> str | None:
+    """Apply a cellpose_inference_hyperparameters.csv (parameter/value table) to state.
+    Returns a short summary of what was applied, or None if it is not a recognized
+    inference-params table."""
+    if {"parameter", "value"}.issubset(df.columns):
+        p = dict(zip(df["parameter"], df["value"]))
+        if apply_cellpose_inference_params(p):
+            return (
+                f"Inference params set: diameter={ss['cp_diameter']}, "
+                f"cellprob={ss['cp_cellprob_threshold']:.2f}, "
+                f"flow={ss['cp_flow_threshold']:.2f}, "
+                f"min_size={ss['cp_min_size']}, niter={ss['cp_niter']}"
+            )
+    return None
+
+
 def restore_session(zip_bytes: bytes) -> str | None:
     """Restore a saved session zip into session state. Returns an error string or None on success."""
-
-    def _cast(v, t, default):
-        try:
-            return default if pd.isna(v) else t(v)
-        except (ValueError, TypeError):
-            return default
 
     with ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = set(zf.namelist())
@@ -137,12 +171,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             df = pd.read_csv(
                 io.StringIO(zf.read("cellpose_inference_hyperparameters.csv").decode())
             )
-            p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
-            ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
-            ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
-            ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
-            ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+            apply_cellpose_inference_params(dict(zip(df["parameter"], df["value"])))
 
         # ── Cellpose training hyperparameters ─────────────────────────────────
         if "cellpose_training_hyperparameters.csv" in names:
@@ -194,23 +223,10 @@ def restore_session(zip_bytes: bytes) -> str | None:
         # ── Training plots ────────────────────────────────────────────────────
         import plotly.io as pio
 
-        for filename, state_key in [
-            ("cellpose_training_losses.json", "cellpose_training_losses"),
-            ("cellpose_iou_comparison.json", "cellpose_iou_comparison"),
-            (
-                "cellpose_original_counts_comparison.json",
-                "cellpose_original_counts_comparison",
-            ),
-            (
-                "cellpose_tuned_counts_comparison.json",
-                "cellpose_tuned_counts_comparison",
-            ),
-            ("densenet_training_losses.json", "densenet_training_losses"),
-            ("densenet_training_metrics.json", "densenet_training_metrics"),
-            ("densenet_confusion_matrix.json", "densenet_confusion_matrix"),
-        ]:
+        for fig_key in SESSION_PLOT_KEYS:
+            filename = f"{fig_key}.json"
             if filename in names:
-                ss[state_key] = pio.from_json(zf.read(filename).decode())
+                ss[fig_key] = pio.from_json(zf.read(filename).decode())
 
         # ── Cellpose grid search results ──────────────────────────────────────
         if "cellpose_grid_search_results.csv" in names:
@@ -457,6 +473,7 @@ def build_masks_images_zip(
         counts_df, class_cols = build_per_image_counts(key_order)
         counts_by_key = {r["_key"]: r for r in counts_df.to_dict("records")}
         summary_rows = []
+        mask_suffix = ss["mask_suffix"]
 
         # iterate through records
         for k in key_order:
@@ -466,11 +483,7 @@ def build_masks_images_zip(
             counts = {c: int(crow.get(c, 0)) for c in class_cols}
 
             # write mask
-            mask = rec.get("masks")
-            tbuf = io.BytesIO()
-            tiff.imwrite(tbuf, mask.astype(np.uint16))
-            mask_suffix = ss["mask_suffix"]
-            zf.writestr(f"masks/{name}{mask_suffix}.tif", tbuf.getvalue())
+            write_mask_to_zip(zf, name, rec.get("masks"), mask_suffix)
 
             # write image
             img = np.asarray(rec["image"])
@@ -519,9 +532,7 @@ def build_masks_images_zip(
             summary_rows.append(row)
 
             # write processed image to zip file
-            ibuf = io.BytesIO()
-            tiff.imwrite(ibuf, img, photometric="rgb", compression="deflate")
-            zf.writestr(f"images/{name}.tif", ibuf.getvalue())
+            write_image_to_zip(zf, name, img)
 
         # optionally write cell patches into zip
         if include_patches:

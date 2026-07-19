@@ -1,19 +1,27 @@
 import io
 import json
-import os
-import tempfile
-import numpy as np
 import pandas as pd
-import tifffile as tiff
 import streamlit as st
 import plotly.io as pio
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
 
+from src.helpers.state_ops import (
+    write_image_to_zip,
+    write_mask_to_zip,
+    SESSION_PLOT_KEYS,
+)
 from src.helpers.upload_download_functions import build_masks_images_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
-from src.helpers.cellpose_functions import build_cellpose_zip_bytes
-from src.helpers.densenet_functions import build_densenet_zip_bytes
+from src.helpers.cellpose_functions import (
+    build_cellpose_zip_bytes,
+    write_cellpose_param_csvs,
+)
+from src.helpers.densenet_functions import (
+    build_densenet_zip_bytes,
+    write_densenet_param_csvs,
+    densenet_model_bytes,
+)
 
 ss = st.session_state
 
@@ -83,15 +91,10 @@ def build_session_zip(images, ok) -> bytes:
             rec = images[k]
             name = Path(rec.get("name", str(k))).stem
 
-            ibuf = io.BytesIO()
-            tiff.imwrite(ibuf, np.asarray(rec["image"]), photometric="rgb", compression="deflate")
-            zf.writestr(f"images/{name}.tif", ibuf.getvalue())
-
+            write_image_to_zip(zf, name, rec["image"])
             mask = rec.get("masks")
             if mask is not None:
-                mbuf = io.BytesIO()
-                tiff.imwrite(mbuf, mask.astype(np.uint16))
-                zf.writestr(f"masks/{name}{mask_suffix}.tif", mbuf.getvalue())
+                write_mask_to_zip(zf, name, mask, mask_suffix)
 
             image_metadata[name] = {
                 "orig_H": rec.get("orig_H", rec["H"]),
@@ -105,62 +108,14 @@ def build_session_zip(images, ok) -> bytes:
             json.dumps({"mask_suffix": mask_suffix, "images": image_metadata}),
         )
 
-        cp_training_params = {
-            "base_model": ss.get("cp_base_model"),
-            "max_epoch": ss.get("cp_max_epoch"),
-            "learning_rate": ss.get("cp_learning_rate"),
-            "weight_decay": ss.get("cp_weight_decay"),
-            "batch_size": ss.get("cp_batch_size"),
-            "min_cells_per_image": ss.get("cp_min_cells_per_image"),
-            # images are converted to grayscale before Cellpose, so channels are fixed
-            "training_ch1": 0,
-            "training_ch2": 0,
-            "do_gridsearch": ss.get("cp_do_gridsearch", False),
-            "n_trials": ss.get("cp_n_trials", 20),
-        }
-        zf.writestr(
-            "cellpose_training_hyperparameters.csv",
-            pd.Series(cp_training_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
-        )
-
-        dn_training_params = {
-            "input_size": ss.get("dn_input_size", 64),
-            "batch_size": ss.get("dn_batch_size", 32),
-            "max_epoch": ss.get("dn_max_epoch", 100),
-            "val_split": ss.get("dn_val_split", 0.2),
-        }
-        zf.writestr(
-            "densenet_training_hyperparameters.csv",
-            pd.Series(dn_training_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
-        )
-
-        cp_inference_params = {
-            # images are converted to grayscale before Cellpose, so channels are fixed
-            "channel_1": 0,
-            "channel_2": 0,
-            "diameter": ss.get("cp_diameter"),
-            "cellprob_threshold": ss.get("cp_cellprob_threshold"),
-            "flow_threshold": ss.get("cp_flow_threshold"),
-            "min_size": ss.get("cp_min_size"),
-            "niter": ss.get("cp_niter"),
-        }
-        zf.writestr(
-            "cellpose_inference_hyperparameters.csv",
-            pd.Series(cp_inference_params).rename_axis("parameter").reset_index(name="value").to_csv(index=False),
-        )
+        write_cellpose_param_csvs(zf)
+        write_densenet_param_csvs(zf)
 
         if bool(ss.get("cellpose_model_bytes")):
             zf.writestr("cellpose_model.pt", ss["cellpose_model_bytes"])
 
         if ss.get("densenet_model") is not None:
-            import torch
-            tmp = tempfile.NamedTemporaryFile(suffix=".pth", delete=False)
-            tmp_path = tmp.name
-            tmp.close()
-            torch.save(ss["densenet_model"].state_dict(), tmp_path)
-            with open(tmp_path, "rb") as f:
-                zf.writestr("densenet_model.pth", f.read())
-            os.remove(tmp_path)
+            zf.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
         densenet_class_map = ss.get("densenet_class_map")
         if densenet_class_map:
@@ -178,21 +133,9 @@ def build_session_zip(images, ok) -> bytes:
             build_cell_metrics_csv(()),
         )
 
-        for fig_key, filename in [
-            ("cellpose_training_losses", "cellpose_training_losses.json"),
-            ("cellpose_iou_comparison", "cellpose_iou_comparison.json"),
-            ("cellpose_original_counts_comparison", "cellpose_original_counts_comparison.json"),
-            ("cellpose_tuned_counts_comparison", "cellpose_tuned_counts_comparison.json"),
-            ("densenet_training_losses", "densenet_training_losses.json"),
-            ("densenet_training_metrics", "densenet_training_metrics.json"),
-            ("densenet_confusion_matrix", "densenet_confusion_matrix.json"),
-        ]:
+        for fig_key in SESSION_PLOT_KEYS:
             fig = ss.get(fig_key)
             if fig is not None:
-                zf.writestr(filename, pio.to_json(fig))
-
-        cp_grid_results_df = ss.get("cp_grid_results_df")
-        if cp_grid_results_df is not None:
-            zf.writestr("cellpose_grid_search_results.csv", cp_grid_results_df.to_csv(index=False))
+                zf.writestr(f"{fig_key}.json", pio.to_json(fig))
 
     return buf.getvalue()
