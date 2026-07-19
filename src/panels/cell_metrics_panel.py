@@ -41,15 +41,15 @@ def render_plotting_options():
     with st.container(border=True):
         st.subheader("Step 3: Select attributes to compare")
         metric_options = METRIC_COLS
-        default_metrics = st.session_state.get("analysis_metrics", metric_options)
+        default_metrics = st.session_state.get("analysis_metrics", ["area"])
         default_metrics = [
             m for m in default_metrics if m in metric_options
-        ] or metric_options
+        ] or ["area"]
 
         st.segmented_control(
             "Choose cell descriptors to compare",
             options=metric_options,
-            default="area",
+            default=default_metrics,
             selection_mode="multi",
             key="analysis_metrics",
             width="stretch",
