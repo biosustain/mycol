@@ -468,7 +468,6 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
     m = rec["masks"]
     touched = np.unique(m[barrier])
     touched = touched[touched != 0]
-    snapshot_for_undo(rec)
 
     struct = np.ones((3, 3), dtype=bool)  # 8-connectivity
     labels = rec.setdefault("labels", {})
@@ -488,6 +487,8 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
             continue  # line does not fully dissect this mask -> leave intact
 
         if not changed:
+            # first mask is about to be split -> take the single undo snapshot now
+            snapshot_for_undo(rec)
             out = m.copy()
             changed = True
         split_n += 1
@@ -581,7 +582,6 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
     inside = set(np.unique(m[region])) - {0}
     outside = set(np.unique(m[~region]))
     selected = inside - outside  # masks lying completely within the selection
-    snapshot_for_undo(rec)
 
     merged_n = 0  # how many masks were combined
     groups = 0  # how many merged masks they became
@@ -600,6 +600,8 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
                 groups += 1
 
         if merged_n:
+            # a real merge happened -> take the single undo snapshot now
+            snapshot_for_undo(rec)
             # compact ids to a contiguous range and remap labels to match
             uniq, inv = np.unique(out, return_inverse=True)
             rec["masks"] = inv.reshape(m.shape).astype(m.dtype)
