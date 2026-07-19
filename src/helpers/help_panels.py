@@ -194,11 +194,11 @@ def classifier_training_plot_help():
 
 
 def shape_metric_help():
-    st.subheader("Shape Descriptor Reference")
+    st.subheader("Cell Descriptor Reference")
 
     st.markdown(
         """
-        Below is a quick reference for the shape descriptors computed from each labeled region.
+        Below is a quick reference for the descriptors computed from each labeled region.
         Use this as a guide when interpreting the measurements for your segmented cells.
         """
     )
@@ -207,7 +207,7 @@ def shape_metric_help():
 
     with col1:
         st.markdown(
-            """
+            r"""
             **Notation:**  
             - \(A\): area (number of pixels in the object)  
             - \(P\): perimeter (length of the object's boundary)  
@@ -278,6 +278,15 @@ def shape_metric_help():
             "What it describes": (
                 "Fraction of the bounding box area occupied by the object. "
                 "Values near 1 indicate that the object nearly fills its bounding box."
+            ),
+        },
+        {
+            "Name": "redness / greenness / blueness",
+            "What it describes": (
+                "The proportion of each colour channel in a cell's average colour "
+                "(each is a fraction of red + green + blue, so the three sum to 1). "
+                "They describe hue independently of brightness, and are white-balanced "
+                "against the image background so colour is comparable between images."
             ),
         },
     ]
