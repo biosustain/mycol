@@ -15,6 +15,8 @@ from typing import Callable
 import numpy as np
 import streamlit as st
 
+ss = st.session_state
+
 
 # -----------------------------------------------------------------------------
 # Worker path resolution (portable / frozen / dev)
@@ -96,7 +98,7 @@ def start_worker_job(
     log_file = open(log_path, "w")
     process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT, text=True)
 
-    st.session_state[job_key] = {
+    ss[job_key] = {
         "process": process,
         "log_file": log_file,
         "tmpdir": tmpdir,
@@ -113,7 +115,7 @@ def check_worker_job_status(
     on_complete: Callable[[dict, dict], None],
 ) -> str | None:
     """Poll the job; on success run `on_complete(npz_data, job)`. Returns status string."""
-    job = st.session_state.get(job_key)
+    job = ss.get(job_key)
     if not job:
         return None
 
@@ -144,7 +146,7 @@ def check_worker_job_status(
 
 def cancel_worker_job(job_key: str) -> None:
     """Terminate the worker and clean up its tempdir."""
-    job = st.session_state.get(job_key)
+    job = ss.get(job_key)
     if not job:
         return
 

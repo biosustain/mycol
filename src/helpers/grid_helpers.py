@@ -6,6 +6,8 @@ import streamlit as st
 
 from src.helpers.state_ops import ordered_keys
 
+ss = st.session_state
+
 
 def _n_masks(rec) -> int:
     """Number of distinct cell masks in an image record."""
@@ -28,7 +30,7 @@ def _build_image_table(keys) -> pd.DataFrame:
     """Per-image summary rows in the same format as the uploads-page table."""
     rows = []
     for i, k in enumerate(keys, start=1):
-        rec = st.session_state["images"][k]
+        rec = ss["images"][k]
         n = _n_masks(rec)
         nl = _n_labelled(rec)
         rows.append(
@@ -54,7 +56,7 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
     """
     keys = ordered_keys()
     if not keys:
-        st.session_state[f"{namespace}_selected_image_keys"] = []
+        ss[f"{namespace}_selected_image_keys"] = []
         return []
 
     df = _build_image_table(keys)
@@ -62,7 +64,7 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
 
     # Ticks stored per image key; survives page navigation.
     sel_key = f"{namespace}_selection"
-    sel = st.session_state.setdefault(sel_key, {})
+    sel = ss.setdefault(sel_key, {})
 
     # Selections are row positions and never auto-reset, so a removal would strand
     # ticks on the wrong images: rebuild the widget whenever the row set changes.
@@ -85,8 +87,8 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
     )
 
     chosen = set(event.selection.rows)
-    st.session_state[sel_key] = {k: i in chosen for i, k in enumerate(ids)}
+    ss[sel_key] = {k: i in chosen for i, k in enumerate(ids)}
 
     selected = [k for i, k in enumerate(ids) if i in chosen]
-    st.session_state[f"{namespace}_selected_image_keys"] = selected
+    ss[f"{namespace}_selected_image_keys"] = selected
     return selected

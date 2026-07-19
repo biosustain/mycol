@@ -8,9 +8,11 @@ from scipy import ndimage as ndi
 
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
-import plotly.graph_objects as go
 
 from src.helpers.state_ops import snapshot_for_undo
+from src.helpers.plot_helpers import make_base_figure
+
+ss = st.session_state
 
 
 # new masks lose priority where they overlap existing ones, so a mask can be cut
@@ -67,48 +69,9 @@ def integrate_new_mask(original: np.ndarray, new_binary: np.ndarray):
     return out, new_id
 
 
-# duplicated from mask_editing_functions to avoid a circular import
-def _make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
-    """
-    Create a Plotly figure with a background image and fixed pixel size.
-    Used by the box, freehand and ellipse drawing modes.
-    """
-    fig = go.Figure()
-    # add background image
-    fig.add_layout_image(
-        dict(
-            source=bg_img,
-            xref="x",
-            yref="y",
-            x=0,
-            y=disp_h,
-            sizex=disp_w,
-            sizey=disp_h,
-            sizing="stretch",
-            layer="below",
-        )
-    )
-    # set axes properties
-    fig.update_xaxes(visible=False, range=[0, disp_w], constrain="domain")
-    fig.update_yaxes(
-        visible=False,
-        range=[0, disp_h],
-        scaleanchor="x",
-        scaleratio=1,
-    )
-    fig.update_layout(
-        dragmode=dragmode,
-        margin=dict(l=0, r=0, t=0, b=0),
-        width=disp_w,
-        height=disp_h,
-    )
-
-    return fig
-
-
 def _update_boxes(chart_key: str, rec: dict):
     """Callback run when a selection is made on the Plotly chart."""
-    event = st.session_state.get(chart_key)
+    event = ss.get(chart_key)
     sel = getattr(event, "selection", None)
     if not sel or not sel.box:
         return
@@ -119,7 +82,7 @@ def _update_boxes(chart_key: str, rec: dict):
     boxes_orig = rec.setdefault("boxes", [])
 
     # Try to recover display geometry + scale
-    disp_w = st.session_state.get("disp_w")
+    disp_w = ss.get("disp_w")
     if disp_w is not None and rec.get("W"):
         scale = float(disp_w / rec["W"])
         disp_h = int(round(rec["H"] * scale))
@@ -178,7 +141,7 @@ def _make_figure_with_boxes(bg_img, disp_w, disp_h, rec: dict):
     """Create a Plotly figure with background image and drawn boxes overlayed."""
 
     # create base figure
-    fig = _make_base_figure(bg_img, disp_w, disp_h, dragmode="select")
+    fig = make_base_figure(bg_img, disp_w, disp_h, dragmode="select")
 
     # add boxes
     for box in rec.get("boxes_display", []):
@@ -302,11 +265,14 @@ def segment_with_sam2(rec: dict):
         else nullcontext()
     )
 
+    # embed the image
+    with torch.inference_mode(), amp:
+        predictor.set_image(img_float)
+
     # batched predictions to prevent online crashes
     box_batches = [boxes[i : i + 8] for i in range(0, len(boxes), 8)]
     for batch in box_batches:
         with torch.inference_mode(), amp:
-            predictor.set_image(img_float)
             masks, scores, _ = predictor.predict(
                 point_coords=None, point_labels=None, box=batch, multimask_output=True
             )

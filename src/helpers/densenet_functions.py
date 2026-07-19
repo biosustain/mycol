@@ -7,7 +7,6 @@ import pandas as pd
 from PIL import Image
 import io
 from zipfile import ZipFile, ZIP_DEFLATED
-import plotly.graph_objects as go
 
 import torch
 import torch.nn as nn
@@ -19,8 +18,12 @@ from src.helpers.state_ops import (
     normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
-    plot_loss_curve,
     snapshot_for_undo,
+)
+from src.helpers.plot_helpers import (
+    plot_loss_curve,
+    plot_confusion_matrix,
+    plot_densenet_metrics,
 )
 from src.helpers.job_runner import (
     start_worker_job,
@@ -146,7 +149,6 @@ def get_densenet_num_classes(model) -> int | None:
 
 def _ensure_assignable_classes(n_classes: int) -> list[str]:
     """Return at least n non-'No label' classes, creating ClassN names as needed."""
-    ss = st.session_state
     all_classes = ss.setdefault("all_classes", ["No label"])
     real_classes = [c for c in all_classes if c != "No label"]
 
@@ -165,7 +167,6 @@ def _ensure_assignable_classes(n_classes: int) -> list[str]:
 
 def initialize_densenet_class_map() -> dict[int, str]:
     """Rebuild the DenseNet output-to-class map for a newly uploaded model."""
-    ss = st.session_state
     n_classes = get_densenet_num_classes(ss.get("densenet_model"))
     if n_classes is None:
         ss["densenet_class_map"] = {}
@@ -179,7 +180,6 @@ def initialize_densenet_class_map() -> dict[int, str]:
 
 def ensure_densenet_class_map() -> dict[int, str | None]:
     """Ensure each model class index has a valid, non-'No label' mapping."""
-    ss = st.session_state
     model = ss.get("densenet_model")
     n_classes = get_densenet_num_classes(model)
     if n_classes is None:
@@ -199,7 +199,6 @@ def ensure_densenet_class_map() -> dict[int, str | None]:
 
 
 def densenet_mapping_fragment():
-    ss = st.session_state
     model = ss.get("densenet_model")
     if model is None:
         return
@@ -231,7 +230,6 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     """Classify segmented cell masks in `rec` using a DenseNet-121 model.
 
     Pass ``snapshot=False`` for batch runs so they aren't recorded for undo."""
-    ss = st.session_state
     model = ss.get("densenet_model")
     M = rec.get("masks")
 
@@ -309,9 +307,9 @@ def load_labeled_patches(patch_size: int = 64):
     """
     Build X, y from all loaded images with labels.
     """
-    ims = st.session_state.get("images", {}) or {}
+    ims = ss.get("images", {}) or {}
     all_classes = [
-        c for c in st.session_state.get("all_classes", []) if c != "No label"
+        c for c in ss.get("all_classes", []) if c != "No label"
     ]
     if not all_classes:
         all_classes = ["class0", "class1"]
@@ -388,7 +386,6 @@ def check_densenet_training_status():
         model = build_densenet(num_classes=len(classes))
         model.load_state_dict(model_state)
 
-        ss = st.session_state
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
 
@@ -414,58 +411,6 @@ def cancel_densenet_training():
 # -------------------------------
 
 
-def plot_confusion_matrix(cm, class_names):
-    n = len(class_names)
-    text = [[f"{cm[i,j]}" for j in range(n)] for i in range(n)]
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=cm,
-            x=class_names,
-            y=class_names,
-            text=text,
-            textfont=dict(size=20),
-            texttemplate="%{text}",
-            colorscale="Blues",
-            hoverongaps=False,
-            showscale=False,
-        )
-    )
-    fig.update_layout(
-        title="Class Confusion Matrix",
-        xaxis=dict(title="Predicted Class", tickangle=45),
-        yaxis=dict(title="True Class", autorange="reversed"),
-        width=max(500, 80 * n),
-        height=max(400, 80 * n),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        margin=dict(l=80, r=80, t=40, b=80),
-    )
-    return fig
-
-
-def plot_densenet_metrics(metrics):
-    labels, values = list(metrics.keys()), list(metrics.values())
-    fig = go.Figure(layout=dict(barcornerradius=10))
-    fig.add_bar(
-        x=labels,
-        y=values,
-        text=[f"{v:.3f}" for v in values],
-        textposition="outside",
-        marker=dict(color=["#EBF1F8"] * 4, line=dict(color="#004280", width=2)),
-        name="metrics",
-    )
-    fig.update_yaxes(range=[0, 1.2])
-    fig.update_layout(
-        title="Validation metrics",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=450,
-        width=450,
-    )
-    return fig
-
-
 def array_to_png_bytes(arr: np.ndarray) -> bytes:
     """Convert float/uint arrays to PNG bytes (3-channel)."""
     a = arr
@@ -485,36 +430,32 @@ def array_to_png_bytes(arr: np.ndarray) -> bytes:
     return bio.getvalue()
 
 
-def build_patchset_zip(patch_size: int = 64) -> bytes | None:
+def _write_patchset(zf, patch_size: int = 64) -> int:
+    """Write cell-patch PNGs and their labels CSV directly into an open ZipFile.
+
+    Returns the number of patches written (0 when there are no labelled cells)."""
     X, y, classes = load_labeled_patches(patch_size=patch_size)
     if X.shape[0] == 0:
-        return None
+        return 0
 
-    buf, rows = io.BytesIO(), []
+    rows = []
+    for i in range(X.shape[0]):
+        fname = f"patch_{i+1:04d}.png"
+        label_idx = int(y[i])
+        label_name = classes[label_idx] if 0 <= label_idx < len(classes) else "unknown"
 
-    with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
-        for i in range(X.shape[0]):
-            fname = f"patch_{i+1:04d}.png"
-            label_idx = int(y[i])
-            label_name = (
-                classes[label_idx] if 0 <= label_idx < len(classes) else "unknown"
-            )
+        zf.writestr(f"cell_patches/{fname}", array_to_png_bytes(X[i]))
+        rows.append({"filename": fname, "label_idx": label_idx, "label": label_name})
 
-            zf.writestr(f"cell_patches/{fname}", array_to_png_bytes(X[i]))
-            rows.append(
-                {"filename": fname, "label_idx": label_idx, "label": label_name}
-            )
-
-        zf.writestr(
-            "cell_patch_labels.csv",
-            pd.DataFrame(rows).to_csv(index=False).encode("utf-8"),
-        )
-    return buf.getvalue()
+    zf.writestr(
+        "cell_patch_labels.csv",
+        pd.DataFrame(rows).to_csv(index=False).encode("utf-8"),
+    )
+    return X.shape[0]
 
 
 def write_densenet_param_csvs(zf, input_size=None) -> None:
     """Write the DenseNet training hyperparameters CSV into `zf`."""
-    ss = st.session_state
     params = {
         "input_size": int(input_size) if input_size is not None else ss.get("dn_input_size", 64),
         "batch_size": ss.get("dn_batch_size", 32),
@@ -533,20 +474,17 @@ def densenet_model_bytes(model) -> bytes:
 
 def build_densenet_zip_bytes(psize):
     """Assemble the DenseNet training ZIP from session state."""
-    ss = st.session_state
-    pzip = build_patchset_zip(psize)
-    if not pzip:
-        return None
 
     buf = io.BytesIO()
-    with ZipFile(io.BytesIO(pzip)) as zin, ZipFile(buf, "w", ZIP_DEFLATED) as zout:
+    with ZipFile(buf, "w", ZIP_DEFLATED) as zout:
+        # patches are written into the final zip 
+        if _write_patchset(zout, psize) == 0:
+            return None
+
         if ss.get("densenet_model") is not None:
             zout.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
         write_densenet_param_csvs(zout, input_size=psize)
-
-        for n in zin.namelist():
-            zout.writestr(n, zin.read(n))
 
         add_plotly_as_png_to_zip(
             "densenet_training_losses", zout, "plots/densenet_training_losses.png"

@@ -16,6 +16,7 @@ case_study_3/
 *.log
 *.npy
 *.DS_Store
+*.bak
 
 # Ignore compiled Python files
 __pycache__/

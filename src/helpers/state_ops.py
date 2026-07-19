@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import plotly.io as pio
-import plotly.graph_objects as go
+
+ss = st.session_state
 
 # Plotly figures persisted in the session zip as "{key}.json".
 SESSION_PLOT_KEYS = [
@@ -69,8 +70,6 @@ _DEFAULTS = {
     # UI defaults / nonces
     "pred_canvas_nonce": 0,
     "edit_canvas_nonce": 0,
-    "mask_uploader_nonce": 0,
-    "image_uploader_nonce": 0,
     "side_panel": "Upload data",
 
     # class defaults
@@ -87,7 +86,6 @@ def reset_global_state_defaults() -> None:
     Idempotent: existing values are preserved, missing ones get a fresh copy of
     their default. Safe to call on every Streamlit rerun.
     """
-    ss = st.session_state
     for k, v in _DEFAULTS.items():
         ss.setdefault(k, copy.deepcopy(v))
 
@@ -97,29 +95,15 @@ def stem(p: str) -> str:
 
 
 def ordered_keys():
-    return sorted(st.session_state.images.keys())
+    return sorted(ss.images.keys())
 
 
 def image_number_lookup():
     """Map each image name to its 1-based 'No.' in the image selection table."""
     return {
-        st.session_state["images"][k]["name"]: i
+        ss["images"][k]["name"]: i
         for i, k in enumerate(ordered_keys(), start=1)
     }
-
-
-def point_hover_texts(numbers, names, patches=None):
-    """Per-point hover labels — image number, image name and (optionally) patch
-    number, each on its own line. Shared by the cell-metrics and fine-tuning plots."""
-    if patches is None:
-        patches = [None] * len(names)
-    texts = []
-    for num, name, patch in zip(numbers, names, patches):
-        line = f"Image number: {num}<br>Image name: {name}"
-        if patch is not None:
-            line += f"<br>Patch number: {patch}"
-        texts.append(line)
-    return texts
 
 
 def selected_training_keys(namespace: str):
@@ -127,7 +111,7 @@ def selected_training_keys(namespace: str):
 
     Falls back to every image when no explicit selection has been made yet.
     """
-    selected = st.session_state.get(f"{namespace}_selected_image_keys")
+    selected = ss.get(f"{namespace}_selected_image_keys")
     if selected is None:
         return ordered_keys()
     selected = set(selected)
@@ -136,7 +120,7 @@ def selected_training_keys(namespace: str):
 
 def require_images():
     """Stop the page with a warning if no images have been uploaded yet."""
-    if not st.session_state["images"]:
+    if not ss["images"]:
         st.markdown(
             """<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
             <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NO IMAGES UPLOADED</p>
@@ -149,8 +133,8 @@ def require_images():
 
 
 def get_current_rec():
-    k = st.session_state.get("current_key")
-    return st.session_state.images.get(k) if k is not None else None
+    k = ss.get("current_key")
+    return ss.images.get(k) if k is not None else None
 
 
 def snapshot_for_undo(rec) -> None:
@@ -160,8 +144,8 @@ def snapshot_for_undo(rec) -> None:
     if rec is None:
         return
     masks = rec.get("masks")
-    st.session_state["undo"] = {
-        "key": st.session_state.get("current_key"),
+    ss["undo"] = {
+        "key": ss.get("current_key"),
         "masks": None if masks is None else masks.copy(),
         "labels": dict(rec.get("labels", {})),
         "boxes": list(rec.get("boxes", [])),
@@ -171,10 +155,10 @@ def snapshot_for_undo(rec) -> None:
 
 def apply_undo(rec) -> bool:
     """Restore the undo snapshot if it's for the current image; always consume it."""
-    snap = st.session_state.pop("undo", None)
+    snap = ss.pop("undo", None)
     if not snap or rec is None:
         return False
-    if snap.get("key") != st.session_state.get("current_key"):
+    if snap.get("key") != ss.get("current_key"):
         return False  # snapshot is for a different image
     rec["masks"] = snap["masks"]
     rec["labels"] = snap["labels"]
@@ -185,16 +169,16 @@ def apply_undo(rec) -> bool:
 
 def reset_undo_on_navigation() -> None:
     """Drop the undo snapshot if the displayed image changed since it was taken."""
-    snap = st.session_state.get("undo")
-    if snap and snap.get("key") != st.session_state.get("current_key"):
-        st.session_state.pop("undo", None)
+    snap = ss.get("undo")
+    if snap and snap.get("key") != ss.get("current_key"):
+        ss.pop("undo", None)
 
 
 def set_current_by_index(idx: int):
     ok = ordered_keys()
     if not ok:
         return
-    st.session_state.current_key = ok[idx % len(ok)]
+    ss.current_key = ok[idx % len(ok)]
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -249,7 +233,7 @@ def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default
 
     Silently skips figures that were never created (e.g. when a model was uploaded
     rather than trained, so no training plots exist)."""
-    fig = st.session_state.get(fig_key)
+    fig = ss.get(fig_key)
     if fig is None:
         return
     png = pio.to_image(
@@ -260,39 +244,3 @@ def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default
         height=int(getattr(fig.layout, "height", default_h) or default_h),
     )
     zip_file.writestr(out_path, png)
-
-
-def plot_loss_curve(train_losses, test_losses):
-    epochs = list(range(1, len(train_losses) + 1))
-    fig = go.Figure()
-    fig.add_scatter(
-        x=epochs,
-        y=train_losses,
-        mode="lines+markers",
-        name="train",
-        line=dict(color="#D3E4F4", width=2),
-        marker=dict(color="#D3E4F4", size=6),
-    )
-
-    # Cellpose only evaluates validation loss every 10 epochs; skip zero entries
-    val_pairs = [(i + 1, v) for i, v in enumerate(test_losses) if v != 0]
-    e_val = [p[0] for p in val_pairs]
-    val_scores = [p[1] for p in val_pairs]
-    fig.add_scatter(
-        x=e_val,
-        y=val_scores,
-        mode="lines+markers",
-        name="val",
-        line=dict(color="#004280", width=2),
-        marker=dict(color="#004280", size=6),
-    )
-    fig.update_layout(
-        title="Training vs. Validation Loss",
-        xaxis_title="Epoch",
-        yaxis_title="Loss",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=450,
-        width=450,
-    )
-    return fig

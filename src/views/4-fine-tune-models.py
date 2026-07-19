@@ -3,10 +3,12 @@ from src.panels import fine_tune_panel
 from src.helpers.state_ops import ordered_keys, require_images
 import numpy as np
 
+ss = st.session_state
+
 require_images()
 
 # warning if no images have masks
-if not any(np.any(st.session_state["images"][k]["masks"]) for k in ordered_keys()):
+if not any(np.any(ss["images"][k]["masks"]) for k in ordered_keys()):
     st.warning("⚠️ Please upload or create masks for at least one image.")
     st.stop()
 
@@ -58,9 +60,9 @@ with st.spinner("Loading Training Panel..."):
 
     # ---- Step 5: review model training (only once a model is trained) ----
     trained = (
-        "cellpose_training_losses" in st.session_state
+        "cellpose_training_losses" in ss
         if is_cellpose
-        else "densenet_training_metrics" in st.session_state
+        else "densenet_training_metrics" in ss
     )
     if trained:
         with st.container(border=True):

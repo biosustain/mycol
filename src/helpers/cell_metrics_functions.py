@@ -2,9 +2,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from src.helpers.state_ops import ordered_keys, point_hover_texts
+from src.helpers.state_ops import ordered_keys
+from src.helpers.plot_helpers import point_hover_texts
 from skimage.measure import regionprops
 from src.helpers.classifying_functions import color_hex_for
+
+ss = st.session_state
 
 
 def hex_for_plot_label(label: str) -> str:
@@ -23,11 +26,11 @@ def _scale_col(df: pd.DataFrame, col: str):
     'convert_to_distance' and 'pixel_size' are set in session state.
     Dimensionless metrics are returned as-is.
     """
-    pixel_size = st.session_state.get("pixel_size")
+    pixel_size = ss.get("pixel_size")
     vals = df[col].copy()
     label = col.replace("_", " ").title()
 
-    convert = st.session_state.get("convert_to_distance", False)
+    convert = ss.get("convert_to_distance", False)
     if pixel_size and pixel_size > 0 and convert:
         if col in _AREA_COLS:
             vals = vals * (pixel_size**2)
@@ -51,7 +54,7 @@ def plot_violin(df: pd.DataFrame, value_col: str):
     df = df.copy()
     df[value_col] = scaled_col
 
-    show_points = bool(st.session_state.get("overlay_datapoints", False))
+    show_points = bool(ss.get("overlay_datapoints", False))
     fig = go.Figure()
 
     # violin traces per label
@@ -196,7 +199,7 @@ def add_data_points_to_plot(plot, order, sub, value_col, xpos):
 
     # jittered points per category (optional)
     traces = [plot]
-    if not st.session_state.get("overlay_datapoints", False):
+    if not ss.get("overlay_datapoints", False):
         return traces
     for i, lab in enumerate(order):
         idx = sub["label"] == lab
@@ -353,7 +356,7 @@ def available_labels(keys):
         return []
     classes = set()
     for k in keys:
-        for cls in (st.session_state["images"][k].get("labels") or {}).values():
+        for cls in (ss["images"][k].get("labels") or {}).values():
             if cls not in (None, "No label"):
                 classes.add(cls)
     return sorted(classes | {"Unlabelled"}, key=lambda x: (x != "Unlabelled", str(x)))
@@ -370,7 +373,7 @@ def build_analysis_df(records):
     # iterate through the image records (img_no matches the 1-based "No." shown
     # in the image selection table)
     for img_no, k in enumerate(ordered_keys(), start=1):
-        rec = st.session_state.images[k]
+        rec = ss.images[k]
         inst = rec.get("masks")
         # skip invalid masks
         if not inst.any():
@@ -428,7 +431,7 @@ def apply_pixel_scaling(df: pd.DataFrame, pixel_size) -> pd.DataFrame:
     Return a copy of df with distance/area columns scaled to physical units.
     Dimensionless metrics (circularity, roundness, etc.) are left unchanged.
     """
-    convert = st.session_state.get("convert_to_distance", False)
+    convert = ss.get("convert_to_distance", False)
     if not pixel_size or pixel_size <= 0 or df.empty or not convert:
         return df.drop(columns=["_pixel_scale"], errors="ignore")
 
@@ -457,14 +460,14 @@ def build_per_image_counts(keys=None):
     # Collect all label groups across all images
     all_labels: set[str] = set()
     for k in keys:
-        rec = st.session_state["images"][k]
+        rec = ss["images"][k]
         for cls in (rec.get("labels") or {}).values():
             all_labels.add("Unlabelled" if cls in (None, "No label") else cls)
     sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
 
     rows = []
     for k in keys:
-        rec = st.session_state["images"][k]
+        rec = ss["images"][k]
         masks = rec.get("masks")
         n_masks = int(masks.max()) if masks is not None and np.any(masks) else 0
         label_dict = rec.get("labels") or {}
@@ -485,7 +488,7 @@ def build_per_image_counts(keys=None):
 
 
 def build_cell_metrics_csv(labels_selected):
-    df = build_analysis_df(st.session_state["images"])
+    df = build_analysis_df(ss["images"])
 
     if labels_selected:
         df = df[df["mask label"].isin(labels_selected)]
@@ -493,7 +496,7 @@ def build_cell_metrics_csv(labels_selected):
     if df.empty:
         return ""
 
-    pixel_size = st.session_state.get("pixel_size")
+    pixel_size = ss.get("pixel_size")
     df = apply_pixel_scaling(df, pixel_size)
 
     return df.to_csv(index=False)

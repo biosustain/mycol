@@ -13,10 +13,11 @@ from src.helpers.upload_download_functions import (
 import os
 import pandas as pd
 
+ss = st.session_state
+
 
 def render_main():
 
-    ss = st.session_state
 
     # briefly show any skipped files that threw an error
     skipped = ss.pop("skipped_files", None)
