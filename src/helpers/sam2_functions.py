@@ -10,7 +10,7 @@ from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 from src.helpers.state_ops import snapshot_for_undo
-from src.helpers.plot_helpers import make_base_figure
+from src.helpers.plot_helpers import MIN_DRAG_PX, make_base_figure
 
 ss = st.session_state
 
@@ -93,6 +93,13 @@ def _update_boxes(chart_key: str, rec: dict):
     for b in sel.box:
         x0_plot, x1_plot = map(float, b["x"])
         y0_plot, y1_plot = map(float, b["y"])
+
+        # stray click, not a box
+        if (
+            abs(x1_plot - x0_plot) < MIN_DRAG_PX
+            or abs(y1_plot - y0_plot) < MIN_DRAG_PX
+        ):
+            continue
 
         # --- 1) Store display-space box for visualization ---
         box_disp = {"x0": x0_plot, "x1": x1_plot, "y0": y0_plot, "y1": y1_plot}

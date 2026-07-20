@@ -14,7 +14,7 @@ from src.helpers.classifying_functions import (
     create_colour_palette,
 )
 from src.helpers.state_ops import normalize_image
-from src.helpers.plot_helpers import make_base_figure
+from src.helpers.plot_helpers import MIN_DRAG_PX, make_base_figure
 from src.helpers.sam2_functions import (
     segment_with_sam2,
     box_draw_fragment,
@@ -244,7 +244,7 @@ def _handle_draw_ellipse_mode(
         for b in getattr(sel, "box", None) or []:
             x0, x1 = sorted(map(float, b["x"]))
             y0, y1 = sorted(map(float, b["y"]))
-            if x1 <= x0 or y1 <= y0:  # ignore zero-size drags
+            if x1 - x0 < MIN_DRAG_PX or y1 - y0 < MIN_DRAG_PX:  # stray click
                 continue
             snapshot_for_undo(rec)
             # display box -> full-res box (Plotly y 0 at bottom -> display y 0 at top)

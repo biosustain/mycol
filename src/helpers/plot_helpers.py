@@ -12,6 +12,8 @@ NAVY = "#004280"        # primary dark blue: markers, lines, bar/error-bar outli
 PALE_BLUE = "#EBF1F8"   # bar fill
 LIGHT_BLUE = "#D3E4F4"  # train-loss line and markers
 
+MIN_DRAG_PX = 3  # smallest drag, in display pixels, that counts as a real box
+
 
 def make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figure:
     """
@@ -41,6 +43,8 @@ def make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figu
     )
     fig.update_layout(
         dragmode=dragmode,
+        # "d" keeps thin drags as boxes; "any" snaps them to a full row or column
+        selectdirection="d",
         margin=dict(l=0, r=0, t=0, b=0),
         width=disp_w,
         height=disp_h,
