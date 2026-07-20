@@ -280,7 +280,7 @@ def render_cellpose_params():
                 ss["cp_n_trials"] = st.slider(
                     min_value=10,
                     max_value=60,
-                    value=20,
+                    value=int(ss.get("cp_n_trials", 20)),
                     step=5,
                     label="Optimisation iterations",
                     help="Number of hyperparameter combinations to try during optimisation. More trials may yield better results but take longer.",
