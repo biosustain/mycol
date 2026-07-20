@@ -34,27 +34,6 @@ Box = dict[str, float]
 # -----------------------------------------------------#
 
 
-def create_image_mask_overlay_inner(
-    image_bytes,
-    mask_bytes,
-    image_shape,
-    mask_shape,
-    classes_items,
-    palette_items,
-    alpha,
-):
-    """
-    Rebuild the arrays from bytes and delegate to create_image_mask_overlay.
-    Assumes a uint8 image and a uint16 mask; other mask dtypes fail to reshape.
-    """
-
-    image = np.frombuffer(image_bytes, dtype=np.uint8).reshape(image_shape)
-    mask = np.frombuffer(mask_bytes, dtype=np.uint16).reshape(mask_shape)
-    classes_map = dict(classes_items)
-    palette = dict(palette_items)
-    return create_image_mask_overlay(image, mask, classes_map, palette, alpha)
-
-
 def create_image_mask_overlay(image, mask, classes_map, palette, alpha=0.5):
     """
     Create an overlay of instance masks on an image using class colours.
@@ -119,14 +98,7 @@ def cached_image_mask_overlay(
     palette: dict,
     alpha: float,
 ) -> np.ndarray:
-    image_key = image.tobytes()
-    mask_key = mask.tobytes()
-    classes_key = tuple(sorted(classes_map.items()))
-    palette_key = tuple(sorted(palette.items()))
-
-    return create_image_mask_overlay_inner(
-        image_key, mask_key, image.shape, mask.shape, classes_key, palette_key, alpha
-    )
+    return create_image_mask_overlay(image, mask, classes_map, palette, alpha)
 
 
 def create_image_display(rec, max_display_width=768):
@@ -157,10 +129,11 @@ def create_image_display(rec, max_display_width=768):
     else:
         base_img = rec["image"]
 
-    display_for_ui = np.array(
-        Image.fromarray(base_img.astype(np.uint8)).resize(
-            (disp_w, disp_h), Image.BILINEAR
-        )
+    # base_img is already display-sized when an overlay was built; only resize otherwise
+    display_for_ui = (
+        base_img
+        if base_img.shape[:2] == (disp_h, disp_w)
+        else np.array(Image.fromarray(base_img).resize((disp_w, disp_h), Image.BILINEAR))
     )
     return base_img, display_for_ui, disp_w, disp_h
 
@@ -875,6 +848,20 @@ def render_undo_button(container=st, key_ns="side"):
 # -----------------------------------------------------#
 
 
+def _normalized_display_image(image: ImageArray) -> ImageArray:
+    """normalize_image(image), memoised in one session slot keyed on image identity.
+
+    The display path only ever normalises the current image, so a single slot serves
+    every repeat rerun on it; memory stays bounded to one normalized copy regardless
+    of how many images are viewed."""
+    slot = ss.get("_norm_display_slot")
+    if slot is not None and slot[0] is image:
+        return slot[1]
+    norm = normalize_image(image)
+    ss["_norm_display_slot"] = (image, norm)
+    return norm
+
+
 @st.fragment
 def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     """Render main image display and interaction fragment."""
@@ -884,12 +871,8 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
 
     # display image with masks overlay and interaction
     rec_for_disp = rec
-    if ss.get(
-        "show_normalized"
-    ):  # normalize background image if selected
-        im = normalize_image(rec["image"])
-        rec_for_disp = dict(rec)
-        rec_for_disp["image"] = im
+    if ss.get("show_normalized"):  # normalize background image if selected
+        rec_for_disp = {**rec, "image": _normalized_display_image(rec["image"])}
 
     base_img, display_for_ui, disp_w, disp_h = create_image_display(
         rec_for_disp, max_display_width
