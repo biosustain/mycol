@@ -149,7 +149,6 @@ def snapshot_for_undo(rec) -> None:
         "masks": None if masks is None else masks.copy(),
         "labels": dict(rec.get("labels", {})),
         "boxes": list(rec.get("boxes", [])),
-        "boxes_display": list(rec.get("boxes_display", [])),
     }
 
 
@@ -163,7 +162,6 @@ def apply_undo(rec) -> bool:
     rec["masks"] = snap["masks"]
     rec["labels"] = snap["labels"]
     rec["boxes"] = snap["boxes"]
-    rec["boxes_display"] = snap["boxes_display"]
     return True
 
 

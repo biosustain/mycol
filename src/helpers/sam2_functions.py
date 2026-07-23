@@ -76,19 +76,13 @@ def _update_boxes(chart_key: str, rec: dict):
     if not sel or not sel.box:
         return
 
-    # For drawing (display coordinates)
-    boxes_display = rec.setdefault("boxes_display", [])
-    # For SAM (original image coordinates)
-    boxes_orig = rec.setdefault("boxes", [])
+    boxes = rec.setdefault("boxes", [])
 
-    # Try to recover display geometry + scale
     disp_w = ss.get("disp_w")
-    if disp_w is not None and rec.get("W"):
-        scale = float(disp_w / rec["W"])
-        disp_h = int(round(rec["H"] * scale))
-    else:
-        scale = None
-        disp_h = None
+    if not disp_w or not rec.get("W"):
+        return
+    scale = float(disp_w / rec["W"])
+    disp_h = int(round(rec["H"] * scale))
 
     for b in sel.box:
         x0_plot, x1_plot = map(float, b["x"])
@@ -101,32 +95,17 @@ def _update_boxes(chart_key: str, rec: dict):
         ):
             continue
 
-        # --- 1) Store display-space box for visualization ---
-        box_disp = {"x0": x0_plot, "x1": x1_plot, "y0": y0_plot, "y1": y1_plot}
-        if box_disp not in boxes_display:
-            snapshot_for_undo(rec)
-            boxes_display.append(box_disp)
-
-        # --- 2) Also compute original image coordinates, if we know the scale ---
-        if scale is None or disp_h is None:
-            continue
-
         # Normalize ordering
         if x1_plot < x0_plot:
             x0_plot, x1_plot = x1_plot, x0_plot
         if y1_plot < y0_plot:
             y0_plot, y1_plot = y1_plot, y0_plot
 
-        # Flip Y: Plotly (0 bottom) -> display image (0 top)
-        y0_disp = disp_h - y1_plot
-        y1_disp = disp_h - y0_plot
-        x0_disp, x1_disp = x0_plot, x1_plot
-
-        # Scale back to original image coordinates
-        x0 = int(round(x0_disp / scale))
-        x1 = int(round(x1_disp / scale))
-        y0 = int(round(y0_disp / scale))
-        y1 = int(round(y1_disp / scale))
+        # Flip Y: Plotly (0 bottom) -> image (0 top), then scale to image coords
+        x0 = int(round(x0_plot / scale))
+        x1 = int(round(x1_plot / scale))
+        y0 = int(round((disp_h - y1_plot) / scale))
+        y1 = int(round((disp_h - y0_plot) / scale))
 
         # Clamp to image bounds
         x0 = max(0, min(rec["W"] - 1, x0))
@@ -140,8 +119,9 @@ def _update_boxes(chart_key: str, rec: dict):
             y0, y1 = y1, y0
 
         box_orig = (x0, y0, x1, y1)
-        if box_orig not in boxes_orig:
-            boxes_orig.append(box_orig)
+        if box_orig not in boxes:
+            snapshot_for_undo(rec)
+            boxes.append(box_orig)
 
 
 def _make_figure_with_boxes(bg_img, disp_w, disp_h, rec: dict):
@@ -150,8 +130,15 @@ def _make_figure_with_boxes(bg_img, disp_w, disp_h, rec: dict):
     # create base figure
     fig = make_base_figure(bg_img, disp_w, disp_h, dragmode="select")
 
+    # image coords (y top) -> Plotly display coords (y bottom)
+    sx, sy = disp_w / rec["W"], disp_h / rec["H"]
+    display_boxes = [
+        {"x0": x0 * sx, "x1": x1 * sx, "y0": disp_h - y0 * sy, "y1": disp_h - y1 * sy}
+        for x0, y0, x1, y1 in rec.get("boxes", [])
+    ]
+
     # add boxes
-    for box in rec.get("boxes_display", []):
+    for box in display_boxes:
         fig.add_shape(
             type="rect",
             x0=box["x0"],
@@ -167,17 +154,14 @@ def _make_figure_with_boxes(bg_img, disp_w, disp_h, rec: dict):
 
 
 def _clear_boxes(rec: dict):
-    """Clear all boxes for the current record (UI + original coords)."""
+    """Clear all boxes for the current record."""
     rec["boxes"] = []
-    rec["boxes_display"] = []
 
 
 def _remove_last_box(rec: dict):
-    """Remove the most recently drawn box (UI + original coords)."""
+    """Remove the most recently drawn box."""
     if rec.get("boxes"):
         rec["boxes"].pop()
-    if rec.get("boxes_display"):
-        rec["boxes_display"].pop()
 
 
 @st.fragment

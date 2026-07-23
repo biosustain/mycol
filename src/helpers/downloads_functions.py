@@ -100,7 +100,6 @@ def build_session_zip(images, ok) -> bytes:
                 "orig_H": rec.get("orig_H", rec["H"]),
                 "orig_W": rec.get("orig_W", rec["W"]),
                 "boxes": rec.get("boxes", []),
-                "boxes_display": rec.get("boxes_display", []),
             }
 
         zf.writestr(

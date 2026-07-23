@@ -130,7 +130,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
             rec["orig_H"] = m.get("orig_H", rec["H"])
             rec["orig_W"] = m.get("orig_W", rec["W"])
             rec["boxes"] = m.get("boxes", [])
-            rec["boxes_display"] = m.get("boxes_display", [])
 
         # ── Masks ─────────────────────────────────────────────────────────────
         for k, rec in ss["images"].items():

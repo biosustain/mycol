@@ -521,8 +521,6 @@ def remove_clicked():
         if bx0 <= x <= bx1 and by0 <= y <= by1:
             snapshot_for_undo(rec)
             rec["boxes"].pop(i)
-            if i < len(rec.get("boxes_display", [])):
-                rec["boxes_display"].pop(i)
             ss["remove_click"] = False
             return
 
@@ -817,7 +815,6 @@ def render_common_tools_fragment(key_ns="tools"):
         rec["masks"] = np.zeros((rec["H"], rec["W"]), dtype=np.uint16)
         rec["labels"] = {}
         rec["boxes"] = []
-        rec["boxes_display"] = []
         rec["last_click_xy"] = None
         ss["edit_canvas_nonce"] += 1
         st.rerun()
