@@ -12,6 +12,7 @@ from src.helpers.densenet_functions import (
     cancel_densenet_training,
 )
 from src.helpers.cellpose_functions import (
+    preprocess_for_cellpose,
     start_cellpose_training,
     check_cellpose_training_status,
     cancel_cellpose_training,
@@ -341,7 +342,7 @@ def prepare_eval_data(recs, max_n=40):
     """returns a random subset of data on which to perform hyperparameter tuning"""
     names = [rec.get("name", f"Image {i}") for i, rec in enumerate(recs.values())]
     masks = [rec["masks"] for rec in recs.values()]
-    images = [rec["image"] for rec in recs.values()]
+    images = [preprocess_for_cellpose(rec) for rec in recs.values()]
     N = len(images)
     sample_n = min(max_n, N)
     if N > sample_n:
