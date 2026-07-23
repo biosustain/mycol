@@ -137,7 +137,9 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
 
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
-            best_model_state = model.state_dict()
+            best_model_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
             patience_counter = 0
             print(f"  -> Validation loss improved to {best_val_loss:.4f}")
         else:
