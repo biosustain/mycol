@@ -249,16 +249,16 @@ def create_row(name: str, key: str, mode_ns: str = "side"):
     )
 
 
-def add_label_from_input(labels, new_label_ss):
+def add_label_from_input():
     """Add a new label from input box; clears input box after use."""
-    new_label = new_label_ss.strip()
+    new_label = ss.get("side_new_label", "").strip()
     if not new_label:
         return
+    labels = ss.setdefault("all_classes", ["No label"])
     if new_label not in labels:
         labels.append(new_label)
     ss["side_current_class"] = new_label
     ss["side_new_label"] = ""
-    st.rerun()
 
 
 # -----------------------------------------------------#
@@ -359,7 +359,7 @@ def class_manage_fragment(key_ns="side"):
         "Add a new class:",
         key="side_new_label",
         placeholder="New class name",
-        on_change=add_label_from_input(labels, ss.get("side_new_label", "")),
+        on_change=add_label_from_input,
     )
 
     # delete class by selecting from dropdown list
