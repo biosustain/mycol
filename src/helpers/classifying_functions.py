@@ -69,7 +69,7 @@ def rename_class_from_input(old_key: str, new_key: str):
     # Stash the desired selectbox value for the next run
     ss[f"{old_key}__next_value"] = new
 
-    # Apply the rename (this will st.rerun())
+    # Apply the rename
     rename_class_everywhere(old, new)
 
 
@@ -118,6 +118,7 @@ def rename_class_everywhere(old_name: str, new_name: str):
             changed_labels += len(to_update)
 
     # Update class list (merge or rename)
+    is_merge = new_name in all_classes
     if old_name in all_classes:
         all_classes = [c for c in all_classes if c != old_name]  # drop old
     if new_name not in all_classes:
@@ -128,14 +129,11 @@ def rename_class_everywhere(old_name: str, new_name: str):
     if ss.get("side_current_class") == old_name:
         ss["side_current_class"] = new_name
 
-    # Release the old name's colour so it can be reused
     cmap = ss.setdefault("class_colors", {})
-    if new_name in ss["all_classes"]:
+    if is_merge:
         cmap.pop(old_name, None)  # merge: keep the target's colour
-    else:
-        if old_name in cmap:
-            cmap[new_name] = cmap.pop(old_name)
-    st.rerun()
+    elif old_name in cmap:
+        cmap[new_name] = cmap.pop(old_name)  # carry the colour to the new name
 
 
 def remove_class_everywhere(name: str):
