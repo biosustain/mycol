@@ -84,31 +84,29 @@ with st.spinner("Loading Annotator..."):
                         on_change=set_current_from_slider,
                     )
 
-            # --- Segmented control for overlay and normalization ---
-            _view_options = ["Masks", "Normalize", "Image"]
-            _default_views = [
-                opt
-                for opt in _view_options
-                if ss.get(
-                    {
-                        "Masks": "show_overlay",
-                        "Normalize": "show_normalized",
-                        "Image": "show_image",
-                    }[opt],
-                    True,
-                )
+            # --- View toggle buttons (active view shows as a filled/primary button) ---
+            _views = [
+                ("Masks", "show_overlay", "M"),
+                ("Normalize", "show_normalized", "N"),
+                ("Image", "show_image", "I"),
             ]
-            _selected_views = st.pills(
-                "View options",
-                options=_view_options,
-                default=_default_views,
-                selection_mode="multi",
-                width="stretch",
-                key="view_options_w",
-            )
-            ss["show_overlay"] = "Masks" in _selected_views
-            ss["show_normalized"] = "Normalize" in _selected_views
-            ss["show_image"] = "Image" in _selected_views
+
+            def _toggle_view(state_key):
+                ss[state_key] = not ss.get(state_key, True)
+
+            _view_cols = st.columns(len(_views))
+            for _col, (_label, _state_key, _short) in zip(_view_cols, _views):
+                ss.setdefault(_state_key, True)
+                _col.button(
+                    _label,
+                    key=f"view_btn_{_state_key}",
+                    shortcut=_short,
+                    type="primary" if ss[_state_key] else "secondary",
+                    on_click=_toggle_view,
+                    args=(_state_key,),
+                    width="stretch",
+                    help=f"Toggle {_label.lower()} (shortcut: {_short})",
+                )
 
             # segmentation / classification controls as tabs: both panels render
             # into the DOM so their button keyboard shortcuts work from either tab

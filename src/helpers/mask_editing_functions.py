@@ -372,24 +372,24 @@ def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
     _refocus_main_document()
 
 
-def _handle_merge_mask_mode(
+def _handle_join_mask_mode(
     rec: Record,
     display_for_ui: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
 ) -> None:
-    """Handle interactions when in 'Merge masks' mode.
+    """Handle interactions when in 'Join masks' mode.
 
     The user draws a lasso; every mask lying completely inside the selection is
-    merged with any other selected mask it touches (touching masks form groups).
+    joined with any other selected mask it touches (touching masks form groups).
     """
 
-    def merge(xs, ys) -> None:
+    def join(xs, ys) -> None:
         region = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
-        merge_in_lasso(rec, region)
+        join_in_lasso(rec, region)
 
-    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "merge", merge)
+    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "join", join)
 
 
 # -----------------------------------------------------#
@@ -544,11 +544,11 @@ def remove_clicked():
     ss["remove_click"] = False  # prevent reprocessing on rerun
 
 
-def merge_in_lasso(rec: Record, region: MaskArray) -> None:
-    """Merge groups of touching masks that lie completely inside the lasso region.
+def join_in_lasso(rec: Record, region: MaskArray) -> None:
+    """Join groups of touching masks that lie completely inside the lasso region.
 
     Only masks with no pixel outside the selection are considered; among those, any
-    that touch (8-connectivity) are merged together, each merged mask keeping the
+    that touch (8-connectivity) are joined together, each joined mask keeping the
     lowest id. Instance ids and labels are then compacted.
     """
     m = rec["masks"]
@@ -583,7 +583,7 @@ def merge_in_lasso(rec: Record, region: MaskArray) -> None:
                 remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
             }
 
-    st.toast(f"Merged {merged_n} masks in {groups}.")
+    st.toast(f"Joined {merged_n} masks in {groups}.")
 
 
 def assign_clicked():
@@ -773,13 +773,13 @@ def render_draw_mask_tools_fragment(key_ns="side"):
 
     # button to set mode to merging two touching masks
     if c4.button(
-        "Merge masks",
+        "Join masks",
         width="stretch",
-        key=f"{key_ns}_merge_masks",
-        shortcut="M",
-        help="Draw a lasso around touching masks to merge them into one (shortcut: M)",
+        key=f"{key_ns}_join_masks",
+        shortcut="J",
+        help="Draw a lasso around touching masks to join them into one (shortcut: J)",
     ):
-        ss["interaction_mode"] = "Merge masks"
+        ss["interaction_mode"] = "Join masks"
         st.rerun()
 
 
@@ -910,8 +910,8 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
             disp_h=disp_h,
             key_ns=key_ns,
         )
-    elif mode == "Merge masks":
-        _handle_merge_mask_mode(
+    elif mode == "Join masks":
+        _handle_join_mask_mode(
             rec=rec,
             display_for_ui=display_for_ui,
             disp_w=disp_w,
