@@ -469,15 +469,15 @@ def build_per_image_counts(keys=None):
     for k in keys:
         rec = ss["images"][k]
         masks = rec.get("masks")
-        n_masks = int(masks.max()) if masks is not None and np.any(masks) else 0
+        ids = np.unique(masks) if masks is not None else np.zeros(0, dtype=int)
+        ids = ids[ids != 0]
         label_dict = rec.get("labels") or {}
         counts: dict[str, int] = {lab: 0 for lab in sorted_labels}
-        for cls in label_dict.values():
+        for iid in ids:
+            cls = label_dict.get(int(iid))
             lab = "Unlabelled" if cls in (None, "No label") else cls
             counts[lab] = counts.get(lab, 0) + 1
-        # masks with no entry in label_dict are unlabelled
-        counts["Unlabelled"] = counts.get("Unlabelled", 0) + (n_masks - len(label_dict))
-        row = {"_key": k, "Image": rec["name"], "Total masks": n_masks}
+        row = {"_key": k, "Image": rec["name"], "Total masks": int(ids.size)}
         row.update(counts)
         rows.append(row)
 
