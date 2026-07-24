@@ -5,7 +5,6 @@ import streamlit as st
 from src.helpers.grid_helpers import render_image_selection_table
 from src.helpers.state_ops import selected_training_keys
 from src.helpers.densenet_functions import (
-    load_labeled_patches,
     build_densenet_zip_bytes,
     start_densenet_training,
     check_densenet_training_status,
@@ -62,16 +61,25 @@ def render_densenet_params():
     )
 
 
+def _densenet_class_counts():
+    """Per-class labelled-cell counts for the DenseNet training set, from label dicts."""
+    classes = [c for c in ss.get("all_classes", []) if c != "No label"] or ["class0", "class1"]
+    tally = {}
+    for k in selected_training_keys("dn"):
+        rec = ss["images"][k]
+        M, labs = rec.get("masks"), rec.get("labels", {})
+        if not isinstance(M, np.ndarray) or not M.any():
+            continue
+        for i in np.unique(M):
+            name = labs.get(int(i))
+            tally[name] = tally.get(name, 0) + 1
+    return np.array([tally.get(c, 0) for c in classes], dtype=int), classes
+
+
 @st.fragment
 def render_densenet_summary_fragment():
-    """Loads patches and shows a simple class frequency table (reruns when the page reruns)."""
-    input_size = int(ss.get("dn_input_size"))
-
-    # Load patches only for summary; heavy-ish but isolated here
-    X, y, classes = load_labeled_patches(patch_size=input_size)
-
-    # Count occurrences per class (ensure all classes present)
-    counts = np.bincount(y, minlength=len(classes))
+    """Show a simple class frequency table (counts read from label dicts, no patches)."""
+    counts, classes = _densenet_class_counts()
     freq_df = pd.DataFrame({"Class": list(classes), "Count": counts.astype(int)})
 
     st.info(
@@ -89,21 +97,10 @@ def render_densenet_summary_fragment():
     )
 
 
-def densenet_can_train(
-    patch_size: int, min_classes: int = 2, min_instances: int = 2
-) -> bool:
-    """
-    Return True if there are at least `min_classes` classes
-    with >= `min_instances` examples each.
-    """
-    _, y, classes = load_labeled_patches(patch_size=patch_size)
-
-    # counts[i] = number of samples for class i
-    counts = np.bincount(y, minlength=len(classes))
-
-    # how many classes have at least `min_instances` examples?
-    n_ok = int((counts >= min_instances).sum())
-    return n_ok >= min_classes
+def densenet_can_train(min_classes: int = 2, min_instances: int = 2) -> bool:
+    """True if at least `min_classes` classes have >= `min_instances` labelled cells each."""
+    counts, _ = _densenet_class_counts()
+    return int((counts >= min_instances).sum()) >= min_classes
 
 
 def render_densenet_train_fragment():
@@ -119,7 +116,7 @@ def render_densenet_train_fragment():
     val_split = 0.2
 
     # --- check if we have enough data to train ---
-    can_train = densenet_can_train(patch_size=input_size)
+    can_train = densenet_can_train()
 
     if not can_train:
         st.warning(
