@@ -445,6 +445,46 @@ def show_cellpose_training_plots():
         st.info("No hyperparameter tuning performed.")
 
 
+def _tick_icon(toggle_key: str) -> str:
+    """Return an alternating hourglass icon, flipping the stored toggle each call."""
+    ss.setdefault(toggle_key, True)
+    icon = "⌛" if ss[toggle_key] else "⏳"
+    ss[toggle_key] = not ss[toggle_key]
+    return icon
+
+
+def _render_running_status(
+    job: dict,
+    *,
+    icon: str,
+    running_msg: str,
+    noun: str,
+    cancel_label: str,
+    cancel_key: str,
+    cancel_fn,
+) -> None:
+    """Shared 'running' status UI: progress line, log viewer, and cancel button."""
+    st.info(f"{icon} {running_msg}")
+
+    log_content = job.get("log_content", "")
+    if log_content:
+        with st.expander(f"📄 View {noun.title()} Log", expanded=False):
+            st.code(log_content, language="text")
+    else:
+        st.caption(f"Waiting for {noun} output...")
+
+    if st.button(cancel_label, type="primary", key=cancel_key, width="stretch"):
+        cancel_fn()
+        st.rerun()
+
+
+def _render_failed_status(job: dict, error_msg: str) -> None:
+    """Shared 'failed' status UI: error line with collapsible worker log."""
+    st.error(error_msg)
+    with st.expander("Show Error Details"):
+        st.code(job.get("error", "Unknown error"))
+
+
 @st.fragment(run_every=2)
 def render_densenet_status_fragment():
     """Real-time status and log viewer for DenseNet training."""
@@ -453,25 +493,18 @@ def render_densenet_status_fragment():
         return
 
     status = check_densenet_training_status()
-    ss.setdefault("dn_icon_toggle", True)
-    icon = "⌛" if ss["dn_icon_toggle"] else "⏳"
-    ss["dn_icon_toggle"] = not ss["dn_icon_toggle"]
+    icon = _tick_icon("dn_icon_toggle")
 
     if status == "running":
-        st.info(f"{icon} DenseNet training in progress...")
-
-        log_content = dn_job.get("log_content", "")
-        if log_content:
-            with st.expander("📄 View Training Log", expanded=False):
-                st.code(log_content, language="text")
-        else:
-            st.caption("Waiting for training output...")
-
-        if st.button(
-            "Cancel Training", type="primary", key="cancel_dn_frag", width="stretch"
-        ):
-            cancel_densenet_training()
-            st.rerun()
+        _render_running_status(
+            dn_job,
+            icon=icon,
+            running_msg="DenseNet training in progress...",
+            noun="training",
+            cancel_label="Cancel Training",
+            cancel_key="cancel_dn_frag",
+            cancel_fn=cancel_densenet_training,
+        )
     elif status == "complete":
         st.success("Finalizing DenseNet training...")
         st.balloons()  # cool as f*ck
@@ -480,9 +513,7 @@ def render_densenet_status_fragment():
         ss.pop("dn_training_job", None)
         st.rerun()
     elif status == "failed":
-        st.error("❌ DenseNet training failed.")
-        with st.expander("Show Error Details"):
-            st.code(dn_job.get("error", "Unknown error"))
+        _render_failed_status(dn_job, "❌ DenseNet training failed.")
         # ss.pop("dn_training_job", None)
         # st.rerun()
 
@@ -497,29 +528,22 @@ def render_cellpose_status_fragment():
         build_cellpose_zip_bytes,
     )
 
-    ss.setdefault("cp_icon_toggle", True)
-    icon = "⌛" if ss["cp_icon_toggle"] else "⏳"
-    ss["cp_icon_toggle"] = not ss["cp_icon_toggle"]
+    icon = _tick_icon("cp_icon_toggle")
 
     # Check Training
     if cp_job and cp_job.get("status") == "running":
         status = check_cellpose_training_status()
 
         if status == "running":
-            st.info(f"{icon} Cellpose training in progress...")
-
-            log_content = cp_job.get("log_content", "")
-            if log_content:
-                with st.expander("📄 View Training Log", expanded=False):
-                    st.code(log_content, language="text")
-            else:
-                st.caption("Waiting for training output...")
-
-            if st.button(
-                "Cancel Training", type="primary", key="cancel_cp_frag", width="stretch"
-            ):
-                cancel_cellpose_training()
-                st.rerun()
+            _render_running_status(
+                cp_job,
+                icon=icon,
+                running_msg="Cellpose training in progress...",
+                noun="training",
+                cancel_label="Cancel Training",
+                cancel_key="cancel_cp_frag",
+                cancel_fn=cancel_cellpose_training,
+            )
         elif status == "complete":
             st.success(
                 "Finalizing Cellpose training..."
@@ -538,9 +562,7 @@ def render_cellpose_status_fragment():
             ss.pop("cp_training_job", None)
             st.rerun()
         elif status == "failed":
-            st.error("❌ Cellpose training failed.")
-            with st.expander("Show Error Details"):
-                st.code(cp_job.get("error", "Unknown error"))
+            _render_failed_status(cp_job, "❌ Cellpose training failed.")
             # ss.pop("cp_training_job", None)
             # st.rerun()
         return
@@ -550,22 +572,15 @@ def render_cellpose_status_fragment():
         val_status = check_cellpose_validation_status()
 
         if val_status == "running":
-            st.info(f"{icon} Cellpose validation in progress...")
-            log_content = val_job.get("log_content", "")
-            if log_content:
-                with st.expander("📄 View Validation Log", expanded=False):
-                    st.code(log_content, language="text")
-            else:
-                st.caption("Waiting for validation output...")
-
-            if st.button(
-                "Cancel Validation",
-                type="primary",
-                key="cancel_val_frag",
-                width="stretch",
-            ):
-                cancel_cellpose_validation()
-                st.rerun()
+            _render_running_status(
+                val_job,
+                icon=icon,
+                running_msg="Cellpose validation in progress...",
+                noun="validation",
+                cancel_label="Cancel Validation",
+                cancel_key="cancel_val_frag",
+                cancel_fn=cancel_cellpose_validation,
+            )
         elif val_status == "complete":
             st.success("Finalizing validation... please stay on this page for now!")
             st.balloons()
@@ -573,8 +588,6 @@ def render_cellpose_status_fragment():
             ss.pop("cp_validation_job", None)
             st.rerun()
         elif val_status == "failed":
-            st.error("❌ Validation failed.")
-            with st.expander("Show Error Details"):
-                st.code(val_job.get("error", "Unknown error"))
+            _render_failed_status(val_job, "❌ Validation failed.")
             # ss.pop("cp_validation_job", None)
             # st.rerun()
