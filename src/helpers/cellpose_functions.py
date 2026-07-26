@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import cv2
-from cellpose import core, metrics
+from cellpose import core
 import torch
 from PIL import Image
 import io as IO
@@ -144,18 +144,6 @@ def get_cellpose_model():
     return model
 
 
-def get_tuned_model():
-    """
-    Returns a CellposeModel3Proxy loaded with the fine-tuned weights
-    --> ensures architecture consistency (training is cp3)
-    """
-    weights_path = get_cellpose_weights()
-    if not weights_path:
-        raise RuntimeError("No fine-tuned model weights found in session state.")
-
-    return CellposeModel3Proxy(pretrained_model=weights_path, gpu=core.use_gpu())
-
-
 def segment_with_cellpose(
     rec: dict,
     *,
@@ -261,32 +249,6 @@ class CellposeModel3Proxy:
 # -----------------------------------------------------#
 # ----------------- CELLPOSE FIGURES ----------------- #
 # -----------------------------------------------------#
-
-
-def compute_prediction_ious(images, masks, model, channels):
-    """
-    Evaluate a Cellpose model on a list of images/masks and return the IoU values per image.
-
-    Parameters
-    ----------
-    images : list of np.ndarray
-        Input images to evaluate.
-    masks : list of np.ndarray
-        Corresponding ground-truth segmentation masks.
-    model : cellpose.models.CellposeModel
-        A loaded Cellpose model (base or fine-tuned).
-
-    Returns
-    -------
-    list of float
-        IoU value for each image.
-    """
-    preds, _, _ = model.eval(images, channels=channels)
-    ious = [
-        metrics.average_precision([gt], [pr])[0][:, 0].mean()
-        for gt, pr in zip(masks, preds)
-    ]
-    return ious
 
 
 def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
@@ -421,13 +383,6 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
 # -----------------------------------------------------#
 # ---------------- FINE TUNE CELLPOSE ---------------- #
 # -----------------------------------------------------#
-
-
-@st.cache_resource
-def load_base_cellpose_model(base_model: str):
-    """Loads a base Cellpose model for fine-tuning."""
-    init_model = None if base_model == "scratch" else base_model
-    return CellposeModel3Proxy(pretrained_model=init_model, gpu=core.use_gpu())
 
 
 def start_cellpose_training(
