@@ -183,6 +183,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_learning_rate"] = _cast(p.get("learning_rate"), float, 0.01)
             ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
+            ss["cp_nimg_per_epoch"] = _cast(p.get("nimg_per_epoch"), int, None)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
             ss["cp_do_gridsearch"] = _cast(
                 p.get("do_gridsearch"), lambda v: str(v).lower() == "true", True

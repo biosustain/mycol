@@ -391,7 +391,8 @@ def start_cellpose_training(
     epochs=100,
     learning_rate=0.1,
     weight_decay=0.0001,
-    nimg_per_epoch=32,
+    batch_size=8,
+    nimg_per_epoch=None,
     channels=[0, 0],
     min_train_masks=5,
 ):
@@ -413,7 +414,8 @@ def start_cellpose_training(
             epochs=epochs,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
-            nimg_per_epoch=nimg_per_epoch,
+            batch_size=batch_size,
+            nimg_per_epoch=(nimg_per_epoch or 0),  # 0 = None sentinel (all images)
             channels=np.array(channels),
             min_train_masks=min_train_masks,
         ),
@@ -564,6 +566,7 @@ def write_cellpose_param_csvs(zf) -> None:
         "learning_rate": ss.get("cp_learning_rate"),
         "weight_decay": ss.get("cp_weight_decay"),
         "batch_size": ss.get("cp_batch_size"),
+        "nimg_per_epoch": ss.get("cp_nimg_per_epoch"),
         "min_cells_per_image": ss.get("cp_min_cells_per_image"),
         "training_ch1": 0,
         "training_ch2": 0,

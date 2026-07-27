@@ -206,7 +206,8 @@ def render_cellpose_params():
     ss.setdefault("cp_max_epoch", 100)
     ss.setdefault("cp_learning_rate", 0.1)
     ss.setdefault("cp_weight_decay", 1e-4)
-    ss.setdefault("cp_batch_size", 32)
+    ss.setdefault("cp_batch_size", 8)
+    ss.setdefault("cp_nimg_per_epoch", None)
     ss.setdefault("cp_min_cells_per_image", 5)
 
     ss["cp_base_model"] = c1.selectbox(
@@ -259,6 +260,18 @@ def render_cellpose_params():
         index=[8, 16, 32, 64].index(ss["cp_batch_size"]),
         key="cellpose_batch_size",
         help="Number of images per training batch. Larger batch sizes speed up training but require more memory.",
+    )
+
+    NIMG_OPTS = [None, 8, 32, 64, 128, 256]
+    ss["cp_nimg_per_epoch"] = c2.selectbox(
+        "Images per epoch",
+        options=NIMG_OPTS,
+        index=NIMG_OPTS.index(ss["cp_nimg_per_epoch"])
+        if ss["cp_nimg_per_epoch"] in NIMG_OPTS
+        else 0,
+        format_func=lambda v: "All" if v is None else str(v),
+        key="cellpose_nimg_per_epoch",
+        help="How many training images to sample each epoch. 'All' uses every training image.",
     )
 
     # --- Hyperparameter tuning toggle + grid inputs ---
@@ -328,26 +341,19 @@ def get_train_setup():
     epochs = int(ss.get("cp_max_epoch"))
     lr = float(ss.get("cp_learning_rate"))
     wd = float(ss.get("cp_weight_decay"))
-    nimg = int(ss.get("cp_batch_size"))
+    batch_size = int(ss.get("cp_batch_size"))
+    nimg_per_epoch = ss.get("cp_nimg_per_epoch")  # None = all training images
     # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
     channels = [0, 0]
-    return recs, base_model, epochs, lr, wd, nimg, channels, min_cells
+    return recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells
 
 
 @st.cache_data(show_spinner=False)
-def prepare_eval_data(recs, max_n=40):
-    """returns a random subset of data on which to perform hyperparameter tuning"""
+def prepare_eval_data(recs):
+    """Preprocess all images in recs order (matches the finetune worker's order)."""
     names = [rec.get("name", f"Image {i}") for i, rec in enumerate(recs.values())]
     masks = [rec["masks"] for rec in recs.values()]
     images = [preprocess_for_cellpose(rec) for rec in recs.values()]
-    N = len(images)
-    sample_n = min(max_n, N)
-    if N > sample_n:
-        rng = np.random.default_rng()
-        idx = rng.choice(N, size=sample_n, replace=False)
-        images = [images[i] for i in idx]
-        masks = [masks[i] for i in idx]
-        names = [names[i] for i in idx]
     return images, masks, names
 
 
@@ -390,9 +396,12 @@ def render_cellpose_train_fragment():
         return
 
     # Start async training
-    recs, base_model, epochs, lr, wd, nimg, channels, min_cells = get_train_setup()
+    recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells = (
+        get_train_setup()
+    )
     start_cellpose_training(
-        recs, base_model, epochs, lr, wd, nimg, channels, min_train_masks=min_cells
+        recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
+        min_train_masks=min_cells,
     )
     st.rerun()
 
@@ -551,7 +560,9 @@ def render_cellpose_status_fragment():
 
             from src.panels.fine_tune_panel import get_train_setup
 
-            recs, base_model, epochs, lr, wd, nimg, channels, _ = get_train_setup()
+            recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, _ = (
+                get_train_setup()
+            )
             start_cellpose_validation(
                 recs=recs,
                 base_model=base_model,

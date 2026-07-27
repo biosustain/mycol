@@ -4,6 +4,22 @@ from pathlib import Path
 from cellpose import models, metrics
 import optuna
 import torch
+from data_split import split_train_test
+
+
+def _min_size_search_bounds(masks):
+    """Data-driven (lo, hi, step) for the min_size search, bounded to the small
+    end of the ground-truth mask-area distribution so each step is meaningful."""
+    areas = []
+    for m in masks:
+        vals, cnts = np.unique(np.asarray(m), return_counts=True)
+        areas.append(cnts[vals != 0])  # per-instance pixel areas, background dropped
+    areas = np.concatenate(areas) if areas else np.array([], dtype=int)
+    if areas.size == 0:
+        return 0, 500, 50
+    hi = max(50, int(np.percentile(areas, 20)))  # search only the smallest ~20%
+    step = max(10, hi // 10)
+    return 0, hi, step
 
 
 def run_optuna_tuning(images, masks, model_path, channels, n_trials):
@@ -15,13 +31,25 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
     else:
         eval_model = models.CellposeModel(gpu=use_gpu, model_type=model_path)
 
+    # min_size range derived once from the real cell sizes in the ground-truth masks
+    ms_lo, ms_hi, ms_step = _min_size_search_bounds(masks)
+
     results = []
+    cache = {}  # param tuple -> score, so repeats skip eval
 
     def objective(trial):
-        cellprob = trial.suggest_float("cellprob", -0.2, 0.6, step=0.2)
-        flowthresh = trial.suggest_float("flow_threshold", -0.2, 0.6, step=0.2)
-        niter = trial.suggest_int("niter", 100, 1000, step=100)
-        min_size = trial.suggest_int("min_size", 0, 500, step=50)
+        cellprob = round(trial.suggest_float("cellprob", -0.6, 1.0, step=0.1), 1)
+        flowthresh = round(trial.suggest_float("flow_threshold", -0.2, 1.0, step=0.2), 1)
+        niter = trial.suggest_categorical("niter", [0, 200, 500, 1000])
+        # min_size bounded to the small end of the measured area distribution
+        min_size = trial.suggest_int("min_size", ms_lo, ms_hi, step=ms_step)
+
+        # reuse the score if this combination was already evaluated (round guards float keys)
+        key = (round(cellprob, 6), round(flowthresh, 6), niter, min_size)
+        if key in cache:
+            print(f"Reusing cached score {cache[key]:.4f} for {key}")
+            sys.stdout.flush()
+            return cache[key]
 
         masks_pred, _, _ = eval_model.eval(
             images,
@@ -35,6 +63,7 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
         ap = metrics.average_precision(masks, masks_pred)[0]
         score = float(np.nanmean(ap[:, 0]))
 
+        cache[key] = score
         results.append(
             {
                 "cellprob": cellprob,
@@ -48,12 +77,18 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
 
     sampler = optuna.samplers.TPESampler(seed=42)
     study = optuna.create_study(direction="maximize", sampler=sampler)
+    # warm start with on-grid, in-range values matching the search space above
     study.enqueue_trial(
-        {"cellprob": 0.2, "flow_threshold": 0.4, "niter": 1000, "min_size": 100}
+        {"cellprob": 0.2, "flow_threshold": 0.4, "niter": 500, "min_size": ms_lo}
     )
     study.optimize(objective, n_trials=n_trials)
 
-    return results, study.best_trial.params
+    # round saved params to 1 dp (suggest_float leaves fp noise like 0.8000000000000002)
+    best_params = {
+        k: round(v, 1) if isinstance(v, float) else v
+        for k, v in study.best_trial.params.items()
+    }
+    return results, best_params
 
 
 def compute_validation_metrics(
@@ -138,6 +173,23 @@ def main():
         print(f"Do gridsearch: {do_gridsearch}")
         sys.stdout.flush()
 
+        # Model trained on train_idx and never saw test_idx: tune on a subsample of
+        # the training images, report metrics on the held-out test images.
+        train_idx, test_idx = split_train_test(len(images))
+        test_idx = test_idx or train_idx  # too few images to hold any out
+        tune_idx = train_idx[:40]  # cap tuning at 40 training images (already shuffled)
+
+        tune_images = [images[i] for i in tune_idx]
+        tune_masks = [masks[i] for i in tune_idx]
+        test_images = [images[i] for i in test_idx]
+        test_masks = [masks[i] for i in test_idx]
+        test_names = [image_names[i] for i in test_idx]
+        print(
+            f"Tuning on {len(tune_idx)} training images; "
+            f"validating on {len(test_idx)} held-out images"
+        )
+        sys.stdout.flush()
+
         optuna_results = None
         best_params = {
             "cellprob": 0.2,
@@ -150,18 +202,18 @@ def main():
             print(f"Running Optuna with {n_trials} trials...")
             sys.stdout.flush()
             optuna_results, best_params = run_optuna_tuning(
-                images, masks, tuned_model_path, channels, n_trials
+                tune_images, tune_masks, tuned_model_path, channels, n_trials
             )
             print(f"Best params: {best_params}")
             sys.stdout.flush()
 
-        # Compute validation metrics
+        # Compute validation metrics on the held-out test images
         print("Computing validation metrics...")
         sys.stdout.flush()
         validation_metrics = compute_validation_metrics(
-            images,
-            masks,
-            image_names,
+            test_images,
+            test_masks,
+            test_names,
             base_model,
             tuned_model_path,
             channels,

@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import torch
 from cellpose import models, train, io
-from sklearn.model_selection import train_test_split
+from data_split import split_train_test
 
 
 import traceback
@@ -30,16 +30,19 @@ def main():
             epochs = int(data["epochs"])
             learning_rate = float(data["learning_rate"])
             weight_decay = float(data["weight_decay"])
-            nimg_per_epoch = int(data["nimg_per_epoch"])
+            batch_size = int(data["batch_size"]) if "batch_size" in data else 8
+            nimg_per_epoch = int(data["nimg_per_epoch"]) or None  # 0 = all images
             channels = data["channels"].tolist()
             min_train_masks = (
                 int(data["min_train_masks"]) if "min_train_masks" in data else 5
             )
 
-        # split data
-        train_images, test_images, train_masks, test_masks = train_test_split(
-            images, masks, test_size=0.2, random_state=42, shuffle=True
-        )
+        # shared split; the model never trains on the test images
+        train_idx, test_idx = split_train_test(len(images))
+        train_images = [images[i] for i in train_idx]
+        train_masks = [masks[i] for i in train_idx]
+        test_images = [images[i] for i in test_idx]
+        test_masks = [masks[i] for i in test_idx]
 
         # Setup logger
         _ = io.logger_setup()
@@ -67,6 +70,7 @@ def main():
             learning_rate=learning_rate,
             weight_decay=weight_decay,
             SGD=True,
+            batch_size=batch_size,
             nimg_per_epoch=nimg_per_epoch,
             model_name=model_name,
             save_path=None,
