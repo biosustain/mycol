@@ -322,16 +322,13 @@ def load_labeled_patches(patch_size: int = 64):
         img, M, labs = rec.get("image"), rec.get("masks"), rec.get("labels", {})
         if img is None or not isinstance(M, np.ndarray) or M.ndim != 2 or not np.any(M):
             continue
-        ids = [int(v) for v in np.unique(M) if v != 0]
-        for iid in ids:
-            cname = labs.get(int(iid))
+        for iid, sl in enumerate(ndimage.find_objects(M), start=1):
+            if sl is None:
+                continue
+            cname = labs.get(iid)
             if not cname or cname == "No label":
                 continue
-
-            patch = generate_cell_patch(
-                image=img, mask=(M == iid), patch_size=patch_size
-            )
-
+            patch = generate_cell_patch(img[sl], M[sl] == iid, patch_size)
             X.append(patch)
             y.append(name_to_idx[cname])
 
