@@ -15,7 +15,6 @@ from torchvision import models
 # ---- bring in existing app helpers ----
 from src.helpers.state_ops import (
     selected_training_keys,
-    normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
     snapshot_for_undo,
@@ -247,7 +246,7 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     if not X_list:
         return
 
-    X_batch = torch.stack(X_list).to(device)
+    X_batch = imagenet_normalize(torch.stack(X_list)).to(device)
 
     with torch.no_grad():
         outputs = model(X_batch)
@@ -274,13 +273,30 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     ss["all_classes"] = all_classes
 
 
-def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
-    """Convert an HWC patch to a normalised CHW float32 tensor in [0, 1].
+# ImageNet normalisation the pretrained DenseNet backbone expects (from its weights).
+# Applied AFTER augmentation (which assumes [0,1] input), so patch_to_tensor stops at [0,1].
+_IMAGENET_T = models.DenseNet121_Weights.IMAGENET1K_V1.transforms()
+_IMAGENET_MEAN = torch.tensor(_IMAGENET_T.mean).view(3, 1, 1)
+_IMAGENET_STD = torch.tensor(_IMAGENET_T.std).view(3, 1, 1)
 
-    Must be applied identically by the training and inference pipelines.
+
+def imagenet_normalize(t: torch.Tensor) -> torch.Tensor:
+    """Backbone's ImageNet normalisation; runs after any augmentation."""
+    return (t - _IMAGENET_MEAN) / _IMAGENET_STD
+
+
+def patch_to_tensor(patch: np.ndarray) -> torch.Tensor:
+    """Convert an HWC patch to a foreground-normalised CHW float32 tensor in [0, 1].
+
+    Must be applied identically by training and inference; imagenet_normalize is
+    applied separately, after augmentation.
     """
-    patch = normalize_image(patch)  # scale mean → 127.5, clip to [0,255], uint8
-    chw = np.transpose(patch, (2, 0, 1))  # HWC → CHW
+    p = patch.astype(np.float32)
+    fg = p[p.max(axis=-1) > 0]  # foreground only; bg/padding is black
+    mean = float(fg.mean()) if fg.size else 0.0
+    if mean > 0:
+        p = np.clip(p * (127.5 / mean), 0, 255)  # foreground mean → 127.5
+    chw = np.transpose(p, (2, 0, 1))  # HWC → CHW
     return torch.tensor(chw, dtype=torch.float32) / 255.0  # [0,255] → [0,1]
 
 

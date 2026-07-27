@@ -22,17 +22,22 @@ def get_device():
     return torch.device("cpu")
 
 
-def apply_random_augmentations(img_tensor):
-    t = transforms.Compose(
-        [
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(15),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
-        ]
-    )
-    return t(img_tensor)
+# ImageNet normalisation the pretrained backbone expects, applied AFTER augmentation
+# (ColorJitter clamps float tensors to [0,1], so augment must run on [0,1] first).
+_W = models.DenseNet121_Weights.IMAGENET1K_V1.transforms()
+_NORM = transforms.Normalize(_W.mean, _W.std)
+
+_TRAIN_TF = transforms.Compose(
+    [
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
+        _NORM,
+    ]
+)
+_VAL_TF = _NORM
 
 
 class CellDataset(Dataset):
@@ -78,8 +83,8 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
         X, y, test_size=val_split, stratify=y, random_state=42
     )
 
-    train_ds = CellDataset(X_train, y_train, transform=apply_random_augmentations)
-    val_ds = CellDataset(X_val, y_val, transform=None)
+    train_ds = CellDataset(X_train, y_train, transform=_TRAIN_TF)
+    val_ds = CellDataset(X_val, y_val, transform=_VAL_TF)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
