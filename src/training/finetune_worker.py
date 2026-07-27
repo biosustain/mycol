@@ -41,8 +41,8 @@ def main():
         train_idx, test_idx = split_train_test(len(images))
         train_images = [images[i] for i in train_idx]
         train_masks = [masks[i] for i in train_idx]
-        test_images = [images[i] for i in test_idx]
-        test_masks = [masks[i] for i in test_idx]
+        test_images = [images[i] for i in test_idx] or None  # [] -> None (no test set)
+        test_masks = [masks[i] for i in test_idx] or None
 
         # Setup logger
         _ = io.logger_setup()
