@@ -20,24 +20,41 @@ def hex_for_plot_label(label: str) -> str:
     return color_hex_for(label)
 
 
+def _physical_units() -> bool:
+    """True when metrics are being converted from stored pixels to physical units.
+
+    Single source of truth so an axis can never claim a unit the values aren't in."""
+    pixel_size = ss.get("pixel_size")
+    return bool(ss.get("convert_to_distance", False) and pixel_size and pixel_size > 0)
+
+
+def _axis_label(col: str) -> str:
+    """Metric name with its unit — the user's unit when converting, pixels otherwise.
+
+    Dimensionless metrics (circularity, solidity, ...) carry no unit."""
+    name = col.replace("_", " ").title()
+    if col not in _DIST_COLS and col not in _AREA_COLS:
+        return name
+    unit = (ss.get("pixel_unit") or "µm") if _physical_units() else "px"
+    return f"{name} ({unit}²)" if col in _AREA_COLS else f"{name} ({unit})"
+
+
 def _scale_col(df: pd.DataFrame, col: str):
     """
     Return (scaled_series, axis_label) for `col`, converting to physical units when
     'convert_to_distance' and 'pixel_size' are set in session state.
     Dimensionless metrics are returned as-is.
     """
-    pixel_size = ss.get("pixel_size")
     vals = df[col].copy()
-    label = col.replace("_", " ").title()
 
-    convert = ss.get("convert_to_distance", False)
-    if pixel_size and pixel_size > 0 and convert:
+    if _physical_units():
+        pixel_size = ss["pixel_size"]
         if col in _AREA_COLS:
             vals = vals * (pixel_size**2)
         elif col in _DIST_COLS:
             vals = vals * pixel_size
 
-    return vals, label
+    return vals, _axis_label(col)
 
 
 def plot_violin(df: pd.DataFrame, value_col: str):

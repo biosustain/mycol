@@ -63,9 +63,9 @@ def render_plotting_options():
     # ---- Step 4: select plot parameters ----
     with st.container(border=True):
         st.subheader("Step 4: Select plot parameters")
-        # third column is reserved for the pixel-size input so the other
-        # controls don't shift when it appears
-        col_plot, col_opts, col_px = st.columns([2, 3, 2])
+        # last two columns are reserved for the pixel size and its unit, so the
+        # other controls don't shift when they appear
+        col_plot, col_opts, col_size, col_unit = st.columns([2, 3, 1, 1])
 
         # choose plot type
         plot_type = col_plot.pills(
@@ -98,14 +98,23 @@ def render_plotting_options():
         ss["overlay_datapoints"] = OVERLAY in opts
         ss["convert_to_distance"] = CONVERT in opts
 
-        # pixel size lives in the reserved column, shown only when converting
+        # pixel size and unit sit side by side, shown only when converting
         if ss["convert_to_distance"]:
-            ss["pixel_size"] = col_px.number_input(
+            ss["pixel_size"] = col_size.number_input(
                 "Pixel size",
                 min_value=0.0,
                 value=ss.get("pixel_size", 1.0),
                 key="pixel_size_input",
-                help="Physical size of one pixel.",
+                help="Physical size of one pixel, in the unit alongside.",
+            )
+            ss["pixel_unit"] = (
+                col_unit.text_input(
+                    "Unit",
+                    value=ss.get("pixel_unit", "µm"),
+                    key="pixel_unit_input",
+                    help="Labels the plot axes, e.g. µm gives 'Area (µm²)'.",
+                ).strip()
+                or "µm"
             )
 
     # ---- Step 5: generate and review the plots ----
