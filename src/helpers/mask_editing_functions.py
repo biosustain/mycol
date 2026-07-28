@@ -856,14 +856,14 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
         ss["zoom"] = float(ss[slider_key])
 
     slider_key = f"{key_ns}_slider"
-    zoom_value = min(max(float(ss.get("zoom", 1.0)), 1.0), 8.0)
+    zoom_value = min(max(float(ss.get("zoom", 1.0)), 1.0), 10.0)
     ss["zoom"] = zoom_value
     ss[slider_key] = zoom_value
 
     st.slider(
         "Zoom",
         min_value=1.0,
-        max_value=8.0,
+        max_value=10.0,
         step=0.5,
         key=slider_key,
         on_change=_zoom_changed,
