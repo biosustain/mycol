@@ -7,6 +7,7 @@ from src.helpers.mask_editing_functions import (
     render_draw_mask_tools_fragment,
     render_common_tools_fragment,
     render_display_and_interact_fragment,
+    render_zoom_controls,
 )
 from src.helpers.classifying_functions import (
     classify_actions_fragment,
@@ -141,3 +142,9 @@ def render_common_tools(*, key_ns: str = "tools"):
 def render_main(*, key_ns: str = "edit"):
 
     render_display_and_interact_fragment(key_ns=key_ns, max_display_width=768)
+
+
+def render_zoom_panel(*, key_ns: str = "zoom"):
+    """Zoom + pan controls in their own panel (rendered to the right of the image)."""
+    with st.container(border=True, width="stretch"):
+        render_zoom_controls(key_ns)

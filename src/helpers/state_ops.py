@@ -94,6 +94,21 @@ def stem(p: str) -> str:
     return Path(p).stem
 
 
+# ss["view"] = (ox, oy, s): the annotate display shows a zoomed crop starting at
+# full-res pixel (ox, oy), with s full-res pixels per display pixel. At zoom 1 this
+# is (0, 0, W/disp_w), so these reduce to the original whole-image mapping.
+def disp_to_full(x, y):
+    """Map a display (viewport) coordinate to full-resolution image coordinates."""
+    ox, oy, s = ss.get("view", (0.0, 0.0, 1.0))
+    return ox + x * s, oy + y * s
+
+
+def full_to_disp(x, y):
+    """Map a full-resolution image coordinate to display (viewport) coordinates."""
+    ox, oy, s = ss.get("view", (0.0, 0.0, 1.0))
+    return (x - ox) / s, (y - oy) / s
+
+
 def ordered_keys():
     return sorted(ss.images.keys())
 
