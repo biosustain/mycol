@@ -151,7 +151,7 @@ def create_image_display(rec, viewport=800):
     else:
         base_img = bg_disp
 
-    return base_img, base_img, disp_w, disp_h
+    return base_img, disp_w, disp_h
 
 
 def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
@@ -162,36 +162,35 @@ def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
         rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(int(new_id), None)
 
 
-def _lasso_select_fragment(
-    display_for_ui: ImageArray,
+def _chart_bg(base_img: ImageArray, key_ns: str, name: str) -> tuple[Image.Image, str]:
+    """Plotly background image plus its chart key.
+
+    The key carries an image hash so Streamlit doesn't reuse chart state across images."""
+    bg = Image.fromarray(base_img).convert("RGBA")
+    return bg, f"{key_ns}_plotly_{name}_{hashlib.md5(bg.tobytes()).hexdigest()[:8]}"
+
+
+def _selection_of(chart_key: str, kind: str) -> list:
+    """The chart's ``"lasso"`` or ``"box"`` selections, or an empty list."""
+    sel = getattr(ss.get(chart_key), "selection", None)
+    return getattr(sel, kind, None) or []
+
+
+def _selection_chart(
+    bg: Image.Image,
     disp_w: int,
     disp_h: int,
-    key_ns: str,
-    name: str,
-    on_stroke,
+    chart_key: str,
+    mode: str,
+    handler,
     show_line: bool = False,
 ) -> None:
-    """Render a lasso-drawing Plotly canvas and dispatch each drawn stroke.
+    """Render a Plotly canvas that reports selections back through ``handler``.
 
-    ``on_stroke(xs, ys)`` receives one stroke's display-space coords (0 at top). Set
-    ``show_line`` to strip the shaded fill so the lasso reads as a line, not a shape.
-    """
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-
-    # unique key per image so Streamlit doesn't reuse chart state incorrectly
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_{name}_{img_hash}"
-
-    def handle() -> None:
-        event = ss.get(chart_key)
-        sel = getattr(event, "selection", None)
-        for stroke in getattr(sel, "lasso", None) or []:
-            # Plotly coords (0 at bottom) -> display coords (0 at top)
-            on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
-
-    fig = make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
+    ``mode`` is "lasso" or "box"; ``show_line`` strips the shaded fill so a lasso
+    reads as a line, not a shape."""
+    is_lasso = mode == "lasso"
+    fig = make_base_figure(bg, disp_w, disp_h, dragmode="lasso" if is_lasso else "select")
     if show_line:
         fig.update_layout(
             newselection=dict(line=dict(color="red", width=1)),
@@ -201,22 +200,44 @@ def _lasso_select_fragment(
     st.plotly_chart(
         fig,
         key=chart_key,
-        on_select=handle,
-        selection_mode="lasso",
+        on_select=handler,
+        selection_mode=mode,
         width="content",
         config={
             # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
             # image refresh; use the browser's own pinch-zoom instead.
             "scrollZoom": False,
             "displaylogo": False,
-            "modeBarButtons": [["lasso2d"]],
+            "modeBarButtons": [["lasso2d" if is_lasso else "select2d"]],
         },
     )
 
 
+def _lasso_chart(
+    base_img: ImageArray,
+    disp_w: int,
+    disp_h: int,
+    key_ns: str,
+    name: str,
+    on_stroke,
+    show_line: bool = False,
+) -> None:
+    """Lasso canvas that dispatches each drawn stroke to ``on_stroke(xs, ys)``.
+
+    Strokes arrive in display-space coords, 0 at the top."""
+    bg, chart_key = _chart_bg(base_img, key_ns, name)
+
+    def handle() -> None:
+        for stroke in _selection_of(chart_key, "lasso"):
+            # Plotly coords (0 at bottom) -> display coords (0 at top)
+            on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
+
+    _selection_chart(bg, disp_w, disp_h, chart_key, "lasso", handle, show_line)
+
+
 def _handle_draw_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -225,15 +246,15 @@ def _handle_draw_mask_mode(
 
     def draw(xs, ys) -> None:
         snapshot_for_undo(rec)
-        mask_full = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        mask_full = polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"])
         _commit_mask(rec, mask_full)
 
-    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "mask", draw)
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "mask", draw)
 
 
 def _handle_draw_ellipse_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -245,19 +266,11 @@ def _handle_draw_ellipse_mode(
     moment the drag ends, so its position and size match exactly what was
     dragged with no follow-up adjustment.
     """
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-
-    # unique key per image so Streamlit doesn't reuse chart state incorrectly
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_ellipse_{img_hash}"
+    bg, chart_key = _chart_bg(base_img, key_ns, "ellipse")
 
     # callback to turn each box-drag into a filled ellipse
     def add_ellipse() -> None:
-        event = ss.get(chart_key)
-        sel = getattr(event, "selection", None)
-        for b in getattr(sel, "box", None) or []:
+        for b in _selection_of(chart_key, "box"):
             x0, x1 = sorted(map(float, b["x"]))
             y0, y1 = sorted(map(float, b["y"]))
             if x1 - x0 < MIN_DRAG_PX or y1 - y0 < MIN_DRAG_PX:  # stray click
@@ -269,29 +282,12 @@ def _handle_draw_ellipse_mode(
             mask_full = ellipse_box_to_mask(fx0, fy0, fx1, fy1, rec["H"], rec["W"])
             _commit_mask(rec, mask_full)
 
-    # Build figure using the shared helper: same size as box mode
-    fig = make_base_figure(bg, disp_w, disp_h, dragmode="select")
-
-    # render the plotly chart with box selection
-    st.plotly_chart(
-        fig,
-        key=chart_key,
-        on_select=add_ellipse,
-        selection_mode="box",
-        width="content",
-        config={
-            # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
-            # image refresh; use the browser's own pinch-zoom instead.
-            "scrollZoom": False,
-            "displaylogo": False,
-            "modeBarButtons": [["select2d"]],
-        },
-    )
+    _selection_chart(bg, disp_w, disp_h, chart_key, "box", add_ellipse)
 
 
 def _handle_cut_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -303,27 +299,21 @@ def _handle_cut_mask_mode(
     """
 
     def cut(xs, ys) -> None:
-        barrier = polyline_xy_to_barrier(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        barrier = polyline_xy_to_barrier(xs, ys, rec["H"], rec["W"])
         cut_masks_along_barrier(rec, barrier)
 
-    _lasso_select_fragment(
-        display_for_ui, disp_w, disp_h, key_ns, "cut", cut, show_line=True
-    )
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "cut", cut, show_line=True)
 
 
 def _handle_draw_box_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
 ) -> None:
     """Handle interactions when in 'Draw box' mode."""
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_{img_hash}"
+    bg, chart_key = _chart_bg(base_img, key_ns, "box")
 
     box_draw_fragment(
         bg_img=bg,
@@ -389,7 +379,7 @@ def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
 
 def _handle_join_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -401,10 +391,10 @@ def _handle_join_mask_mode(
     """
 
     def join(xs, ys) -> None:
-        region = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        region = polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"])
         join_in_lasso(rec, region)
 
-    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "join", join)
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "join", join)
 
 
 # -----------------------------------------------------#
@@ -427,7 +417,7 @@ def ellipse_box_to_mask(x0, y0, x1, y1, height, width):
     return np.array(img, dtype=bool)
 
 
-def polyline_xy_to_barrier(xs, ys, disp_w, disp_h, width, height):
+def polyline_xy_to_barrier(xs, ys, height, width):
     """Rasterize a display-space freehand line into a thin (height,width) bool barrier."""
     pts = [disp_to_full(x, y) for x, y in zip(xs, ys)]
     img = Image.new("L", (width, height), 0)
@@ -438,7 +428,7 @@ def polyline_xy_to_barrier(xs, ys, disp_w, disp_h, width, height):
     return np.array(img, dtype=bool)
 
 
-def polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, width, height):
+def polygon_xy_to_full_mask(xs, ys, height, width):
     """Rasterize a display-space polygon into a filled full-res (height,width) bool mask."""
     pts = [disp_to_full(x, y) for x, y in zip(xs, ys)]
     return polygon_xy_to_mask([p[0] for p in pts], [p[1] for p in pts], height, width)
@@ -992,7 +982,7 @@ def _normalized_display_image(image: ImageArray) -> ImageArray:
     return norm
 
 
-def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
+def render_display_and_interact_fragment(key_ns="edit"):
     """Render main image display and interaction.
 
     Not a fragment: the zoom/pan controls live in the separate tools panel, and a
@@ -1008,7 +998,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     if ss.get("show_normalized"):  # normalize background image if selected
         rec_for_disp = {**rec, "image": _normalized_display_image(rec["image"])}
 
-    base_img, display_for_ui, disp_w, disp_h = create_image_display(rec_for_disp)
+    base_img, disp_w, disp_h = create_image_display(rec_for_disp)
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)
     mode = ss.get("interaction_mode", "Draw box")  # default to draw box
@@ -1017,7 +1007,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     if mode == "Freehand":
         _handle_draw_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -1025,7 +1015,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Ellipse":
         _handle_draw_ellipse_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -1033,7 +1023,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Split masks":
         _handle_cut_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -1041,7 +1031,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Draw box":
         _handle_draw_box_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -1049,7 +1039,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Join masks":
         _handle_join_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,

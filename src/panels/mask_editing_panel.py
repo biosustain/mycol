@@ -141,7 +141,7 @@ def render_common_tools(*, key_ns: str = "tools"):
 
 def render_main(*, key_ns: str = "edit"):
 
-    render_display_and_interact_fragment(key_ns=key_ns, max_display_width=768)
+    render_display_and_interact_fragment(key_ns=key_ns)
 
 
 def render_zoom_panel(*, key_ns: str = "zoom"):
