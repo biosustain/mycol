@@ -43,6 +43,8 @@ _DEFAULTS = {
     "last_class_xy": None,
     "last_remove_xy": None,
     "disp_w": 0,
+    "zoom": 1.0,
+    "zoom_slider": 1.0,
 
     # cellpose model training
     "cyto_to_train": "cyto3",

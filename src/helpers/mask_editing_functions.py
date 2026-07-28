@@ -851,17 +851,26 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
     rec = get_current_rec()
     if rec is None:
         return
-    ss.setdefault("zoom", 1.0)
-    ss["zoom"] = st.slider(
+
+    def _zoom_changed(slider_key: str) -> None:
+        ss["zoom"] = float(ss[slider_key])
+
+    slider_key = f"{key_ns}_slider"
+    zoom_value = min(max(float(ss.get("zoom", 1.0)), 1.0), 8.0)
+    ss["zoom"] = zoom_value
+    ss[slider_key] = zoom_value
+
+    st.slider(
         "Zoom",
         min_value=1.0,
         max_value=8.0,
         step=0.5,
-        value=float(ss["zoom"]),
+        key=slider_key,
+        on_change=_zoom_changed,
+        args=(slider_key,),
         help="Zoom into the image; click the minimap or use the arrows to move the view.",
     )
-    if float(ss["zoom"]) > 1.0:
-        _render_minimap(rec)
+    _render_minimap(rec)
     _render_nudge_pad(rec, key_ns)
 
 
