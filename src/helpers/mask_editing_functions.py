@@ -854,6 +854,7 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
 
     def _zoom_changed(slider_key: str) -> None:
         ss["zoom"] = float(ss[slider_key])
+        ss["_refocus_after_zoom"] = True
 
     slider_key = f"{key_ns}_slider"
     zoom_value = min(max(float(ss.get("zoom", 1.0)), 1.0), 10.0)
@@ -872,6 +873,8 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
     )
     _render_minimap(rec)
     _render_nudge_pad(rec, key_ns)
+    if ss.pop("_refocus_after_zoom", False):
+        _refocus_main_document()
 
 
 def _render_minimap(rec: Record) -> None:
@@ -919,6 +922,7 @@ def _minimap_clicked():
     rh = float(click.get("height") or 1)
     ss["pan_cx"] = click["x"] * rec["W"] / rw
     ss["pan_cy"] = click["y"] * rec["H"] / rh
+    ss["_refocus_after_zoom"] = True
 
 
 def _render_nudge_pad(rec: Record, key_ns: str = "tools") -> None:
