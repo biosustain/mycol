@@ -57,19 +57,33 @@ def _scale_col(df: pd.DataFrame, col: str):
     return vals, _axis_label(col)
 
 
+def _labelled(df: pd.DataFrame) -> tuple[pd.DataFrame, list]:
+    """A copy of `df` with a normalised 'label' column, plus the plotting order.
+
+    Copies first so callers keep the frame they passed in."""
+    out = df.copy()
+    out["label"] = out["mask label"].replace("No label", None).fillna("Unlabelled")
+    order = sorted(out["label"].unique(), key=lambda x: (x != "Unlabelled", str(x)))
+    return out, order
+
+
+def _tick_labels(df: pd.DataFrame, value_col: str, order: list) -> list[str]:
+    """Category labels carrying each group's n, counting only values actually plotted
+    (metrics are nan where undefined, e.g. circularity of a single-pixel mask)."""
+    counts = df.groupby("label")[value_col].count()
+    return [f"{lab}<br>n={int(counts.get(lab, 0))}" for lab in order]
+
+
 def plot_violin(df: pd.DataFrame, value_col: str):
     """
     Create a violin plot of `value_col` grouped by mask label.
     Shows data points if `overlay_datapoints` is set in session state."""
-    df["label"] = df["mask label"].replace("No label", None).fillna("Unlabelled")
-    order = sorted(df["label"].unique(), key=lambda x: (x != "Unlabelled", str(x)))
+    scaled_col, y_label = _scale_col(df, value_col)
+    df, order = _labelled(df)
+    df[value_col] = scaled_col
 
     # use mask colors
     color_map = {lab: hex_for_plot_label(lab) for lab in order}
-
-    scaled_col, y_label = _scale_col(df, value_col)
-    df = df.copy()
-    df[value_col] = scaled_col
 
     show_points = bool(ss.get("overlay_datapoints", False))
     fig = go.Figure()
@@ -142,7 +156,14 @@ def plot_violin(df: pd.DataFrame, value_col: str):
         height=500,
         showlegend=False,
     )
-    fig.update_xaxes(showline=True, linecolor="black", gridcolor="rgba(0,0,0,0.1)")
+    fig.update_xaxes(
+        showline=True,
+        linecolor="black",
+        gridcolor="rgba(0,0,0,0.1)",
+        tickmode="array",
+        tickvals=order,
+        ticktext=_tick_labels(df, value_col, order),
+    )
     fig.update_yaxes(showline=True, linecolor="black", gridcolor="rgba(0,0,0,0.1)")
 
     return f"{value_col.replace(' ', '_')}", fig
@@ -154,12 +175,9 @@ def plot_bar(df: pd.DataFrame, value_col: str):
     with error bars showing standard deviation. Shows data points if `overlay_datapoints` is set
     in session state."""
 
-    df = df.copy()
     scaled_col, title_y = _scale_col(df, value_col)
+    df, order = _labelled(df)
     df[value_col] = scaled_col
-
-    df["label"] = df["mask label"].replace("No label", None).fillna("Unlabelled")
-    order = sorted(df["label"].unique(), key=lambda x: (x != "Unlabelled", str(x)))
 
     # numeric x positions and colors
     xpos = np.arange(len(order), dtype=float)
@@ -190,7 +208,7 @@ def plot_bar(df: pd.DataFrame, value_col: str):
     fig.update_layout(
         xaxis=dict(
             tickvals=xpos,
-            ticktext=order,
+            ticktext=_tick_labels(df, value_col, order),
             showline=True,
             linecolor="black",
             gridcolor="rgba(0,0,0,0.1)",
