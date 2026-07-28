@@ -827,6 +827,28 @@ def render_common_tools_fragment(key_ns="tools"):
     render_undo_button(c2, key_ns=key_ns)
 
 
+def _free_arrow_keys_from_slider(slider_key: str) -> None:
+    """Blur the zoom slider on focus so Left/Right always change image.
+
+    Streamlit's button shortcuts stand down only for text inputs, but a slider thumb
+    handles the arrow keys itself and swallows them. Mouse use is unaffected. The
+    listener is delegated so it survives reruns; the window flag stops duplicates."""
+    components.html(
+        """<script>
+const w = window.parent;
+if (!w.__mycolArrowNav) {
+    w.__mycolArrowNav = true;
+    w.document.addEventListener("focusin", (e) => {
+        const t = e.target;  // deferred: a synchronous blur here can re-enter
+        if (t && t.closest && t.closest("%s")) setTimeout(() => t.blur(), 0);
+    });
+}
+</script>"""
+        % f".st-key-{slider_key}",
+        height=0,
+    )
+
+
 def render_zoom_controls(key_ns: str = "zoom") -> None:
     """Zoom slider + directional nudge pad, rendered in its own panel beside the image.
 
@@ -856,6 +878,7 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
         args=(slider_key,),
         help="Zoom into the image; click the minimap or use the arrows to move the view.",
     )
+    _free_arrow_keys_from_slider(slider_key)
     _render_minimap(rec)
     _render_nudge_pad(rec, key_ns)
     if ss.pop("_refocus_after_zoom", False):
