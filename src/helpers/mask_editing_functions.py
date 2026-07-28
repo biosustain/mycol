@@ -129,7 +129,7 @@ def create_image_display(rec, viewport=800):
     fit = min(viewport / W, viewport / H)
     disp_w, disp_h = max(1, int(W * fit)), max(1, int(H * fit))
     ss["view"] = (ox, oy, cw / disp_w)  # (crop origin, full-res px per display px)
-    ss["disp_w"], ss["disp_h"] = disp_w, disp_h
+    ss["disp_h"] = disp_h  # read by the box-drawing callback to flip Plotly's y axis
 
     img_crop = rec["image"][oy : oy + ch, ox : ox + cw]
     bg_disp = np.array(Image.fromarray(img_crop).resize((disp_w, disp_h), Image.BILINEAR))
@@ -744,9 +744,6 @@ def render_box_tools_fragment(key_ns="side"):
     ):
         # create new masks from boxes and add them to rec["mask"]
         segment_with_sam2(rec)
-
-        ss["pred_canvas_nonce"] += 1
-        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
 
@@ -834,8 +831,6 @@ def render_common_tools_fragment(key_ns="tools"):
         rec["masks"] = np.zeros((rec["H"], rec["W"]), dtype=np.uint16)
         rec["labels"] = {}
         rec["boxes"] = []
-        rec["last_click_xy"] = None
-        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
     # single-level undo of the last action
@@ -962,9 +957,7 @@ def _render_nudge_pad(rec: Record, key_ns: str = "tools") -> None:
 
 def _undo_clicked():
     """Undo callback (on_click so it's a single clean rerun that keeps the zoom view)."""
-    if apply_undo(get_current_rec()):
-        ss["pred_canvas_nonce"] += 1
-        ss["edit_canvas_nonce"] += 1
+    apply_undo(get_current_rec())
 
 
 def render_undo_button(container=st, key_ns="side"):

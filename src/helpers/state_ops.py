@@ -27,7 +27,6 @@ _DEFAULTS = {
     "name_to_key": {},                  # {filename:str -> order_key:int}
     "current_key": None,                # active order_key
     "next_ord": 1,                      # next order_key to assign
-    "analysis_plots": [],
     "cellpose_model_bytes": None,
     "cellpose_model_name": None,
     "densenet_ckpt_bytes": None,
@@ -36,15 +35,12 @@ _DEFAULTS = {
     "show_overlay": True,
     "show_normalized": True,
     "interaction_mode": "Remove",
-    "side_interaction_mode": "Draw box",
     "skipped_files": [],
     "remove_click": False,
     "class_click": False,
     "last_class_xy": None,
     "last_remove_xy": None,
-    "disp_w": 0,
     "zoom": 1.0,
-    "zoom_slider": 1.0,
 
     # cellpose model training
     "cyto_to_train": "cyto3",
@@ -68,11 +64,6 @@ _DEFAULTS = {
 
     # image dataset download options
     "dl_normalize_download": False,
-
-    # UI defaults / nonces
-    "pred_canvas_nonce": 0,
-    "edit_canvas_nonce": 0,
-    "side_panel": "Upload data",
 
     # class defaults
     "all_classes": ["No label"],
