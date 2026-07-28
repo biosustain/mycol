@@ -264,12 +264,13 @@ def add_label_from_input():
 # -----------------------------------------------------#
 
 
-def densenet_help(has_model, needs_mapping):
+def densenet_help(has_model: bool, needs_mapping: bool) -> str:
+    """Tooltip for the classify buttons, explaining why they are enabled or not."""
     if not has_model:
-        if needs_mapping:
-            return "All predictions are mapped to 'No label'. Add some classes under 'Manage Classes' and map them to the predictions below."
-        return "Classify all masks in this image with the loaded Densenet121 model."
-    return "Upload or fine-tune a Densenet model before auto-classifying cells."
+        return "Upload or fine-tune a Densenet model before auto-classifying cells."
+    if needs_mapping:
+        return "All predictions are mapped to 'No label'. Add some classes under 'Manage Classes' and map them to the predictions below."
+    return "Classify all masks in this image with the loaded Densenet121 model."
 
 
 @st.fragment
@@ -284,7 +285,7 @@ def classify_actions_fragment():
     # buttons to classify masks in current image or batch classify all images
     col1, col2 = st.columns(2)
     with col1:
-        help = densenet_help(ss["densenet_model"] is None, needs_mapping)
+        help = densenet_help(ss["densenet_model"] is not None, needs_mapping)
         # classify masks in the current image
         if st.button(
             "Classify",
