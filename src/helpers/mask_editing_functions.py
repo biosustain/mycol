@@ -934,13 +934,14 @@ def _minimap_clicked():
 
 
 def _render_nudge_pad(rec: Record, key_ns: str = "tools") -> None:
-    """Directional d-pad that shifts the zoomed view by ~a quarter of the visible crop.
+    """Directional d-pad that shifts the zoomed view by most of the visible crop.
 
-    Disabled at zoom 1, where the whole image is already shown."""
+    Steps 85% rather than a full crop so a sliver of the previous view stays on screen
+    to orient by. Disabled at zoom 1, where the whole image is already shown."""
     W, H = rec["W"], rec["H"]
     zoom = max(1.0, float(ss.get("zoom", 1.0)))
     cw, ch = W / zoom, H / zoom
-    step_x, step_y = 0.25 * cw, 0.25 * ch
+    step_x, step_y = 0.85 * cw, 0.85 * ch
     disabled = zoom <= 1.0
 
     def nudge(dx, dy):
