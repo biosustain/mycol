@@ -8,7 +8,13 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageDraw
 from scipy import ndimage as ndi
 
-from src.helpers.state_ops import get_current_rec, snapshot_for_undo, apply_undo
+from src.helpers.state_ops import (
+    get_current_rec,
+    snapshot_for_undo,
+    apply_undo,
+    disp_to_full,
+    full_to_disp,
+)
 from src.helpers.classifying_functions import (
     classes_map_from_labels,
     create_colour_palette,
@@ -101,41 +107,51 @@ def cached_image_mask_overlay(
     return create_image_mask_overlay(image, mask, classes_map, palette, alpha)
 
 
-def create_image_display(rec, max_display_width=768):
-    # Scale to fit within max_display_width while preserving aspect ratio
-    scale = min(max_display_width / rec["W"], max_display_width / rec["H"])
-    disp_w, disp_h = int(rec["W"] * scale), int(rec["H"] * scale)
+def create_image_display(rec, viewport=800):
+    """Render a zoomed crop of the image (with overlay) into a fixed-size viewport.
+
+    The visible region is a `zoom`-times window centred on the pan point; the
+    on-screen size stays constant. ss["view"] = (ox, oy, s) records the crop so
+    interactions can map display coords back to full resolution. At zoom 1 the crop
+    is the whole image, i.e. identical to the original whole-image display."""
+    W, H = rec["W"], rec["H"]
+    zoom = max(1.0, float(ss.get("zoom", 1.0)))
+
+    # visible crop in full-res px, centred on the pan point and clamped to the image
+    cw, ch = W / zoom, H / zoom
+    cx = min(max(float(ss.get("pan_cx", W / 2)), cw / 2), W - cw / 2)
+    cy = min(max(float(ss.get("pan_cy", H / 2)), ch / 2), H - ch / 2)
+    cw, ch = int(round(cw)), int(round(ch))
+    ox = max(0, min(int(round(cx - cw / 2)), W - cw))
+    oy = max(0, min(int(round(cy - ch / 2)), H - ch))
+
+    # constant on-screen size (fits the whole image at zoom 1)
+    fit = min(viewport / W, viewport / H)
+    disp_w, disp_h = max(1, int(W * fit)), max(1, int(H * fit))
+    ss["view"] = (ox, oy, cw / disp_w)  # (crop origin, full-res px per display px)
+    ss["disp_h"] = disp_h  # read by the box-drawing callback to flip Plotly's y axis
+
+    img_crop = rec["image"][oy : oy + ch, ox : ox + cw]
+    bg_disp = np.array(Image.fromarray(img_crop).resize((disp_w, disp_h), Image.BILINEAR))
 
     mask = rec.get("masks")
-
     if ss.get("show_overlay", False) and mask is not None and mask.any():
         labels = ss.setdefault("all_classes", ["No label"])
         palette = create_colour_palette(labels)
         classes_map = classes_map_from_labels(rec["masks"], rec["labels"])
-
-        # Build the overlay at display resolution (much fewer pixels than full res).
-        # This is display-only; rec["masks"] stays full-res for all measurements.
-        if not ss.get("show_image", True):
-            background = np.zeros((disp_h, disp_w, 3), dtype=np.uint8)
-        else:
-            background = np.array(
-                Image.fromarray(rec["image"]).resize((disp_w, disp_h), Image.BILINEAR)
-            )
-
-        # mask is downsized (NEAREST) to the background inside the overlay helper
+        background = (
+            np.zeros((disp_h, disp_w, 3), dtype=np.uint8)
+            if not ss.get("show_image", True)
+            else bg_disp
+        )
+        # the cropped mask is downsized (NEAREST) to the background in the overlay helper
         base_img = cached_image_mask_overlay(
-            background, rec["masks"], classes_map, palette, alpha=0.35
+            background, mask[oy : oy + ch, ox : ox + cw], classes_map, palette, alpha=0.35
         )
     else:
-        base_img = rec["image"]
+        base_img = bg_disp
 
-    # base_img is already display-sized when an overlay was built; only resize otherwise
-    display_for_ui = (
-        base_img
-        if base_img.shape[:2] == (disp_h, disp_w)
-        else np.array(Image.fromarray(base_img).resize((disp_w, disp_h), Image.BILINEAR))
-    )
-    return base_img, display_for_ui, disp_w, disp_h
+    return base_img, disp_w, disp_h
 
 
 def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
@@ -146,36 +162,35 @@ def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
         rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(int(new_id), None)
 
 
-def _lasso_select_fragment(
-    display_for_ui: ImageArray,
+def _chart_bg(base_img: ImageArray, key_ns: str, name: str) -> tuple[Image.Image, str]:
+    """Plotly background image plus its chart key.
+
+    The key carries an image hash so Streamlit doesn't reuse chart state across images."""
+    bg = Image.fromarray(base_img).convert("RGBA")
+    return bg, f"{key_ns}_plotly_{name}_{hashlib.md5(bg.tobytes()).hexdigest()[:8]}"
+
+
+def _selection_of(chart_key: str, kind: str) -> list:
+    """The chart's ``"lasso"`` or ``"box"`` selections, or an empty list."""
+    sel = getattr(ss.get(chart_key), "selection", None)
+    return getattr(sel, kind, None) or []
+
+
+def _selection_chart(
+    bg: Image.Image,
     disp_w: int,
     disp_h: int,
-    key_ns: str,
-    name: str,
-    on_stroke,
+    chart_key: str,
+    mode: str,
+    handler,
     show_line: bool = False,
 ) -> None:
-    """Render a lasso-drawing Plotly canvas and dispatch each drawn stroke.
+    """Render a Plotly canvas that reports selections back through ``handler``.
 
-    ``on_stroke(xs, ys)`` receives one stroke's display-space coords (0 at top). Set
-    ``show_line`` to strip the shaded fill so the lasso reads as a line, not a shape.
-    """
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-
-    # unique key per image so Streamlit doesn't reuse chart state incorrectly
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_{name}_{img_hash}"
-
-    def handle() -> None:
-        event = ss.get(chart_key)
-        sel = getattr(event, "selection", None)
-        for stroke in getattr(sel, "lasso", None) or []:
-            # Plotly coords (0 at bottom) -> display coords (0 at top)
-            on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
-
-    fig = make_base_figure(bg, disp_w, disp_h, dragmode="lasso")
+    ``mode`` is "lasso" or "box"; ``show_line`` strips the shaded fill so a lasso
+    reads as a line, not a shape."""
+    is_lasso = mode == "lasso"
+    fig = make_base_figure(bg, disp_w, disp_h, dragmode="lasso" if is_lasso else "select")
     if show_line:
         fig.update_layout(
             newselection=dict(line=dict(color="red", width=1)),
@@ -185,22 +200,44 @@ def _lasso_select_fragment(
     st.plotly_chart(
         fig,
         key=chart_key,
-        on_select=handle,
-        selection_mode="lasso",
+        on_select=handler,
+        selection_mode=mode,
         width="content",
         config={
             # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
             # image refresh; use the browser's own pinch-zoom instead.
             "scrollZoom": False,
             "displaylogo": False,
-            "modeBarButtons": [["lasso2d"]],
+            "modeBarButtons": [["lasso2d" if is_lasso else "select2d"]],
         },
     )
 
 
+def _lasso_chart(
+    base_img: ImageArray,
+    disp_w: int,
+    disp_h: int,
+    key_ns: str,
+    name: str,
+    on_stroke,
+    show_line: bool = False,
+) -> None:
+    """Lasso canvas that dispatches each drawn stroke to ``on_stroke(xs, ys)``.
+
+    Strokes arrive in display-space coords, 0 at the top."""
+    bg, chart_key = _chart_bg(base_img, key_ns, name)
+
+    def handle() -> None:
+        for stroke in _selection_of(chart_key, "lasso"):
+            # Plotly coords (0 at bottom) -> display coords (0 at top)
+            on_stroke(stroke["x"], [disp_h - y for y in stroke["y"]])
+
+    _selection_chart(bg, disp_w, disp_h, chart_key, "lasso", handle, show_line)
+
+
 def _handle_draw_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -209,15 +246,15 @@ def _handle_draw_mask_mode(
 
     def draw(xs, ys) -> None:
         snapshot_for_undo(rec)
-        mask_full = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        mask_full = polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"])
         _commit_mask(rec, mask_full)
 
-    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "mask", draw)
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "mask", draw)
 
 
 def _handle_draw_ellipse_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -229,54 +266,28 @@ def _handle_draw_ellipse_mode(
     moment the drag ends, so its position and size match exactly what was
     dragged with no follow-up adjustment.
     """
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-
-    # unique key per image so Streamlit doesn't reuse chart state incorrectly
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_ellipse_{img_hash}"
+    bg, chart_key = _chart_bg(base_img, key_ns, "ellipse")
 
     # callback to turn each box-drag into a filled ellipse
     def add_ellipse() -> None:
-        event = ss.get(chart_key)
-        sel = getattr(event, "selection", None)
-        for b in getattr(sel, "box", None) or []:
+        for b in _selection_of(chart_key, "box"):
             x0, x1 = sorted(map(float, b["x"]))
             y0, y1 = sorted(map(float, b["y"]))
             if x1 - x0 < MIN_DRAG_PX or y1 - y0 < MIN_DRAG_PX:  # stray click
                 continue
             snapshot_for_undo(rec)
             # display box -> full-res box (Plotly y 0 at bottom -> display y 0 at top)
-            sx, sy = rec["W"] / disp_w, rec["H"] / disp_h
-            mask_full = ellipse_box_to_mask(
-                x0 * sx, (disp_h - y1) * sy, x1 * sx, (disp_h - y0) * sy, rec["H"], rec["W"]
-            )
+            fx0, fy0 = disp_to_full(x0, disp_h - y1)
+            fx1, fy1 = disp_to_full(x1, disp_h - y0)
+            mask_full = ellipse_box_to_mask(fx0, fy0, fx1, fy1, rec["H"], rec["W"])
             _commit_mask(rec, mask_full)
 
-    # Build figure using the shared helper: same size as box mode
-    fig = make_base_figure(bg, disp_w, disp_h, dragmode="select")
-
-    # render the plotly chart with box selection
-    st.plotly_chart(
-        fig,
-        key=chart_key,
-        on_select=add_ellipse,
-        selection_mode="box",
-        width="content",
-        config={
-            # Plotly zoom/pan disabled so the chart doesn't reset zoom on every
-            # image refresh; use the browser's own pinch-zoom instead.
-            "scrollZoom": False,
-            "displaylogo": False,
-            "modeBarButtons": [["select2d"]],
-        },
-    )
+    _selection_chart(bg, disp_w, disp_h, chart_key, "box", add_ellipse)
 
 
 def _handle_cut_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -288,27 +299,21 @@ def _handle_cut_mask_mode(
     """
 
     def cut(xs, ys) -> None:
-        barrier = polyline_xy_to_barrier(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        barrier = polyline_xy_to_barrier(xs, ys, rec["H"], rec["W"])
         cut_masks_along_barrier(rec, barrier)
 
-    _lasso_select_fragment(
-        display_for_ui, disp_w, disp_h, key_ns, "cut", cut, show_line=True
-    )
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "cut", cut, show_line=True)
 
 
 def _handle_draw_box_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
 ) -> None:
     """Handle interactions when in 'Draw box' mode."""
-
-    # background image for plotting
-    bg = Image.fromarray(display_for_ui).convert("RGBA")
-    img_hash = hashlib.md5(bg.tobytes()).hexdigest()[:8]
-    chart_key = f"{key_ns}_plotly_{img_hash}"
+    bg, chart_key = _chart_bg(base_img, key_ns, "box")
 
     box_draw_fragment(
         bg_img=bg,
@@ -329,10 +334,10 @@ def _draw_boxes_on(img: ImageArray, rec: Record) -> ImageArray:
         return img
     im = Image.fromarray(img).convert("RGB")
     d = ImageDraw.Draw(im)
-    h, w = img.shape[:2]
-    sx, sy = w / rec["W"], h / rec["H"]
     for x0, y0, x1, y1 in boxes:
-        d.rectangle([x0 * sx, y0 * sy, x1 * sx, y1 * sy], outline=(255, 0, 0), width=2)
+        dx0, dy0 = full_to_disp(x0, y0)
+        dx1, dy1 = full_to_disp(x1, y1)
+        d.rectangle([dx0, dy0, dx1, dy1], outline=(255, 0, 0), width=2)
     return np.array(im)
 
 
@@ -374,7 +379,7 @@ def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
 
 def _handle_join_mask_mode(
     rec: Record,
-    display_for_ui: ImageArray,
+    base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
@@ -386,10 +391,10 @@ def _handle_join_mask_mode(
     """
 
     def join(xs, ys) -> None:
-        region = polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, rec["W"], rec["H"])
+        region = polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"])
         join_in_lasso(rec, region)
 
-    _lasso_select_fragment(display_for_ui, disp_w, disp_h, key_ns, "join", join)
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, "join", join)
 
 
 # -----------------------------------------------------#
@@ -412,22 +417,21 @@ def ellipse_box_to_mask(x0, y0, x1, y1, height, width):
     return np.array(img, dtype=bool)
 
 
-def polyline_xy_to_barrier(xs, ys, disp_w, disp_h, width, height):
+def polyline_xy_to_barrier(xs, ys, height, width):
     """Rasterize a display-space freehand line into a thin (height,width) bool barrier."""
-    sx, sy = width / disp_w, height / disp_h
-    pts = [(x * sx, y * sy) for x, y in zip(xs, ys)]
+    pts = [disp_to_full(x, y) for x, y in zip(xs, ys)]
     img = Image.new("L", (width, height), 0)
     if len(pts) >= 2:
-        # scale line thickness with resolution so the cut always separates regions
-        thickness = max(3, round(3 * width / disp_w))
+        # thickness scales with the display->full ratio so the cut always separates regions
+        thickness = max(3, round(3 * ss["view"][2]))
         ImageDraw.Draw(img).line(pts, fill=1, width=thickness)
     return np.array(img, dtype=bool)
 
 
-def polygon_xy_to_full_mask(xs, ys, disp_w, disp_h, width, height):
+def polygon_xy_to_full_mask(xs, ys, height, width):
     """Rasterize a display-space polygon into a filled full-res (height,width) bool mask."""
-    sx, sy = width / disp_w, height / disp_h
-    return polygon_xy_to_mask([x * sx for x in xs], [y * sy for y in ys], height, width)
+    pts = [disp_to_full(x, y) for x, y in zip(xs, ys)]
+    return polygon_xy_to_mask([p[0] for p in pts], [p[1] for p in pts], height, width)
 
 
 def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
@@ -495,15 +499,14 @@ def remove_clicked():
     if not ss["remove_click"]:
         return
 
-    # get current record and display scale
+    # get current record
     rec = get_current_rec()
-    disp_w = ss["disp_w"]
 
-    # map click to original image coords
-    s = float(disp_w / rec["W"])
+    # map click (viewport) to full-res image coords
+    fx, fy = disp_to_full(ss["remove_click"]["x"], ss["remove_click"]["y"])
     xy = (
-        int(round(ss["remove_click"]["x"] / s)),
-        int(round(ss["remove_click"]["y"] / s)),
+        int(min(max(round(fx), 0), rec["W"] - 1)),
+        int(min(max(round(fy), 0), rec["H"] - 1)),
     )
 
     # ignore click from previous run
@@ -593,15 +596,14 @@ def assign_clicked():
     if not ss["class_click"]:
         return
 
-    # get current record and display scale
+    # get current record
     rec = get_current_rec()
-    disp_w = ss["disp_w"]
 
-    # map click to original image coords
-    s = float(disp_w / rec["W"])
+    # map click (viewport) to full-res image coords
+    fx, fy = disp_to_full(ss["class_click"]["x"], ss["class_click"]["y"])
     xy = (
-        int(round(ss["class_click"]["x"] / s)),
-        int(round(ss["class_click"]["y"] / s)),
+        int(min(max(round(fx), 0), rec["W"] - 1)),
+        int(min(max(round(fy), 0), rec["H"] - 1)),
     )
 
     # ignore click from previous run
@@ -698,6 +700,13 @@ def render_cellpose_hyperparameters_fragment():
     ss["cp_niter"] = niter
 
 
+def _set_mode(mode: str) -> None:
+    """Set the interaction mode via an on_click callback so switching is a single clean
+    rerun. An inline st.rerun() instead aborts the run before the zoom panel renders,
+    which drops the zoomed view."""
+    ss["interaction_mode"] = mode
+
+
 def render_box_tools_fragment(key_ns="side"):
     """Render SAM2 box drawing and segmentation fragment."""
 
@@ -705,15 +714,15 @@ def render_box_tools_fragment(key_ns="side"):
     rec = get_current_rec()
 
     # button to set mode to draw boxes on the image
-    if st.button(
+    st.button(
         "Draw box",
         width="stretch",
         key=f"{key_ns}_draw_boxes",
         shortcut="B",
         help="Click and drag boxes around cells (shortcut: B)",
-    ):
-        ss["interaction_mode"] = "Draw box"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Draw box",),
+    )
 
     # button to segment with SAM2 the current boxes
     if st.button(
@@ -725,9 +734,6 @@ def render_box_tools_fragment(key_ns="side"):
     ):
         # create new masks from boxes and add them to rec["mask"]
         segment_with_sam2(rec)
-
-        ss["pred_canvas_nonce"] += 1
-        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
 
@@ -737,50 +743,50 @@ def render_draw_mask_tools_fragment(key_ns="side"):
     c1, c2 = st.columns([1, 1])
 
     # button to set mode to freehand (lasso) mask drawing
-    if c1.button(
+    c1.button(
         "Freehand",
         width="stretch",
         key=f"{key_ns}_draw_masks",
         shortcut="F",
         help="Click and hold to draw a freehand mask (shortcut: F)",
-    ):
-        ss["interaction_mode"] = "Freehand"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Freehand",),
+    )
 
     # button to set mode to ellipse mask drawing
-    if c2.button(
+    c2.button(
         "Ellipse",
         width="stretch",
         key=f"{key_ns}_draw_ellipse",
         shortcut="E",
         help="Drag a box around a colony to fill it with a rough ellipse (shortcut: E)",
-    ):
-        ss["interaction_mode"] = "Ellipse"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Ellipse",),
+    )
 
     c3, c4 = st.columns([1, 1])
 
     # button to set mode to cutting masks with a drawn line
-    if c3.button(
+    c3.button(
         "Split masks",
         width="stretch",
         key=f"{key_ns}_cut_mask",
         shortcut="S",
         help="Click and drag a line all the way through a mask to split it in two (shortcut: S)",
-    ):
-        ss["interaction_mode"] = "Split masks"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Split masks",),
+    )
 
     # button to set mode to merging two touching masks
-    if c4.button(
+    c4.button(
         "Join masks",
         width="stretch",
         key=f"{key_ns}_join_masks",
         shortcut="J",
         help="Draw a lasso around touching masks to join them into one (shortcut: J)",
-    ):
-        ss["interaction_mode"] = "Join masks"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Join masks",),
+    )
 
 
 def render_common_tools_fragment(key_ns="tools"):
@@ -791,15 +797,15 @@ def render_common_tools_fragment(key_ns="tools"):
     rec = get_current_rec()
 
     # button to set mode to remove masks or boxes by clicking on them
-    if st.button(
+    st.button(
         "Remove",
         width="stretch",
         key=f"{key_ns}_remove",
         shortcut="D",
         help="Click masks or boxes to remove them (shortcut: D)",
-    ):
-        ss["interaction_mode"] = "Remove"
-        st.rerun()
+        on_click=_set_mode,
+        args=("Remove",),
+    )
 
     row = st.container()
     c1, c2 = row.columns([1, 1])
@@ -815,29 +821,170 @@ def render_common_tools_fragment(key_ns="tools"):
         rec["masks"] = np.zeros((rec["H"], rec["W"]), dtype=np.uint16)
         rec["labels"] = {}
         rec["boxes"] = []
-        rec["last_click_xy"] = None
-        ss["edit_canvas_nonce"] += 1
         st.rerun()
 
     # single-level undo of the last action
     render_undo_button(c2, key_ns=key_ns)
 
 
+def _free_arrow_keys_from_slider(slider_key: str) -> None:
+    """Blur the zoom slider on focus so Left/Right always change image.
+
+    Streamlit's button shortcuts stand down only for text inputs, but a slider thumb
+    handles the arrow keys itself and swallows them. Mouse use is unaffected. The
+    listener is delegated so it survives reruns; the window flag stops duplicates."""
+    components.html(
+        """<script>
+const w = window.parent;
+if (!w.__mycolArrowNav) {
+    w.__mycolArrowNav = true;
+    w.document.addEventListener("focusin", (e) => {
+        const t = e.target;  // deferred: a synchronous blur here can re-enter
+        if (t && t.closest && t.closest("%s")) setTimeout(() => t.blur(), 0);
+    });
+}
+</script>"""
+        % f".st-key-{slider_key}",
+        height=0,
+    )
+
+
+def render_zoom_controls(key_ns: str = "zoom") -> None:
+    """Zoom slider + directional nudge pad, rendered in its own panel beside the image.
+
+    Controlled slider: zoom is stored in a plain session key so it stays in sync with
+    the display. This panel must render before the image so the crop reads the new
+    zoom on the same run (no one-rerun lag)."""
+    rec = get_current_rec()
+    if rec is None:
+        return
+
+    def _zoom_changed(slider_key: str) -> None:
+        ss["zoom"] = float(ss[slider_key])
+        ss["_refocus_after_zoom"] = True
+
+    slider_key = f"{key_ns}_slider"
+    zoom_value = min(max(float(ss.get("zoom", 1.0)), 1.0), 10.0)
+    ss["zoom"] = zoom_value
+    ss[slider_key] = zoom_value
+
+    st.slider(
+        "Zoom",
+        min_value=1.0,
+        max_value=10.0,
+        step=0.5,
+        key=slider_key,
+        on_change=_zoom_changed,
+        args=(slider_key,),
+        help="Zoom into the image; click the minimap or use the arrows to move the view.",
+    )
+    _free_arrow_keys_from_slider(slider_key)
+    _render_minimap(rec)
+    _render_nudge_pad(rec, key_ns)
+    if ss.pop("_refocus_after_zoom", False):
+        _refocus_main_document()
+
+
+def _render_minimap(rec: Record) -> None:
+    """Overview thumbnail of the whole image with a rectangle marking the visible crop.
+
+    Click anywhere on it to recentre the zoomed view there."""
+    W, H = rec["W"], rec["H"]
+    zoom = max(1.0, float(ss.get("zoom", 1.0)))
+
+    thumb_w = 200
+    thumb_h = max(1, round(H * thumb_w / W))
+    thumb = (
+        Image.fromarray(rec["image"]).resize((thumb_w, thumb_h), Image.BILINEAR).convert("RGB")
+    )
+
+    # current crop rectangle, in thumbnail coordinates
+    cw, ch = W / zoom, H / zoom
+    cx = min(max(float(ss.get("pan_cx", W / 2)), cw / 2), W - cw / 2)
+    cy = min(max(float(ss.get("pan_cy", H / 2)), ch / 2), H - ch / 2)
+    sx, sy = thumb_w / W, thumb_h / H
+    ImageDraw.Draw(thumb).rectangle(
+        [(cx - cw / 2) * sx, (cy - ch / 2) * sy, (cx + cw / 2) * sx, (cy + ch / 2) * sy],
+        outline=(255, 0, 0),
+        width=2,
+    )
+
+    streamlit_image_coordinates(
+        np.array(thumb),
+        key="minimap_click",
+        use_column_width="always",
+        on_click=_minimap_clicked,
+    )
+
+
+def _minimap_clicked():
+    """Recentre the zoomed view on the point clicked in the minimap."""
+    click = ss.get("minimap_click")
+    if not click or click.get("unix_time") == ss.get("_minimap_last_t"):
+        return
+    ss["_minimap_last_t"] = click.get("unix_time")
+    rec = get_current_rec()
+    if rec is None:
+        return
+    rw = float(click.get("width") or 1)
+    rh = float(click.get("height") or 1)
+    ss["pan_cx"] = click["x"] * rec["W"] / rw
+    ss["pan_cy"] = click["y"] * rec["H"] / rh
+    ss["_refocus_after_zoom"] = True
+
+
+def _render_nudge_pad(rec: Record, key_ns: str = "tools") -> None:
+    """Directional d-pad that shifts the zoomed view by most of the visible crop.
+
+    Steps 85% rather than a full crop so a sliver of the previous view stays on screen
+    to orient by. Disabled at zoom 1, where the whole image is already shown."""
+    W, H = rec["W"], rec["H"]
+    zoom = max(1.0, float(ss.get("zoom", 1.0)))
+    cw, ch = W / zoom, H / zoom
+    step_x, step_y = 0.85 * cw, 0.85 * ch
+    disabled = zoom <= 1.0
+
+    def nudge(dx, dy):
+        # clamp to the valid centre range so repeated nudges don't overshoot the edge
+        cx = float(ss.get("pan_cx", W / 2)) + dx * step_x
+        cy = float(ss.get("pan_cy", H / 2)) + dy * step_y
+        ss["pan_cx"] = min(max(cx, cw / 2), W - cw / 2)
+        ss["pan_cy"] = min(max(cy, ch / 2), H - ch / 2)
+
+    def centre():
+        ss["pan_cx"], ss["pan_cy"] = W / 2, H / 2
+
+    _, up, _ = st.columns(3)
+    up.button("▲", key=f"{key_ns}_pan_up", width="stretch", disabled=disabled,
+              on_click=nudge, args=(0, -1), help="Move view up")
+    left, mid, right = st.columns(3)
+    left.button("◀", key=f"{key_ns}_pan_left", width="stretch", disabled=disabled,
+                on_click=nudge, args=(-1, 0), help="Move view left")
+    mid.button("◎", key=f"{key_ns}_pan_centre", width="stretch", disabled=disabled,
+               on_click=centre, help="Centre the view")
+    right.button("▶", key=f"{key_ns}_pan_right", width="stretch", disabled=disabled,
+                 on_click=nudge, args=(1, 0), help="Move view right")
+    _, down, _ = st.columns(3)
+    down.button("▼", key=f"{key_ns}_pan_down", width="stretch", disabled=disabled,
+                on_click=nudge, args=(0, 1), help="Move view down")
+
+
+def _undo_clicked():
+    """Undo callback (on_click so it's a single clean rerun that keeps the zoom view)."""
+    apply_undo(get_current_rec())
+
+
 def render_undo_button(container=st, key_ns="side"):
     """Render the undo button, reverting the last mask/box action via apply_undo
     (single-level; only the most recent action is recoverable)."""
-    rec = get_current_rec()
-    if container.button(
+    container.button(
         "Undo",
         width="stretch",
         key=f"{key_ns}_undo",
         shortcut="ctrl+z",
         help="Undo the last action — only the most recent action can be undone (shortcut: Ctrl+Z)",
-    ):
-        if apply_undo(rec):
-            ss["pred_canvas_nonce"] += 1
-            ss["edit_canvas_nonce"] += 1
-            st.rerun()
+        on_click=_undo_clicked,
+    )
 
 
 # -----------------------------------------------------#
@@ -859,29 +1006,32 @@ def _normalized_display_image(image: ImageArray) -> ImageArray:
     return norm
 
 
-@st.fragment
-def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
-    """Render main image display and interaction fragment."""
+def render_display_and_interact_fragment(key_ns="edit"):
+    """Render main image display and interaction.
+
+    Not a fragment: the zoom/pan controls live in the separate tools panel, and a
+    fragment here would render from a stale session-state scope (zoom would desync
+    from the slider). Full reruns keep the view and the image in sync."""
 
     # get current record and verify that images are uploaded
     rec = get_current_rec()
 
-    # display image with masks overlay and interaction
+    # display image with masks overlay and interaction (zoom/pan are driven from the
+    # tools panel; the view lives in session state so it persists across mode switches)
     rec_for_disp = rec
     if ss.get("show_normalized"):  # normalize background image if selected
         rec_for_disp = {**rec, "image": _normalized_display_image(rec["image"])}
 
-    base_img, display_for_ui, disp_w, disp_h = create_image_display(
-        rec_for_disp, max_display_width
-    )
-    ss["disp_w"] = disp_w
+    base_img, disp_w, disp_h = create_image_display(rec_for_disp)
 
     # handle interaction modes for the image (e.g. draw box, draw mask, remove mask, etc)
     mode = ss.get("interaction_mode", "Draw box")  # default to draw box
+    if mode == "Pan":  # Pan mode was removed in favour of the nudge d-pad
+        ss["interaction_mode"] = mode = "Draw box"
     if mode == "Freehand":
         _handle_draw_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -889,7 +1039,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Ellipse":
         _handle_draw_ellipse_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -897,7 +1047,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Split masks":
         _handle_cut_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -905,7 +1055,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Draw box":
         _handle_draw_box_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,
@@ -913,7 +1063,7 @@ def render_display_and_interact_fragment(key_ns="edit", max_display_width=768):
     elif mode == "Join masks":
         _handle_join_mask_mode(
             rec=rec,
-            display_for_ui=display_for_ui,
+            base_img=base_img,
             disp_w=disp_w,
             disp_h=disp_h,
             key_ns=key_ns,

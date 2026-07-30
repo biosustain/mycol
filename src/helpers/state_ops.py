@@ -27,7 +27,6 @@ _DEFAULTS = {
     "name_to_key": {},                  # {filename:str -> order_key:int}
     "current_key": None,                # active order_key
     "next_ord": 1,                      # next order_key to assign
-    "analysis_plots": [],
     "cellpose_model_bytes": None,
     "cellpose_model_name": None,
     "densenet_ckpt_bytes": None,
@@ -36,13 +35,12 @@ _DEFAULTS = {
     "show_overlay": True,
     "show_normalized": True,
     "interaction_mode": "Remove",
-    "side_interaction_mode": "Draw box",
     "skipped_files": [],
     "remove_click": False,
     "class_click": False,
     "last_class_xy": None,
     "last_remove_xy": None,
-    "disp_w": 0,
+    "zoom": 1.0,
 
     # cellpose model training
     "cyto_to_train": "cyto3",
@@ -67,11 +65,6 @@ _DEFAULTS = {
     # image dataset download options
     "dl_normalize_download": False,
 
-    # UI defaults / nonces
-    "pred_canvas_nonce": 0,
-    "edit_canvas_nonce": 0,
-    "side_panel": "Upload data",
-
     # class defaults
     "all_classes": ["No label"],
     "side_current_class": "No label",
@@ -92,6 +85,21 @@ def reset_global_state_defaults() -> None:
 
 def stem(p: str) -> str:
     return Path(p).stem
+
+
+# ss["view"] = (ox, oy, s): the annotate display shows a zoomed crop starting at
+# full-res pixel (ox, oy), with s full-res pixels per display pixel. At zoom 1 this
+# is (0, 0, W/disp_w), so these reduce to the original whole-image mapping.
+def disp_to_full(x, y):
+    """Map a display (viewport) coordinate to full-resolution image coordinates."""
+    ox, oy, s = ss.get("view", (0.0, 0.0, 1.0))
+    return ox + x * s, oy + y * s
+
+
+def full_to_disp(x, y):
+    """Map a full-resolution image coordinate to display (viewport) coordinates."""
+    ox, oy, s = ss.get("view", (0.0, 0.0, 1.0))
+    return (x - ox) / s, (y - oy) / s
 
 
 def ordered_keys():

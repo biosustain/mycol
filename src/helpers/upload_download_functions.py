@@ -318,8 +318,6 @@ def add_image(name: str, data: bytes, resize: bool) -> None:
         "masks": np.zeros((H, W), dtype=np.uint16),
         "labels": {},
         "boxes": [],
-        "last_click_xy": None,
-        "canvas": {"closed_json": None, "processed_count": 0},
     }
     m[name] = k
     ss.current_key = k

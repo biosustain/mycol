@@ -642,7 +642,6 @@ def segment_current_and_refresh(model_type: str | None = None):
         # snapshot so this single-image segmentation can be undone (batch path doesn't)
         snapshot_for_undo(rec)
         segment_with_cellpose(rec, model_type=model_type, **params)
-        ss["edit_canvas_nonce"] += 1
     st.rerun()
 
 

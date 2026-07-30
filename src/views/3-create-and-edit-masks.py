@@ -12,10 +12,10 @@ ss = st.session_state
 require_images()
 
 with st.spinner("Loading Annotator..."):
-    col1, col2 = st.columns([2, 5])
+    col1, col2, col3 = st.columns([2, 4, 2], gap="large")
     with col1:
 
-        with st.container(border=True, height=770):
+        with st.container(border=True, height=770, vertical_alignment="center",):
 
             ok = ordered_keys()
             names = [ss.images[k]["name"] for k in ok]
@@ -120,6 +120,12 @@ with st.spinner("Loading Annotator..."):
 
             # editing tools available in both tabs
             mask_editing_panel.render_common_tools(key_ns="tools")
+
+    # Zoom/pan panel — sits to the right of the image (col3), but its code runs before
+    # the image column so the crop reads the updated zoom on the same run (columns are
+    # positioned by creation order, executed in the order the `with` blocks appear).
+    with col3:
+        mask_editing_panel.render_zoom_panel()
 
     # Page main content
     with col2:

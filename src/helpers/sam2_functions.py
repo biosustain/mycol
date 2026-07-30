@@ -9,7 +9,7 @@ from scipy import ndimage as ndi
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
-from src.helpers.state_ops import snapshot_for_undo
+from src.helpers.state_ops import snapshot_for_undo, disp_to_full, full_to_disp
 from src.helpers.plot_helpers import MIN_DRAG_PX, make_base_figure
 
 ss = st.session_state
@@ -78,11 +78,9 @@ def _update_boxes(chart_key: str, rec: dict):
 
     boxes = rec.setdefault("boxes", [])
 
-    disp_w = ss.get("disp_w")
-    if not disp_w or not rec.get("W"):
+    disp_h = ss.get("disp_h")
+    if not disp_h or not rec.get("W"):
         return
-    scale = float(disp_w / rec["W"])
-    disp_h = int(round(rec["H"] * scale))
 
     for b in sel.box:
         x0_plot, x1_plot = map(float, b["x"])
@@ -101,17 +99,15 @@ def _update_boxes(chart_key: str, rec: dict):
         if y1_plot < y0_plot:
             y0_plot, y1_plot = y1_plot, y0_plot
 
-        # Flip Y: Plotly (0 bottom) -> image (0 top), then scale to image coords
-        x0 = int(round(x0_plot / scale))
-        x1 = int(round(x1_plot / scale))
-        y0 = int(round((disp_h - y1_plot) / scale))
-        y1 = int(round((disp_h - y0_plot) / scale))
+        # Flip Y (Plotly 0 at bottom -> display 0 at top), then display -> full-res
+        fx0, fy0 = disp_to_full(x0_plot, disp_h - y1_plot)
+        fx1, fy1 = disp_to_full(x1_plot, disp_h - y0_plot)
 
         # Clamp to image bounds
-        x0 = max(0, min(rec["W"] - 1, x0))
-        x1 = max(0, min(rec["W"], x1))
-        y0 = max(0, min(rec["H"] - 1, y0))
-        y1 = max(0, min(rec["H"], y1))
+        x0 = max(0, min(rec["W"] - 1, int(round(fx0))))
+        x1 = max(0, min(rec["W"], int(round(fx1))))
+        y0 = max(0, min(rec["H"] - 1, int(round(fy0))))
+        y1 = max(0, min(rec["H"], int(round(fy1))))
 
         if x1 < x0:
             x0, x1 = x1, x0
@@ -130,12 +126,14 @@ def _make_figure_with_boxes(bg_img, disp_w, disp_h, rec: dict):
     # create base figure
     fig = make_base_figure(bg_img, disp_w, disp_h, dragmode="select")
 
-    # image coords (y top) -> Plotly display coords (y bottom)
-    sx, sy = disp_w / rec["W"], disp_h / rec["H"]
-    display_boxes = [
-        {"x0": x0 * sx, "x1": x1 * sx, "y0": disp_h - y0 * sy, "y1": disp_h - y1 * sy}
-        for x0, y0, x1, y1 in rec.get("boxes", [])
-    ]
+    # full-res boxes -> display coords, then Plotly display coords (y bottom)
+    display_boxes = []
+    for x0, y0, x1, y1 in rec.get("boxes", []):
+        dx0, dy0 = full_to_disp(x0, y0)
+        dx1, dy1 = full_to_disp(x1, y1)
+        display_boxes.append(
+            {"x0": dx0, "x1": dx1, "y0": disp_h - dy0, "y1": disp_h - dy1}
+        )
 
     # add boxes
     for box in display_boxes:
