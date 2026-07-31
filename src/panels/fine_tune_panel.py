@@ -202,12 +202,10 @@ def render_cellpose_params():
     # --- show training options ---
     c1, c2, c3 = st.columns(3)
 
-    # Defaults follow the Cellpose-SAM paper's fine-tuning protocol: 100 epochs,
-    # 8 images per epoch, batch size 1, AdamW at lr 1e-5 with weight decay 0.1.
+    # Learning rate and weight decay are fixed by the Cellpose-SAM protocol and live
+    # in the session-state defaults (see state_ops), so they are not exposed here.
     ss["cp_base_model"] = DEFAULT_CELLPOSE_MODEL  # Cellpose-SAM is the only base model
     ss.setdefault("cp_max_epoch", 100)
-    ss.setdefault("cp_learning_rate", 1e-5)
-    ss.setdefault("cp_weight_decay", 0.1)
     ss.setdefault("cp_batch_size", 1)
     ss.setdefault("cp_nimg_per_epoch", 8)
     ss.setdefault("cp_min_cells_per_image", 5)
@@ -219,24 +217,6 @@ def render_cellpose_params():
         int(ss["cp_max_epoch"]),
         step=10,
         help="Number of training epochs for fine-tuning. Longer training may improve performance but takes more time.",
-    )
-    ss["cp_learning_rate"] = c3.number_input(
-        "Learning rate",
-        min_value=1e-8,
-        max_value=10.0,
-        value=float(ss["cp_learning_rate"]),
-        format="%.5f",
-        help="Initial learning rate for the optimizer. Lower values may lead to more stable training.",
-    )
-    ss["cp_weight_decay"] = c1.number_input(
-        "Weight decay",
-        min_value=0.0,
-        max_value=1.0,
-        value=float(ss["cp_weight_decay"]),
-        step=1e-8,
-        format="%.8f",  # more decimals prevents snapping to 0
-        key="cp_weight_decay_input",
-        help="Weight decay over the last epochs of training.",
     )
 
     ss["cp_min_cells_per_image"] = c2.number_input(

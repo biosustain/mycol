@@ -44,6 +44,11 @@ _DEFAULTS = {
 
     # cellpose model training
     "cyto_to_train": "cpsam_v2",
+    # Fixed by the Cellpose-SAM paper's fine-tuning protocol, not user-editable:
+    # AdamW at lr 1e-5 with weight decay 0.1. Cellpose 3's CNN-scale lr of 0.1
+    # diverges on a transformer backbone.
+    "cp_learning_rate": 1e-5,
+    "cp_weight_decay": 0.1,
     "train_losses": [],
     "test_losses": [],
     # cellpose inference

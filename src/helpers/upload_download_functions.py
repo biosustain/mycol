@@ -180,8 +180,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
             p = dict(zip(df["parameter"], df["value"]))
             ss["cp_base_model"] = _cast(p.get("base_model"), str, "cpsam_v2")
             ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
-            ss["cp_learning_rate"] = _cast(p.get("learning_rate"), float, 1e-5)
-            ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.1)
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 1)
             ss["cp_nimg_per_epoch"] = _cast(p.get("nimg_per_epoch"), int, 8)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
