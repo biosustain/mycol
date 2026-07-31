@@ -38,6 +38,10 @@ import plotly.graph_objects as go
 
 ss = st.session_state
 
+# The pretrained Cellpose-SAM weights the app ships with. Single source of truth:
+# the training worker fine-tunes these and the app loads the result back.
+DEFAULT_CELLPOSE_MODEL = "cpsam_v2"
+
 # -----------------------------------------------------#
 # ---------------- IMAGE PREPROCESSING --------------- #
 # -----------------------------------------------------#
@@ -125,18 +129,18 @@ def get_cellpose_model():
     tag = (
         hashlib.sha1(ss["cellpose_model_bytes"]).hexdigest()[:12]
         if ss.get("cellpose_model_bytes")
-        else "cyto2"
+        else DEFAULT_CELLPOSE_MODEL
     )
 
     if ss.get("cellpose_model_obj") is not None and ss.get("cellpose_model_tag") == tag:
         return ss["cellpose_model_obj"]
 
     weights_path = get_cellpose_weights()
-    model_type = "cyto2"
+    model_type = DEFAULT_CELLPOSE_MODEL
     if weights_path:
         model_type = weights_path
 
-    model = CellposeModel3Proxy(pretrained_model=model_type, gpu=core.use_gpu())
+    model = CellposeModelProxy(pretrained_model=model_type, gpu=core.use_gpu())
 
     ss["cellpose_model_obj"] = model
     ss["cellpose_model_tag"] = tag
@@ -148,7 +152,6 @@ def segment_with_cellpose(
     rec: dict,
     *,
     model_type: str | None = None,
-    channels=(0, 0),
     diameter=None,
     cellprob_threshold=-0.2,
     flow_threshold=0.4,
@@ -158,13 +161,13 @@ def segment_with_cellpose(
     """
     Runs Cellpose on rec['image'] and overwrites rec['masks'] with a single (H,W)
     integer label image (0=background, 1..N=instances). Resets rec['labels'].
-    If model_type is given (e.g. "cyto2", "cyto3"), that base model is used directly.
+    If model_type is given (e.g. "cpsam_v2"), that base model is used directly.
     """
 
     im_in = preprocess_for_cellpose(rec)
 
     if model_type is not None:
-        cell_model = CellposeModel3Proxy(
+        cell_model = CellposeModelProxy(
             pretrained_model=model_type, gpu=core.use_gpu()
         )
     else:
@@ -176,7 +179,6 @@ def segment_with_cellpose(
 
     masks_out, flows, styles = cell_model.eval(
         [im_in],
-        channels=list(channels),
         diameter=diameter,
         cellprob_threshold=cellprob_threshold,
         flow_threshold=flow_threshold,
@@ -204,8 +206,8 @@ def _load_cellpose_model(pretrained_model: str, gpu: bool):
     return cp_models.CellposeModel(gpu=gpu, pretrained_model=pretrained_model)
 
 
-class CellposeModel3Proxy:
-    """Thin in-process wrapper around a (cached) Cellpose 3 model."""
+class CellposeModelProxy:
+    """Thin in-process wrapper around a (cached) Cellpose-SAM model."""
 
     def __init__(self, pretrained_model, gpu=True):
         self.pretrained_model = pretrained_model
@@ -221,7 +223,6 @@ class CellposeModel3Proxy:
     def eval(
         self,
         x,
-        channels=None,
         diameter=None,
         cellprob_threshold=0.0,
         flow_threshold=0.4,
@@ -235,7 +236,6 @@ class CellposeModel3Proxy:
         cell_model = _load_cellpose_model(self.pretrained_model, self.gpu)
         masks, flows, styles = cell_model.eval(
             images,
-            channels=channels if channels is not None else [0, 0],
             diameter=diameter,
             cellprob_threshold=cellprob_threshold,
             flow_threshold=flow_threshold,
@@ -393,10 +393,9 @@ def start_cellpose_training(
     weight_decay=0.0001,
     batch_size=8,
     nimg_per_epoch=None,
-    channels=[0, 0],
     min_train_masks=5,
 ):
-    """Starts Cellpose fine-tuning asynchronously using cp3 worker bridge"""
+    """Starts Cellpose fine-tuning asynchronously via the training worker."""
     images, masks = [], []
     for k in recs:
         images.append(preprocess_for_cellpose(recs[k]))
@@ -416,7 +415,6 @@ def start_cellpose_training(
             weight_decay=weight_decay,
             batch_size=batch_size,
             nimg_per_epoch=(nimg_per_epoch or 0),  # 0 = None sentinel (all images)
-            channels=np.array(channels),
             min_train_masks=min_train_masks,
         ),
         metadata={"base_model": base_model, "num_images": len(images)},
@@ -455,9 +453,7 @@ def cancel_cellpose_training():
     cancel_worker_job("cp_training_job")
 
 
-def start_cellpose_validation(
-    recs, base_model, channels, do_gridsearch=False, n_trials=20
-):
+def start_cellpose_validation(recs, base_model, do_gridsearch=False, n_trials=20):
     model_path = get_cellpose_weights()
     if not model_path:
         st.error("No trained model found")
@@ -476,7 +472,6 @@ def start_cellpose_validation(
             image_names=np.array(image_names, dtype=object),
             base_model=base_model,
             tuned_model_path=model_path,
-            channels=np.array(channels),
             do_gridsearch=do_gridsearch,
             n_trials=n_trials,
         ),
@@ -661,11 +656,9 @@ def batch_segment_and_refresh(model_type: str | None = None):
 def get_cellpose_hparams_from_state():
     """calls hparam values from session state"""
     # Build kwargs matching segment_rec_with_cellpose signature
-    # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
     diameter = ss.get("cp_diameter")
 
     return dict(
-        channels=(0, 0),
         diameter=diameter,
         cellprob_threshold=float(ss.get("cp_cellprob_threshold")),
         flow_threshold=float(ss.get("cp_flow_threshold")),

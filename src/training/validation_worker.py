@@ -22,14 +22,16 @@ def _min_size_search_bounds(masks):
     return 0, hi, step
 
 
-def run_optuna_tuning(images, masks, model_path, channels, n_trials):
+def run_optuna_tuning(images, masks, model_path, n_trials):
     """Run Optuna hyperparameter optimization"""
     use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
 
-    if isinstance(model_path, str) and Path(model_path).exists():
-        eval_model = models.CellposeModel(gpu=use_gpu, pretrained_model=model_path)
-    else:
-        eval_model = models.CellposeModel(gpu=use_gpu, model_type=model_path)
+    fine_tuned = isinstance(model_path, str) and Path(model_path).exists()
+    eval_model = (
+        models.CellposeModel(gpu=use_gpu, pretrained_model=model_path)
+        if fine_tuned
+        else models.CellposeModel(gpu=use_gpu)  # pretrained Cellpose-SAM
+    )
 
     # min_size range derived once from the real cell sizes in the ground-truth masks
     ms_lo, ms_hi, ms_step = _min_size_search_bounds(masks)
@@ -38,9 +40,9 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
     cache = {}  # param tuple -> score, so repeats skip eval
 
     def objective(trial):
-        cellprob = round(trial.suggest_float("cellprob", -0.6, 1.0, step=0.1), 1)
-        flowthresh = round(trial.suggest_float("flow_threshold", -0.2, 1.0, step=0.2), 1)
-        niter = trial.suggest_categorical("niter", [0, 200, 500, 1000])
+        cellprob = round(trial.suggest_float("cellprob", -3.0, 3.0, step=0.5), 1)
+        flowthresh = round(trial.suggest_float("flow_threshold", 0.1, 0.9, step=0.1), 1)
+        niter = trial.suggest_categorical("niter", [200, 500, 1000, 2000])
         # min_size bounded to the small end of the measured area distribution
         min_size = trial.suggest_int("min_size", ms_lo, ms_hi, step=ms_step)
 
@@ -53,7 +55,6 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
 
         masks_pred, _, _ = eval_model.eval(
             images,
-            channels=channels,
             diameter=None,
             cellprob_threshold=cellprob,
             flow_threshold=flowthresh,
@@ -78,8 +79,8 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
     sampler = optuna.samplers.TPESampler(seed=42)
     study = optuna.create_study(direction="maximize", sampler=sampler)
     # warm start with on-grid, in-range values matching the search space above
-    study.enqueue_trial(
-        {"cellprob": 0.2, "flow_threshold": 0.4, "niter": 500, "min_size": ms_lo}
+    study.enqueue_trial(  # Cellpose-SAM defaults, on-grid
+        {"cellprob": 0.0, "flow_threshold": 0.4, "niter": 200, "min_size": ms_lo}
     )
     study.optimize(objective, n_trials=n_trials)
 
@@ -92,25 +93,25 @@ def run_optuna_tuning(images, masks, model_path, channels, n_trials):
 
 
 def compute_validation_metrics(
-    images, masks, image_names, base_model_type, tuned_model_path, channels, best_params
+    images, masks, image_names, tuned_model_path, best_params
 ):
     """Compute IoU and count comparison metrics"""
     # Load models
     use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
 
-    base_model = models.CellposeModel(gpu=use_gpu, model_type=base_model_type)
+    base_model = models.CellposeModel(gpu=use_gpu)  # pretrained Cellpose-SAM
     tuned_model = models.CellposeModel(gpu=use_gpu, pretrained_model=tuned_model_path)
 
     hp = dict(
         diameter=None,
-        cellprob_threshold=float(best_params.get("cellprob", 0.2)),
+        cellprob_threshold=float(best_params.get("cellprob", 0.0)),
         flow_threshold=float(best_params.get("flow_threshold", 0.4)),
-        niter=int(best_params.get("niter", 1000)),
-        min_size=int(best_params.get("min_size", 100)),
+        niter=int(best_params.get("niter", 200)),
+        min_size=int(best_params.get("min_size", 15)),
     )
 
-    base_preds, _, _ = base_model.eval(images, channels=channels, **hp)
-    tuned_preds, _, _ = tuned_model.eval(images, channels=channels, **hp)
+    base_preds, _, _ = base_model.eval(images, **hp)
+    tuned_preds, _, _ = tuned_model.eval(images, **hp)
 
     base_ious = []
     tuned_ious = []
@@ -153,7 +154,6 @@ def main():
             masks_obj = data["masks"]
             base_model = str(data["base_model"])
             tuned_model_path = str(data["tuned_model_path"])
-            channels = list(data["channels"])
             do_gridsearch = bool(data["do_gridsearch"])
             n_trials = int(data.get("n_trials", 20))
             image_names_obj = data["image_names"] if "image_names" in data else None
@@ -169,7 +169,6 @@ def main():
         print(f"Loaded {len(images)} images and {len(masks)} masks")
         print(f"Base model: {base_model}")
         print(f"Tuned model: {tuned_model_path}")
-        print(f"Channels: {channels}")
         print(f"Do gridsearch: {do_gridsearch}")
         sys.stdout.flush()
 
@@ -191,18 +190,18 @@ def main():
         sys.stdout.flush()
 
         optuna_results = None
-        best_params = {
-            "cellprob": 0.2,
+        best_params = {  # Cellpose-SAM defaults, used when tuning is off
+            "cellprob": 0.0,
             "flow_threshold": 0.4,
-            "niter": 1000,
-            "min_size": 100,
+            "niter": 200,
+            "min_size": 15,
         }
 
         if do_gridsearch:
             print(f"Running Optuna with {n_trials} trials...")
             sys.stdout.flush()
             optuna_results, best_params = run_optuna_tuning(
-                tune_images, tune_masks, tuned_model_path, channels, n_trials
+                tune_images, tune_masks, tuned_model_path, n_trials
             )
             print(f"Best params: {best_params}")
             sys.stdout.flush()
@@ -214,9 +213,7 @@ def main():
             test_images,
             test_masks,
             test_names,
-            base_model,
             tuned_model_path,
-            channels,
             best_params,
         )
 

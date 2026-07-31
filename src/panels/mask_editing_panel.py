@@ -15,6 +15,7 @@ from src.helpers.classifying_functions import (
     class_manage_fragment,
 )
 from src.helpers.cellpose_functions import (
+    DEFAULT_CELLPOSE_MODEL,
     segment_current_and_refresh,
     batch_segment_and_refresh,
 )
@@ -46,10 +47,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
         ):
 
             model_type_map = {
-                "Cyto3": "cyto3",
-                "Cyto2": "cyto2",
-                "Cyto": "cyto",
-                "Nuclei": "nuclei",
+                "Cellpose-SAM": DEFAULT_CELLPOSE_MODEL,
                 "Fine-tuned Model": None,
             }
             model_options = list(model_type_map)

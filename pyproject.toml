@@ -9,7 +9,9 @@ dependencies = [
     # Ceiling: 1.59 only renders a popover's contents while it is open, so button
     # shortcuts inside popovers (B/G/F/E/S/M) stop working unless it is open.
     "streamlit==1.58.0",
-    "cellpose>=3.0.0,<4.0.0",
+    # Pinned to match src/training/pyproject.toml exactly: the worker fine-tunes the
+    # net and the app loads that state dict, so the two must agree on the weights.
+    "cellpose==4.2.1.1",
     "torch>=2.5.1",
     "torchvision>=0.20.1",
     "opencv-python-headless",  # Lighter than opencv-python

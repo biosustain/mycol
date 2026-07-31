@@ -43,7 +43,7 @@ _DEFAULTS = {
     "zoom": 1.0,
 
     # cellpose model training
-    "cyto_to_train": "cyto3",
+    "cyto_to_train": "cpsam_v2",
     "train_losses": [],
     "test_losses": [],
     # cellpose inference

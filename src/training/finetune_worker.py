@@ -8,6 +8,25 @@ from data_split import split_train_test
 import traceback
 
 
+def _patch_mps_affine_dtype():
+    """Let cellpose 4.2.x train on Apple Silicon.
+
+    Its training augmentation builds the affine matrix with
+    torchvision's `_get_inverse_affine_matrix`, which returns numpy float64
+    scalars. `torch.tensor(matrix, device="mps")` then infers float64, which the
+    MPS backend rejects outright, so every fine-tune crashes before the first step.
+    Returning plain Python floats makes torch infer the default dtype (float32).
+
+    Remove once upstream casts the matrix itself.
+    """
+    if not torch.backends.mps.is_available():
+        return
+    import torchvision.transforms.functional as F
+
+    original = F._get_inverse_affine_matrix
+    F._get_inverse_affine_matrix = lambda *a, **kw: [float(v) for v in original(*a, **kw)]
+
+
 def main():
     try:
         if len(sys.argv) < 3:
@@ -32,7 +51,6 @@ def main():
             weight_decay = float(data["weight_decay"])
             batch_size = int(data["batch_size"]) if "batch_size" in data else 8
             nimg_per_epoch = int(data["nimg_per_epoch"]) or None  # 0 = all images
-            channels = data["channels"].tolist()
             min_train_masks = (
                 int(data["min_train_masks"]) if "min_train_masks" in data else 5
             )
@@ -46,13 +64,11 @@ def main():
 
         # Setup logger
         _ = io.logger_setup()
+        _patch_mps_affine_dtype()
 
-        # Load model
-        init_model = None if base_model == "scratch" else base_model
-        # Note: Use Cellpose 3 logic here (which is what we expect in this environment)
-
+        # Load the pretrained Cellpose-SAM model (CellposeModel uses the current default weights)
         use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
-        cell_model = models.CellposeModel(gpu=use_gpu, model_type=init_model)
+        cell_model = models.CellposeModel(gpu=use_gpu)
 
         model_name = f"{base_model}_finetuned.pt"
 
@@ -65,11 +81,9 @@ def main():
             train_labels=train_masks,
             test_data=test_images,
             test_labels=test_masks,
-            channels=channels,
             n_epochs=epochs,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
-            SGD=True,
             batch_size=batch_size,
             nimg_per_epoch=nimg_per_epoch,
             model_name=model_name,

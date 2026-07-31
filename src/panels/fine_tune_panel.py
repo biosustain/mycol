@@ -11,6 +11,7 @@ from src.helpers.densenet_functions import (
     cancel_densenet_training,
 )
 from src.helpers.cellpose_functions import (
+    DEFAULT_CELLPOSE_MODEL,
     preprocess_for_cellpose,
     start_cellpose_training,
     check_cellpose_training_status,
@@ -201,22 +202,16 @@ def render_cellpose_params():
     # --- show training options ---
     c1, c2, c3 = st.columns(3)
 
-    # Defaults
-    ss.setdefault("cp_base_model", "cyto2")
+    # Defaults follow the Cellpose-SAM paper's fine-tuning protocol: 100 epochs,
+    # 8 images per epoch, batch size 1, AdamW at lr 1e-5 with weight decay 0.1.
+    ss["cp_base_model"] = DEFAULT_CELLPOSE_MODEL  # Cellpose-SAM is the only base model
     ss.setdefault("cp_max_epoch", 100)
-    ss.setdefault("cp_learning_rate", 0.1)
-    ss.setdefault("cp_weight_decay", 1e-4)
-    ss.setdefault("cp_batch_size", 8)
-    ss.setdefault("cp_nimg_per_epoch", None)
+    ss.setdefault("cp_learning_rate", 1e-5)
+    ss.setdefault("cp_weight_decay", 0.1)
+    ss.setdefault("cp_batch_size", 1)
+    ss.setdefault("cp_nimg_per_epoch", 8)
     ss.setdefault("cp_min_cells_per_image", 5)
 
-    ss["cp_base_model"] = c1.selectbox(
-        "Base model",
-        options=["cyto", "cyto2", "cyto3", "nuclei", "scratch"],
-        index=["cyto", "cyto2", "cyto3", "nuclei", "scratch"].index(
-            ss["cp_base_model"]
-        ),
-    )
     ss["cp_max_epoch"] = c2.number_input(
         "Max epochs",
         1,
@@ -254,12 +249,17 @@ def render_cellpose_params():
         help="Images with fewer than this many annotated cells are excluded from training. Cellpose default is 5.",
     )
 
+    BATCH_OPTS = [1, 2, 4]
     ss["cp_batch_size"] = c3.selectbox(
         "Batch size",
-        options=[8, 16, 32, 64],
-        index=[8, 16, 32, 64].index(ss["cp_batch_size"]),
+        options=BATCH_OPTS,
+        index=BATCH_OPTS.index(ss["cp_batch_size"])
+        if ss["cp_batch_size"] in BATCH_OPTS
+        else 0,
         key="cellpose_batch_size",
-        help="Number of images per training batch. Larger batch sizes speed up training but require more memory.",
+        help="Images per training batch. Cellpose-SAM is a 305M-parameter transformer, so "
+        "training memory is the binding constraint — 1 is the value the paper uses and the "
+        "only one guaranteed to fit on a laptop GPU.",
     )
 
     NIMG_OPTS = [None, 8, 32, 64, 128, 256]
@@ -343,9 +343,7 @@ def get_train_setup():
     wd = float(ss.get("cp_weight_decay"))
     batch_size = int(ss.get("cp_batch_size"))
     nimg_per_epoch = ss.get("cp_nimg_per_epoch")  # None = all training images
-    # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
-    channels = [0, 0]
-    return recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells
+    return recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, min_cells
 
 
 @st.cache_data(show_spinner=False)
@@ -396,11 +394,11 @@ def render_cellpose_train_fragment():
         return
 
     # Start async training
-    recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells = (
+    recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, min_cells = (
         get_train_setup()
     )
     start_cellpose_training(
-        recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
+        recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch,
         min_train_masks=min_cells,
     )
     st.rerun()
@@ -560,13 +558,12 @@ def render_cellpose_status_fragment():
 
             from src.panels.fine_tune_panel import get_train_setup
 
-            recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, _ = (
+            recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, _ = (
                 get_train_setup()
             )
             start_cellpose_validation(
                 recs=recs,
                 base_model=base_model,
-                channels=channels,
                 do_gridsearch=ss.get("cp_do_gridsearch", False),
                 n_trials=ss.get("cp_n_trials", 20),
             )
