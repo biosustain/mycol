@@ -57,7 +57,7 @@ _DEFAULTS = {
     "test_losses": [],
     # cellpose inference
     "cp_min_size": 0,
-    "cp_niter": 500,
+    "cp_niter": 200,
     "cp_flow_threshold": 0.3,
     "cp_cellprob_threshold": 0.2,
     "cp_diameter": 0,

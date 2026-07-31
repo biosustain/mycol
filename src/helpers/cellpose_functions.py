@@ -516,6 +516,8 @@ def check_cellpose_validation_status():
                     )
                     ss["cp_min_size"] = int(best_params.get("min_size", 15))
                     ss["cp_niter"] = int(best_params.get("niter", 200))
+                    # the UI stores 0 for "no rescaling" (Cellpose expects None)
+                    ss["cp_diameter"] = int(best_params.get("diameter") or 0)
         except Exception as e:
             st.error(f"Error processing Optuna results: {e}")
 
