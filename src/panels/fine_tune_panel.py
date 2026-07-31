@@ -3,7 +3,11 @@ import pandas as pd
 import streamlit as st
 
 from src.helpers.grid_helpers import render_image_selection_table
-from src.helpers.state_ops import selected_training_keys
+from src.helpers.state_ops import (
+    selected_training_keys,
+    CP_LEARNING_RATE,
+    CP_WEIGHT_DECAY,
+)
 from src.helpers.densenet_functions import (
     build_densenet_zip_bytes,
     start_densenet_training,
@@ -319,8 +323,9 @@ def get_train_setup():
     }
     base_model = ss.get("cp_base_model")
     epochs = int(ss.get("cp_max_epoch"))
-    lr = float(ss.get("cp_learning_rate"))
-    wd = float(ss.get("cp_weight_decay"))
+    # fixed by protocol; also written back so the exported CSV records what was used
+    ss["cp_learning_rate"] = lr = CP_LEARNING_RATE
+    ss["cp_weight_decay"] = wd = CP_WEIGHT_DECAY
     batch_size = int(ss.get("cp_batch_size"))
     nimg_per_epoch = ss.get("cp_nimg_per_epoch")  # None = all training images
     return recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, min_cells

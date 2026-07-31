@@ -9,6 +9,13 @@ import plotly.io as pio
 
 ss = st.session_state
 
+# Fixed by the Cellpose-SAM paper's fine-tuning protocol, not user-editable: AdamW at
+# lr 1e-5 with weight decay 0.1. Cellpose 3's CNN-scale lr diverges on a transformer.
+# Read these directly rather than from session state, which survives code reloads and
+# is repopulated when a session saved by an older build is loaded.
+CP_LEARNING_RATE = 1e-5
+CP_WEIGHT_DECAY = 0.1
+
 # Plotly figures persisted in the session zip as "{key}.json".
 SESSION_PLOT_KEYS = [
     "cellpose_training_losses",
@@ -44,11 +51,8 @@ _DEFAULTS = {
 
     # cellpose model training
     "cyto_to_train": "cpsam_v2",
-    # Fixed by the Cellpose-SAM paper's fine-tuning protocol, not user-editable:
-    # AdamW at lr 1e-5 with weight decay 0.1. Cellpose 3's CNN-scale lr of 0.1
-    # diverges on a transformer backbone.
-    "cp_learning_rate": 1e-5,
-    "cp_weight_decay": 0.1,
+    "cp_learning_rate": CP_LEARNING_RATE,
+    "cp_weight_decay": CP_WEIGHT_DECAY,
     "train_losses": [],
     "test_losses": [],
     # cellpose inference
