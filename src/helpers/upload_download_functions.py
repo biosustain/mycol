@@ -173,20 +173,12 @@ def restore_session(zip_bytes: bytes) -> str | None:
             apply_cellpose_inference_params(dict(zip(df["parameter"], df["value"])))
 
         # ── Cellpose training hyperparameters ─────────────────────────────────
-        if "cellpose_training_hyperparameters.csv" in names:
-            df = pd.read_csv(
-                io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode())
-            )
-            p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_base_model"] = _cast(p.get("base_model"), str, "cpsam_v2")
-            ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
-            ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 1)
-            ss["cp_nimg_per_epoch"] = _cast(p.get("nimg_per_epoch"), int, 8)
-            ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
-            ss["cp_do_gridsearch"] = _cast(
-                p.get("do_gridsearch"), lambda v: str(v).lower() == "true", True
-            )
-            ss["cp_n_trials"] = _cast(p.get("n_trials"), int, 20)
+        # Deliberately NOT restored. They describe how the model in the zip was
+        # trained, and a session saved by the Cellpose 3 build carries settings that
+        # are wrong for Cellpose-SAM (e.g. lr 0.1, batch size 8). The app's own
+        # Cellpose-SAM defaults always win; the CSV is kept in the zip as a record.
+        # Inference hyperparameters above ARE restored, since those belong with the
+        # fine-tuned model and are what it was tuned for.
 
         # ── DenseNet training hyperparameters ─────────────────────────────────
         if "densenet_training_hyperparameters.csv" in names:
