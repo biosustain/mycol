@@ -1,10 +1,14 @@
 import sys
 import numpy as np
 from pathlib import Path
-from cellpose import models, metrics
+from cellpose import models, metrics, dynamics
 import optuna
 import torch
 from data_split import split_train_test
+
+
+# cellpose's own eval() default; kept in step so cached-flow masks match eval() exactly
+MAX_SIZE_FRACTION = 0.4
 
 
 def _min_size_search_bounds(masks):
@@ -22,27 +26,6 @@ def _min_size_search_bounds(masks):
     return 0, hi, step
 
 
-def _diameter_candidates(masks):
-    """Inference `diameter` values to search, seeded from the real cell sizes.
-
-    Cellpose-SAM rescales by 30 / diameter, so a larger value means a smaller image
-    and quadratically less transformer work. The model is trained scale-invariant,
-    so moderate downscaling is usually near-free in accuracy but a large speed win.
-    None (no rescaling) is always included as the baseline. Values below 30 would
-    *up*scale - slower, and not better in practice - so they are dropped.
-    """
-    areas = []
-    for m in masks:
-        vals, cnts = np.unique(np.asarray(m), return_counts=True)
-        areas.append(cnts[vals != 0])
-    areas = np.concatenate(areas) if areas else np.array([], dtype=int)
-    if areas.size == 0:
-        return [None]
-    median_diameter = float(np.median(2 * np.sqrt(areas / np.pi)))
-    scaled = {int(round(median_diameter * f)) for f in (1.0, 1.5, 2.0, 3.0)}
-    return [None] + sorted(d for d in scaled if d >= 30)
-
-
 def run_optuna_tuning(images, masks, model_path, n_trials):
     """Run Optuna hyperparameter optimization"""
     use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
@@ -54,14 +37,26 @@ def run_optuna_tuning(images, masks, model_path, n_trials):
         else models.CellposeModel(gpu=use_gpu)  # pretrained Cellpose-SAM
     )
 
-    # min_size range and diameter candidates derived once from the ground-truth masks
+    # min_size range derived once from the real cell sizes in the ground-truth masks
     ms_lo, ms_hi, ms_step = _min_size_search_bounds(masks)
-    diameters = _diameter_candidates(masks)
-    print(f"diameter candidates: {diameters}")
-    sys.stdout.flush()
 
     results = []
     cache = {}  # param tuple -> score, so repeats skip eval
+
+    # Every searched parameter -- cellprob, flow_threshold, niter, min_size -- is
+    # post-processing of the network output, so the forward pass is identical on every
+    # trial. Run it once and derive each trial's masks from the cached flows. On
+    # Cellpose-SAM the forward pass is ~95% of a trial, so this turns n_trials forward
+    # passes over the tuning set into one.
+    #
+    # dynamics.resize_and_compute_masks() on these flows reproduces CellposeModel.eval()
+    # exactly (verified bit-for-bit on cellpose 4.2.1.1). Diameter is left at None, so
+    # the network sees the images at their own scale.
+    print("computing network flows once for the whole sweep...")
+    sys.stdout.flush()
+    _, _flows, _ = eval_model.eval(images, diameter=None, compute_masks=False)
+    cached_flows = [(f[1], f[2]) for f in _flows]  # ~3 MB per 512x512 image
+    del _flows
 
     def objective(trial):
         cellprob = round(trial.suggest_float("cellprob", -3.0, 3.0, step=0.5), 1)
@@ -69,25 +64,21 @@ def run_optuna_tuning(images, masks, model_path, n_trials):
         niter = trial.suggest_categorical("niter", [200, 500, 1000, 2000])
         # min_size bounded to the small end of the measured area distribution
         min_size = trial.suggest_int("min_size", ms_lo, ms_hi, step=ms_step)
-        # diameter is the only parameter that changes how many pixels reach the network,
-        # so it dominates runtime as well as accuracy
-        diameter = trial.suggest_categorical("diameter", diameters)
 
         # reuse the score if this combination was already evaluated (round guards float keys)
-        key = (round(cellprob, 6), round(flowthresh, 6), niter, min_size, diameter)
+        key = (round(cellprob, 6), round(flowthresh, 6), niter, min_size)
         if key in cache:
             print(f"Reusing cached score {cache[key]:.4f} for {key}")
             sys.stdout.flush()
             return cache[key]
 
-        masks_pred, _, _ = eval_model.eval(
-            images,
-            diameter=diameter,
-            cellprob_threshold=cellprob,
-            flow_threshold=flowthresh,
-            niter=niter,
-            min_size=min_size,
-        )
+        masks_pred = [
+            dynamics.resize_and_compute_masks(
+                dP, cellprob_map, niter=niter, cellprob_threshold=cellprob,
+                flow_threshold=flowthresh, min_size=min_size,
+                max_size_fraction=MAX_SIZE_FRACTION, device=eval_model.device)
+            for dP, cellprob_map in cached_flows
+        ]
         ap = metrics.average_precision(masks, masks_pred)[0]
         score = float(np.nanmean(ap[:, 0]))
 
@@ -98,7 +89,6 @@ def run_optuna_tuning(images, masks, model_path, n_trials):
                 "flow_threshold": flowthresh,
                 "niter": niter,
                 "min_size": min_size,
-                "diameter": diameter,
                 "ap_iou_0.5": score,
             }
         )
@@ -108,10 +98,11 @@ def run_optuna_tuning(images, masks, model_path, n_trials):
     study = optuna.create_study(direction="maximize", sampler=sampler)
     # warm start with on-grid, in-range values matching the search space above
     study.enqueue_trial(  # Cellpose-SAM defaults, on-grid
-        {"cellprob": 0.0, "flow_threshold": 0.4, "niter": 200, "min_size": ms_lo,
-         "diameter": None}
+        {"cellprob": 0.0, "flow_threshold": 0.4, "niter": 200, "min_size": ms_lo}
     )
     study.optimize(objective, n_trials=n_trials)
+
+    cached_flows.clear()
 
     # round saved params to 1 dp (suggest_float leaves fp noise like 0.8000000000000002)
     best_params = {
@@ -132,7 +123,7 @@ def compute_validation_metrics(
     tuned_model = models.CellposeModel(gpu=use_gpu, pretrained_model=tuned_model_path)
 
     hp = dict(
-        diameter=best_params.get("diameter"),
+        diameter=None,
         cellprob_threshold=float(best_params.get("cellprob", 0.0)),
         flow_threshold=float(best_params.get("flow_threshold", 0.4)),
         niter=int(best_params.get("niter", 200)),
@@ -224,7 +215,6 @@ def main():
             "flow_threshold": 0.4,
             "niter": 200,
             "min_size": 15,
-            "diameter": None,
         }
 
         if do_gridsearch:
