@@ -45,8 +45,6 @@
       text-align: center;
     }
 
-    .hero-emoji { font-size: 3.5rem; line-height: 1; margin-bottom: 1rem; }
-
     .hero h1 {
       font-size: clamp(2rem, 5vw, 3rem);
       font-weight: 800;
@@ -224,6 +222,13 @@
       color: var(--gray-600);
     }
 
+    footer a {
+      color: var(--blue-500);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    footer a:hover { text-decoration: underline; }
+
     /* ── Responsive ── */
     @media (max-width: 760px) {
       .section, .section.reverse {
@@ -282,10 +287,25 @@
           <strong>DenseNet model</strong> <em>(optional)</em> - a classification model for labeling segmented cells.
           <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
         </li>
+        <li>
+          <strong>Cellpose settings CSV</strong> <em>(optional)</em> - the inference hyperparameters
+          saved alongside a downloaded model, which reapply a previous segmentation setup without
+          re-entering each value by hand.
+        </li>
+        <li>
+          <strong>Saved session</strong> <em>(optional)</em> - a session zip downloaded earlier,
+          which restores your images, masks, labels, models and settings exactly as you left them.
+        </li>
       </ul>
       <p style="margin-top:1rem;">
+        Everything goes into one uploader and Mycol sorts it out: images and masks are paired by
+        filename, and model files are identified from their contents.
+      </p>
+      <p>
         Once uploaded, a <strong>summary table</strong> shows which images have masks linked,
         how many cells are highlighted in each image, and any models you've provided.
+        No data of your own to hand? <strong>Use demo data</strong> loads an example set so you can
+        try the full workflow first.
       </p>
     </div>
     <div class="section-img" style="padding:0;">
@@ -439,8 +459,9 @@
         <li>Quantify variability and relationships among measured features.</li>
       </ul>
       <p style="margin-top:1rem;">
-        Downloadable results include <strong>cell counts per class</strong>,
-        <strong>descriptive statistics</strong>, and <strong>publication-ready plots</strong>.
+        Downloadable results include <strong>per-image cell counts by class</strong>, a
+        <strong>per-cell metrics table</strong> holding every shape and colour descriptor for
+        every segmented cell, and <strong>publication-ready plots</strong>.
       </p>
     </div>
     <div class="section-img" style="padding:0;">
@@ -493,7 +514,10 @@
 
 <!-- ══════════════ FOOTER ══════════════ -->
 <footer>
-  <p>Mycol - Interactive microscopy analysis platform</p>
+  <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
+    <a href="faq.html">FAQ</a> &nbsp;&middot;&nbsp;
+    <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener">GitHub</a>
+  </p>
 </footer>
 
 </body>
