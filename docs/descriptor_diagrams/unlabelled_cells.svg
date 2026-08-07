@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="297"
+   height="172"
+   viewBox="0 0 297 172"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <g id="layer1">
+
+    <!-- ══ panel titles ══ -->
+    <text x="74" y="14" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="title-a">What you annotated</text>
+    <text x="223" y="14" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="title-b">What the model is taught</text>
+
+    <!-- ══ PANEL A: the image as you annotated it ══ -->
+    <rect x="10" y="22" width="128" height="112"
+       style="fill:#ffffff;stroke:#000000;stroke-width:1.2" id="frame-a" />
+
+    <!-- all three cells are present in the image -->
+    <ellipse cx="46" cy="52" rx="20" ry="14" transform="rotate(-20,46,52)"
+       style="fill:#94a3b8;fill-opacity:0.30;stroke:#000000;stroke-width:0.9" id="a-cell1-body" />
+    <ellipse cx="103" cy="78" rx="18" ry="13" transform="rotate(28,103,78)"
+       style="fill:#94a3b8;fill-opacity:0.30;stroke:#000000;stroke-width:0.9" id="a-cell2-body" />
+    <ellipse cx="52" cy="108" rx="19" ry="13.5" transform="rotate(6,52,108)"
+       style="fill:#94a3b8;fill-opacity:0.30;stroke:#000000;stroke-width:0.9" id="a-cell3-body" />
+
+    <!-- two of them carry a mask outline -->
+    <ellipse cx="46" cy="52" rx="20" ry="14" transform="rotate(-20,46,52)"
+       style="fill:#e5431e;fill-opacity:0.170391;stroke:#000000;stroke-width:3.2;stroke-linejoin:round"
+       id="a-cell1-mask" />
+    <ellipse cx="103" cy="78" rx="18" ry="13" transform="rotate(28,103,78)"
+       style="fill:#e5431e;fill-opacity:0.170391;stroke:#000000;stroke-width:3.2;stroke-linejoin:round"
+       id="a-cell2-mask" />
+
+    <text x="52" y="129" style="font-size:6.5px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="a-label3">not outlined</text>
+
+    <!-- ══ arrow ══ -->
+    <path d="M 141,78 H 150.5" style="stroke:#000000;stroke-width:1.5;fill:none" id="arrow-line" />
+    <path d="M 156,78 148.5,74.6 148.5,81.4 Z" style="fill:#000000;stroke:none" id="arrow-head" />
+
+    <!-- ══ PANEL B: the training signal that produces ══ -->
+    <rect x="159" y="22" width="128" height="112"
+       style="fill:#94a3b8;fill-opacity:0.12;stroke:#000000;stroke-width:1.2" id="frame-b" />
+
+    <ellipse cx="195" cy="52" rx="20" ry="14" transform="rotate(-20,195,52)"
+       style="fill:#e5431e;fill-opacity:0.170391;stroke:#000000;stroke-width:3.2;stroke-linejoin:round"
+       id="b-cell1" />
+    <ellipse cx="252" cy="78" rx="18" ry="13" transform="rotate(28,252,78)"
+       style="fill:#e5431e;fill-opacity:0.170391;stroke:#000000;stroke-width:3.2;stroke-linejoin:round"
+       id="b-cell2" />
+
+    <!-- the missed cell has dissolved into the background class -->
+    <ellipse cx="201" cy="108" rx="19" ry="13.5" transform="rotate(6,201,108)"
+       style="fill:none;stroke:#000000;stroke-width:0.7;stroke-opacity:0.45;stroke-dasharray:2,2"
+       id="b-cell3" />
+
+    <text x="195" y="54.5" style="font-size:6.5px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="b-label1">cell</text>
+    <text x="252" y="80.5" style="font-size:6.5px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="b-label2">cell</text>
+    <text x="201" y="110.5" style="font-size:6.5px;font-family:sans-serif;text-anchor:middle;fill:#000000;fill-opacity:0.7"
+       id="b-label3">background</text>
+
+    <!-- ══ captions ══ -->
+    <text x="74" y="149" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cap-a"><tspan x="74" y="149">Two cells outlined,</tspan><tspan x="74" y="159">one left unannotated</tspan></text>
+    <text x="223" y="149" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cap-b"><tspan x="223" y="149">Every pixel you did not outline</tspan><tspan x="223" y="159">becomes an example of &#8220;not a cell&#8221;</tspan></text>
+
+  </g>
+</svg>

@@ -656,6 +656,8 @@
           Training images should represent the full range of conditions you will encounter:
           different brightness levels, focal planes, cell densities, and edge cases.
           A model trained only on the &ldquo;easy&rdquo; images will struggle with the harder ones.
+          This matters more than almost anything else &mdash; see
+          <a href="#ml-caveats">why models fail on images that look obvious to you</a>.
         </p>
 
         <h3>Watch the loss curves</h3>
@@ -690,7 +692,226 @@
     </div>
   </div>
 
-  <!-- ── 7. Cell descriptors ── -->
+  <!-- ── 7. ML training-set caveats ── -->
+  <div class="faq-card" id="ml-caveats">
+    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+      <span class="faq-q-label">ML basics</span>
+      <span class="faq-q-text">Why does my model work on some images and fail on others?</span>
+      <span class="faq-chevron">&#9660;</span>
+    </button>
+    <div class="faq-answer">
+      <div class="faq-answer-inner">
+        <p>
+          A trained model is not a program that understands cells. It is a statistical mapping,
+          fitted to the exact examples you gave it, from patterns of pixels to an output.
+          It has no concept of what a cell <em>is</em>. Nearly every disappointing result traces
+          back to the same root cause: <strong>the images or the labels used for training did not
+          match what the model was later asked to do</strong>. The sections below cover the ways
+          that happens, and how to avoid them.
+        </p>
+
+        <h3>A model learns to be good at exactly what you trained it on</h3>
+        <p>
+          When you look at a dim, oddly lit image and still see the cells instantly, you are using
+          knowledge the model does not have. All the model learned was which pixel patterns earned
+          a reward on <em>your</em> training images. Change those patterns &mdash; even in ways you
+          would not consciously notice &mdash; and it is being asked to extrapolate into territory
+          it has never seen. It has no fallback of &ldquo;well, obviously that is a cell.&rdquo;
+        </p>
+        <p>
+          This is why a model that worked perfectly last week can fail on today&rsquo;s plate while
+          the task looks completely unchanged to you. The task <em>is</em> unchanged; the input
+          statistics moved.
+        </p>
+
+        <h3>What counts as a &ldquo;different&rdquo; image</h3>
+        <p>
+          Far more than most people expect. Any of the following can be enough to degrade a model,
+          even when the biology and the question are identical:
+        </p>
+        <ul>
+          <li>
+            <strong>Lighting and exposure</strong> &mdash; a different lamp setting, a change in
+            illumination angle, ambient room light, or automatic white balance on the camera.
+          </li>
+          <li>
+            <strong>A different microscope, camera, or objective</strong> &mdash; even two instruments
+            of the same model can differ enough to matter.
+          </li>
+          <li>
+            <strong>Magnification and pixel size</strong> &mdash; a cell 30 px across is a different
+            object to the model than the same cell at 90 px. For Cellpose this also means the
+            <em>diameter</em> setting used at inference has to match what the model was trained for.
+          </li>
+          <li><strong>Focus, motion blur, and noise levels.</strong></li>
+          <li>
+            <strong>Background</strong> &mdash; a different agar or medium colour, a different plate
+            or slide, condensation, scratches, or a clean background where training images had a
+            textured one.
+          </li>
+          <li><strong>Stain, channel, or contrast method.</strong></li>
+          <li>
+            <strong>The sample itself</strong> &mdash; a new strain, a different growth stage,
+            higher density, or colonies touching where training images had isolated ones.
+          </li>
+          <li>
+            <strong>File handling</strong> &mdash; JPEG compression artefacts, 16-bit versus 8-bit,
+            resizing or downscaling, or a different export pipeline from the acquisition software.
+          </li>
+        </ul>
+        <div class="tip-box">
+          <p>
+            There are only two real fixes: <strong>standardise acquisition</strong> so every image
+            resembles the training set, or <strong>add a handful of images from each new condition
+            to the training set and re-train</strong>. The second is usually what you want &mdash;
+            one model trained across three lighting setups is far more useful than three models
+            each trained on one.
+          </p>
+        </div>
+
+        <h3>Augmentation helps, but it cannot invent data</h3>
+        <p>
+          During training, Mycol shows the model randomly altered copies of your examples &mdash;
+          mirrored, slightly rotated, and slightly varied in brightness, contrast, and sharpness.
+          This is called <strong>augmentation</strong>, and it buys some tolerance for free: you do
+          not need to worry about which way round your cells happen to lie, or about small
+          exposure differences between images.
+        </p>
+        <p>
+          What augmentation cannot do is invent data. It only perturbs the examples you supplied,
+          so it will never conjure up a lighting rig, a magnification, or a morphology you never
+          imaged. Genuine diversity in the training set is what buys generalisation; augmentation
+          just smooths the edges of it.
+        </p>
+
+        <h3>When training Cellpose, outline <em>every</em> cell in the image</h3>
+        <p>
+          This is the single most common annotation mistake, and it is easy to make because nothing
+          warns you about it. Cellpose trains on the <strong>whole image</strong>. Anything not
+          inside an outline is not treated as &ldquo;unknown&rdquo; or &ldquo;skipped&rdquo; &mdash;
+          it is an explicit example of <strong>background</strong>. A cell you did not get around
+          to outlining is therefore active training data teaching the model that things which look
+          like that are not cells.
+        </p>
+
+        <div class="desc-figure">
+          <img src="descriptor_diagrams/unlabelled_cells.svg" style="width:72%"
+               alt="Diagram: two cells outlined and one missed; the missed cell becomes a background example" />
+          <p class="desc-caption">
+            Segmentation training has no &ldquo;unlabelled&rdquo; category. A cell left without an
+            outline is not ignored &mdash; it teaches the model that such cells are background.
+          </p>
+        </div>
+
+        <p>In practice this means:</p>
+        <ul>
+          <li>
+            Skipping the faint, small, clumped, or unusual cells teaches the model to ignore exactly
+            those cells &mdash; the hard cases you most wanted help with. The easy ones it could
+            probably already find.
+          </li>
+          <li>
+            A half-annotated dense image is worse than no image at all: every cell left unoutlined
+            contributes a wrong signal, and dense images contain many of them.
+          </li>
+          <li>
+            Be consistent about cells cut off at the image border. Decide a rule &mdash; always
+            outline partial cells, or always leave them &mdash; and apply it to every image.
+            Doing it both ways teaches the model that such objects are sometimes cells and sometimes
+            not, and it will hedge accordingly.
+          </li>
+        </ul>
+        <p>
+          <strong>Rule of thumb:</strong> ten fully annotated images beat fifty partly annotated ones.
+          If an image is too dense to finish, crop a region you <em>can</em> annotate completely and
+          train on that instead. Mycol&rsquo;s <em>min cells per image</em> setting (default 5) drops
+          near-empty images from training, but do not rely on it to catch partial annotations &mdash;
+          an image with twenty of its forty cells outlined passes that filter easily.
+        </p>
+
+        <h3>Classification labels behave differently &mdash; partial is fine, inconsistent is not</h3>
+        <p>
+          DenseNet classifies individual cell patches, so a cell you never assigned a class to is
+          simply left out of the training set. It is not taught as a wrong answer. Partial labelling
+          is therefore safe for classification, unlike segmentation, and you can label as many or as
+          few cells as you have patience for.
+        </p>
+        <p>
+          What does hurt is <strong>inconsistency</strong>. If you call borderline cells one thing at
+          the start of a session and the opposite thing two hours later, or two people apply subtly
+          different criteria, the model receives contradictory examples of the same appearance and
+          learns the boundary between your classes as noise. Write down your criteria for the
+          ambiguous cases before you start, and treat &ldquo;I cannot tell&rdquo; as a legitimate
+          answer &mdash; leaving a cell unlabelled is much better than guessing.
+        </p>
+
+        <h3>Watch out for imbalanced classes</h3>
+        <p>
+          If 95% of your labelled cells are &ldquo;normal&rdquo; and 5% are &ldquo;abnormal&rdquo;,
+          a model that answers &ldquo;normal&rdquo; for every single cell scores 95% accuracy while
+          being completely useless. A headline accuracy figure hides this entirely.
+        </p>
+        <p>
+          After training, read the <strong>confusion matrix</strong> rather than the accuracy figure.
+          Each row shows what actually happened to the cells of one class, so a rare class the model
+          never predicts shows up immediately as a row whose counts have all drifted into the wrong
+          column. The macro-averaged precision, recall, and F1 that Mycol reports alongside it also
+          help, because they weight every class equally rather than by how many cells it has.
+          Aim for a roughly similar number of labelled cells per class; if the interesting class
+          genuinely is rare, deliberately go and find more examples of it to label, and judge the
+          model on how it handles that class.
+        </p>
+
+        <h3>Good numbers on your own data are not proof that it works</h3>
+        <p>
+          During training, part of your data is held back as a <strong>validation set</strong> and the
+          reported scores are measured on it. That is a real check that the model has not simply
+          memorised its training examples &mdash; but it is a weak one, because the held-back data
+          came from the same session, the same plates, and the same imaging setup as everything else.
+          It tells you the model generalises to more of the same. It does not tell you it will
+          generalise to next month&rsquo;s plates.
+        </p>
+        <p>
+          The only test that counts is running the model on a fresh batch of images it has never seen
+          &mdash; ideally acquired on a different day, ideally by a different person &mdash; and
+          looking at the output yourself. Set a few such images aside at the very beginning and never
+          train on them.
+        </p>
+        <p>
+          Beware repeated tuning, too. If you re-train several times with different settings and keep
+          whichever version scored best, you have quietly started fitting to the validation set as
+          well. The more times you consult that number to make a decision, the less it means.
+        </p>
+
+        <h3>More images only help if they are <em>different</em> images</h3>
+        <p>
+          Two hundred fields from one plate on one afternoon are, as far as the model is concerned,
+          close to a single image repeated two hundred times. They mostly make training slower.
+          Twenty images spanning three lighting conditions, two magnifications, and a range of cell
+          densities teach far more.
+        </p>
+        <p>
+          When choosing what to annotate next, the most informative images are the ones your current
+          model gets wrong. Run it, find the failures, correct those, and add them &mdash; the
+          <a href="#tips">annotate &rarr; train &rarr; correct &rarr; repeat</a> cycle is efficient
+          precisely because it keeps steering your training set towards what the model still lacks.
+        </p>
+
+        <div class="tip-box" style="margin-top:0.75rem;">
+          <p>
+            <strong>Before trusting a model, check:</strong> does the training set contain examples of
+            every condition you intend to run it on? Is every cell outlined in every Cellpose training
+            image? Are the class labels consistent and roughly balanced? Has it been tested on images
+            from a different day that were never used in training? A &ldquo;no&rdquo; to any of these
+            predicts the direction in which the model will fail.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 8. Cell descriptors ── -->
   <div class="faq-card" id="descriptors">
     <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
       <span class="faq-q-label">Analysis</span>
