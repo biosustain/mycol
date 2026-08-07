@@ -27,6 +27,29 @@ from src.helpers.help_panels import (
 ss = st.session_state
 
 
+def render_train_split_slider(key: str, *, unit: str, held_out: str) -> float:
+    """Train/held-out split slider, shown as train % and stored as the held-out fraction.
+
+    `key` is the session-state key holding the held-out fraction (e.g. 0.2 for 80/20).
+    """
+    train_pct = st.slider(
+        f"Train / {held_out} split",
+        min_value=50,
+        max_value=95,
+        value=int(round((1.0 - float(ss[key])) * 100)),
+        step=5,
+        format="%d%%",
+        key=f"{key}_slider",
+        help=(
+            f"Share of the {unit} used for training. The rest is held out as the "
+            f"{held_out} set and is never trained on."
+        ),
+    )
+    ss[key] = round(1.0 - train_pct / 100.0, 2)
+    st.caption(f"{train_pct}% train / {100 - train_pct}% {held_out}")
+    return float(ss[key])
+
+
 # ========== DenseNet: options (light) + dataset summary (light-ish) + training (heavy) ==========
 
 
@@ -60,6 +83,10 @@ def render_densenet_params():
         key="max_epoch_densenet_ui",
     )
 
+    render_train_split_slider(
+        "dn_val_split", unit="labelled cells", held_out="validation"
+    )
+
 
 def _densenet_class_counts():
     """Per-class labelled-cell counts for the DenseNet training set, from label dicts."""
@@ -82,8 +109,13 @@ def render_densenet_summary_fragment():
     counts, classes = _densenet_class_counts()
     freq_df = pd.DataFrame({"Class": list(classes), "Count": counts.astype(int)})
 
+    n_cells = int(counts.sum())
+    # sklearn rounds the validation set up, so mirror that here
+    n_val = int(np.ceil(n_cells * float(ss.get("dn_val_split", 0.2))))
+
     st.info(
-        f"Training set: {int(counts.sum())} labelled cells across {len(classes)} classes.",
+        f"Training set: {n_cells} labelled cells across {len(classes)} classes, "
+        f"split into {n_cells - n_val} training and {n_val} validation cells.",
         width="stretch",
     )
     st.dataframe(
@@ -113,7 +145,7 @@ def render_densenet_train_fragment():
     input_size = int(ss.get("dn_input_size"))
     batch_size = int(ss.get("dn_batch_size"))
     epochs = int(ss.get("dn_max_epoch"))
-    val_split = 0.2
+    val_split = float(ss.get("dn_val_split", 0.2))
 
     # --- check if we have enough data to train ---
     can_train = densenet_can_train()
@@ -297,6 +329,8 @@ def render_cellpose_params():
                     help="Number of hyperparameter combinations to try during optimisation. More trials may yield better results but take longer.",
                 )
 
+    render_train_split_slider("cp_test_split", unit="images", held_out="test")
+
 
 def render_cellpose_summary():
     """Training-set summary for the selected Cellpose images (filtered by min cells per image)."""
@@ -317,9 +351,14 @@ def render_cellpose_summary():
         else:
             n_fail_images += 1
 
+    # sklearn rounds the test set up, so mirror that here
+    test_split = float(ss.get("cp_test_split", 0.2))
+    n_test = int(np.ceil(n_pass_images * test_split)) if n_pass_images >= 2 else 0
+
     st.info(
         f"Training set: {n_pass_masks} cell masks across {n_pass_images} images "
-        f"(≥ {min_cells} cells per image).",
+        f"(≥ {min_cells} cells per image), split into "
+        f"{n_pass_images - n_test} training and {n_test} held-out test images.",
         width="stretch",
     )
     if n_fail_images > 0:
@@ -343,9 +382,13 @@ def get_train_setup():
     wd = float(ss.get("cp_weight_decay"))
     batch_size = int(ss.get("cp_batch_size"))
     nimg_per_epoch = ss.get("cp_nimg_per_epoch")  # None = all training images
+    test_split = float(ss.get("cp_test_split", 0.2))
     # images are converted to grayscale in preprocess_for_cellpose, so channels are fixed
     channels = [0, 0]
-    return recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells
+    return (
+        recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
+        min_cells, test_split,
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -396,12 +439,14 @@ def render_cellpose_train_fragment():
         return
 
     # Start async training
-    recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, min_cells = (
-        get_train_setup()
-    )
+    (
+        recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
+        min_cells, test_split,
+    ) = get_train_setup()
     start_cellpose_training(
         recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
         min_train_masks=min_cells,
+        test_split=test_split,
     )
     st.rerun()
 
@@ -560,15 +605,17 @@ def render_cellpose_status_fragment():
 
             from src.panels.fine_tune_panel import get_train_setup
 
-            recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels, _ = (
-                get_train_setup()
-            )
+            (
+                recs, base_model, epochs, lr, wd, batch_size, nimg_per_epoch, channels,
+                _, test_split,
+            ) = get_train_setup()
             start_cellpose_validation(
                 recs=recs,
                 base_model=base_model,
                 channels=channels,
                 do_gridsearch=ss.get("cp_do_gridsearch", False),
                 n_trials=ss.get("cp_n_trials", 20),
+                test_split=test_split,
             )
             ss.pop("cp_training_job", None)
             st.rerun()

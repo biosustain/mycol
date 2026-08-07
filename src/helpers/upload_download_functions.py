@@ -185,6 +185,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
             ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
             ss["cp_nimg_per_epoch"] = _cast(p.get("nimg_per_epoch"), int, None)
             ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
+            ss["cp_test_split"] = _cast(p.get("test_split"), float, 0.2)
             ss["cp_do_gridsearch"] = _cast(
                 p.get("do_gridsearch"), lambda v: str(v).lower() == "true", True
             )

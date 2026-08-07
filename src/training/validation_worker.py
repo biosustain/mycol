@@ -156,6 +156,7 @@ def main():
             channels = list(data["channels"])
             do_gridsearch = bool(data["do_gridsearch"])
             n_trials = int(data.get("n_trials", 20))
+            test_split = float(data["test_split"]) if "test_split" in data else 0.2
             image_names_obj = data["image_names"] if "image_names" in data else None
 
         images = [np.asarray(img, dtype=np.float32) for img in images_obj]  # ew
@@ -175,7 +176,7 @@ def main():
 
         # Model trained on train_idx and never saw test_idx: tune on a subsample of
         # the training images, report metrics on the held-out test images.
-        train_idx, test_idx = split_train_test(len(images))
+        train_idx, test_idx = split_train_test(len(images), test_size=test_split)
         test_idx = test_idx or train_idx  # too few images to hold any out
         tune_idx = train_idx[:40]  # cap tuning at 40 training images (already shuffled)
 

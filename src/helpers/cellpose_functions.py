@@ -395,6 +395,7 @@ def start_cellpose_training(
     nimg_per_epoch=None,
     channels=[0, 0],
     min_train_masks=5,
+    test_split=0.2,
 ):
     """Starts Cellpose fine-tuning asynchronously using cp3 worker bridge"""
     images, masks = [], []
@@ -418,6 +419,7 @@ def start_cellpose_training(
             nimg_per_epoch=(nimg_per_epoch or 0),  # 0 = None sentinel (all images)
             channels=np.array(channels),
             min_train_masks=min_train_masks,
+            test_split=test_split,
         ),
         metadata={"base_model": base_model, "num_images": len(images)},
     )
@@ -456,7 +458,7 @@ def cancel_cellpose_training():
 
 
 def start_cellpose_validation(
-    recs, base_model, channels, do_gridsearch=False, n_trials=20
+    recs, base_model, channels, do_gridsearch=False, n_trials=20, test_split=0.2
 ):
     model_path = get_cellpose_weights()
     if not model_path:
@@ -479,6 +481,7 @@ def start_cellpose_validation(
             channels=np.array(channels),
             do_gridsearch=do_gridsearch,
             n_trials=n_trials,
+            test_split=test_split,
         ),
     )
 
@@ -568,6 +571,7 @@ def write_cellpose_param_csvs(zf) -> None:
         "batch_size": ss.get("cp_batch_size"),
         "nimg_per_epoch": ss.get("cp_nimg_per_epoch"),
         "min_cells_per_image": ss.get("cp_min_cells_per_image"),
+        "test_split": ss.get("cp_test_split", 0.2),
         "training_ch1": 0,
         "training_ch2": 0,
         "do_gridsearch": ss.get("cp_do_gridsearch", False),

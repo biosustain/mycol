@@ -46,6 +46,7 @@ _DEFAULTS = {
     "cyto_to_train": "cyto3",
     "train_losses": [],
     "test_losses": [],
+    "cp_test_split": 0.2,               # fraction of images held out from training
     # cellpose inference
     "cp_min_size": 0,
     "cp_niter": 500,

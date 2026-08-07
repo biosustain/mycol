@@ -36,9 +36,10 @@ def main():
             min_train_masks = (
                 int(data["min_train_masks"]) if "min_train_masks" in data else 5
             )
+            test_split = float(data["test_split"]) if "test_split" in data else 0.2
 
         # shared split; the model never trains on the test images
-        train_idx, test_idx = split_train_test(len(images))
+        train_idx, test_idx = split_train_test(len(images), test_size=test_split)
         train_images = [images[i] for i in train_idx]
         train_masks = [masks[i] for i in train_idx]
         test_images = [images[i] for i in test_idx] or None  # [] -> None (no test set)
