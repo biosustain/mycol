@@ -4,105 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mycol - FAQ</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    /* ── Reset & Base ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --blue-50:  #E9F2FF;
-      --blue-100: #c7dcff;
-      --blue-500: #2563eb;
-      --blue-600: #1d4ed8;
-      --blue-700: #1e40af;
-      --gray-50:  #f6f7f9;
-      --gray-100: #eef0f3;
-      --gray-300: #cbd5e1;
-      --gray-600: #475569;
-      --gray-700: #334155;
-      --gray-900: #0f172a;
-      --white:    #ffffff;
-      --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
-      --shadow-md: 0 4px 18px rgba(0,0,0,.12);
-      --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
-      --radius:   14px;
-      --radius-sm: 8px;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--gray-50);
-      color: var(--gray-700);
-      line-height: 1.65;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      background: linear-gradient(135deg, var(--blue-50) 0%, var(--white) 60%);
-      border-bottom: 1px solid var(--gray-100);
-      padding: 5rem 2rem 4rem;
-      text-align: center;
-    }
-
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 800;
-      color: var(--gray-900);
-      margin-bottom: 1rem;
-    }
-
-    .hero h1 span { color: var(--blue-600); }
-
-    .hero p {
-      max-width: 640px;
-      margin: 0 auto 2rem;
-      font-size: 1.1rem;
-      color: var(--gray-600);
-    }
-
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      justify-content: center;
-    }
-
-    .badge {
-      background: var(--white);
-      border: 1.5px solid var(--blue-100);
-      border-radius: 999px;
-      padding: 0.35rem 0.9rem;
-      font-size: 0.83rem;
-      font-weight: 600;
-      color: var(--blue-600);
-      box-shadow: var(--shadow-sm);
-      text-decoration: none;
-      transition: background 0.15s, border-color 0.15s;
-    }
-
-    .badge:hover {
-      background: var(--blue-100);
-      border-color: var(--blue-500);
-    }
-
-    /* ── Main content ── */
-    main {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 3rem 2rem 5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
-
-    /* ── FAQ Card ── */
+    /* ── Page-specific: collapsible question cards ── */
     .faq-card {
       background: var(--white);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
+      border: 1.5px solid var(--gray-100);
+      border-radius: var(--radius-sm);
       overflow: hidden;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
+
+    .faq-card:hover { border-color: var(--blue-100); }
+    .faq-card.open { border-color: var(--blue-100); box-shadow: var(--shadow-sm); }
 
     .faq-question {
       width: 100%;
@@ -110,11 +25,12 @@
       border: none;
       cursor: pointer;
       text-align: left;
-      padding: 1.5rem 1.75rem;
+      padding: 1.1rem 1.25rem;
       display: flex;
       align-items: flex-start;
       gap: 1rem;
       transition: background 0.15s;
+      font-family: inherit;
     }
 
     .faq-question:hover { background: var(--gray-50); }
@@ -123,18 +39,19 @@
       flex-shrink: 0;
       background: var(--blue-50);
       color: var(--blue-600);
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       border-radius: 999px;
-      padding: 0.25rem 0.65rem;
-      margin-top: 0.15rem;
+      padding: 0.15rem 0.6rem;
+      margin-top: 0.2rem;
+      white-space: nowrap;
     }
 
     .faq-q-text {
       flex: 1;
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 700;
       color: var(--gray-900);
       line-height: 1.4;
@@ -145,7 +62,7 @@
       margin-top: 0.2rem;
       color: var(--blue-500);
       transition: transform 0.25s ease;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
     .faq-card.open .faq-chevron { transform: rotate(180deg); }
@@ -153,23 +70,21 @@
     .faq-answer {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.35s ease, padding 0.25s ease;
+      transition: max-height 0.35s ease;
     }
 
     .faq-card.open .faq-answer { max-height: 9999px; }
 
     .faq-answer-inner {
-      padding: 0 1.75rem 1.75rem 1.75rem;
+      padding: 1.1rem 1.25rem 1.4rem;
       border-top: 1px solid var(--gray-100);
-      padding-top: 1.25rem;
     }
 
     .faq-answer-inner p,
     .faq-answer-inner li {
-      font-size: 0.97rem;
+      font-size: 0.95rem;
       color: var(--gray-600);
       margin-bottom: 0.6rem;
-      text-align: justify;
     }
 
     .faq-answer-inner ul,
@@ -180,7 +95,6 @@
     }
 
     .faq-answer-inner li { margin-bottom: 0.4rem; }
-
     .faq-answer-inner strong { color: var(--gray-900); }
 
     .faq-answer-inner a {
@@ -189,6 +103,14 @@
       font-weight: 500;
     }
     .faq-answer-inner a:hover { text-decoration: underline; }
+
+    .faq-answer-inner h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-top: 1rem;
+      margin-bottom: 0.35rem;
+    }
 
     code {
       font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -199,25 +121,17 @@
       color: var(--gray-900);
     }
 
-    .faq-answer-inner h3 {
-      font-size: 0.97rem;
-      font-weight: 700;
-      color: var(--gray-900);
-      margin-top: 1rem;
-      margin-bottom: 0.35rem;
-    }
-
-    /* tip box */
+    /* tip box - matches the shared .callout treatment */
     .tip-box {
       background: var(--blue-50);
-      border-left: 3px solid var(--blue-500);
-      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--blue-500);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       padding: 0.85rem 1.1rem;
       margin-top: 0.75rem;
     }
     .tip-box p { margin-bottom: 0; }
 
-    /* ── Descriptor section ── */
+    /* ── Page-specific: shape-descriptor accordions ── */
     .desc-notation {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -257,6 +171,7 @@
       justify-content: space-between;
       gap: 0.75rem;
       transition: background 0.15s;
+      font-family: inherit;
     }
 
     .desc-toggle:hover { background: var(--blue-50); }
@@ -283,23 +198,6 @@
     }
 
     .desc-item.open .desc-body { max-height: 9999px; }
-
-    .desc-body-inner {
-      padding: 0.9rem 1rem 1rem;
-      border-top: 1px solid var(--gray-100);
-    }
-
-    /* apply inner padding via the direct children when open */
-    .desc-item.open .desc-body > * {
-      padding-left: 1rem;
-      padding-right: 1rem;
-    }
-
-    .desc-item.open .desc-body p,
-    .desc-item.open .desc-body li,
-    .desc-item.open .desc-body ul {
-      padding-left: 0;
-    }
 
     .desc-body p,
     .desc-body li {
@@ -347,24 +245,8 @@
 
     @media (max-width: 600px) {
       .desc-notation { grid-template-columns: 1fr; }
+      .faq-question { flex-wrap: wrap; gap: 0.5rem; }
     }
-
-    /* ── Footer ── */
-    footer {
-      background: var(--white);
-      border-top: 1px solid var(--gray-100);
-      text-align: center;
-      padding: 2rem;
-      font-size: 0.85rem;
-      color: var(--gray-600);
-    }
-
-    footer a {
-      color: var(--blue-500);
-      text-decoration: none;
-      font-weight: 500;
-    }
-    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -378,859 +260,930 @@
   </p>
   <div class="badge-row">
     <a href="index.html" class="badge">Workflow</a>
-    <a href="faq.html" class="badge">FAQ</a>
+    <a href="faq.html" class="badge current">FAQ</a>
+    <a href="functionality.html" class="badge">Functionality Guide</a>
     <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener" class="badge">GitHub</a>
   </div>
 </section>
 
+<!-- ══════════════ STICKY NAV ══════════════ -->
+<nav class="section-nav">
+  <div class="section-nav-inner">
+    <a href="#uploading"><i>↑</i> Uploading your data</a>
+    <a href="#models"><i>◈</i> How the models work</a>
+    <a href="#results"><i>★</i> Getting good results</a>
+    <a href="#measuring"><i>∑</i> Measurements</a>
+  </div>
+</nav>
+
 <!-- ══════════════ MAIN ══════════════ -->
 <main>
 
-  <!-- ── 1. ML training-set caveats ── -->
-  <div class="faq-card" id="ml-caveats">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">ML basics</span>
-      <span class="faq-q-text">Why does my model work on some images and fail on others?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          A trained model is not a program that understands cells. It is a statistical mapping,
-          fitted to the exact examples you gave it, from patterns of pixels to an output.
-          It has no concept of what a cell <em>is</em>. Nearly every disappointing result traces
-          back to the same root cause: <strong>the images or the labels used for training did not
-          match what the model was later asked to do</strong>. The sections below cover the ways
-          that happens, and how to avoid them.
-        </p>
-
-        <h3>A model learns to be good at exactly what you trained it on</h3>
-        <p>
-          When you look at a dim, oddly lit image and still see the cells instantly, you are using
-          knowledge the model does not have. All the model learned was which pixel patterns earned
-          a reward on <em>your</em> training images. Change those patterns - even in ways you
-          would not consciously notice - and it is being asked to extrapolate into territory
-          it has never seen. It has no fallback of &ldquo;well, obviously that is a cell.&rdquo;
-        </p>
-        <p>
-          This is why a model that worked perfectly last week can fail on today&rsquo;s plate while
-          the task looks completely unchanged to you. The task <em>is</em> unchanged; the input
-          statistics moved.
-        </p>
-
-        <h3>What counts as a &ldquo;different&rdquo; image</h3>
-        <p>
-          Far more than most people expect. Any of the following can be enough to degrade a model,
-          even when the biology and the question are identical:
-        </p>
-        <ul>
-          <li>
-            <strong>Lighting and exposure</strong> - a different lamp setting, a change in
-            illumination angle, ambient room light, or automatic white balance on the camera.
-          </li>
-          <li>
-            <strong>A different microscope, camera, or objective</strong> - even two instruments
-            of the same model can differ enough to matter.
-          </li>
-          <li>
-            <strong>Magnification and pixel size</strong> - a cell 30 px across is a different
-            object to the model than the same cell at 90 px. For Cellpose this also means the
-            <em>diameter</em> setting used at inference has to match what the model was trained for.
-          </li>
-          <li><strong>Focus, motion blur, and noise levels.</strong></li>
-          <li>
-            <strong>Background</strong> - a different agar or medium colour, a different plate
-            or slide, condensation, scratches, or a clean background where training images had a
-            textured one.
-          </li>
-          <li><strong>Stain, channel, or contrast method.</strong></li>
-          <li>
-            <strong>The sample itself</strong> - a new strain, a different growth stage,
-            higher density, or colonies touching where training images had isolated ones.
-          </li>
-          <li>
-            <strong>File handling</strong> - JPEG compression artefacts, 16-bit versus 8-bit,
-            resizing or downscaling, or a different export pipeline from the acquisition software.
-          </li>
-        </ul>
-        <div class="tip-box">
-          <p>
-            There are only two real fixes: <strong>standardise acquisition</strong> so every image
-            resembles the training set, or <strong>add a handful of images from each new condition
-            to the training set and re-train</strong>. The second is usually what you want -
-            one model trained across three lighting setups is far more useful than three models
-            each trained on one.
-          </p>
-        </div>
-
-        <h3>Augmentation helps, but it cannot invent data</h3>
-        <p>
-          During training, Mycol shows the model randomly altered copies of your examples. Cell
-          patches are mirrored, rotated by up to 15 degrees, nudged in brightness and contrast, and
-          slightly blurred; Cellpose applies its own equivalent transformations internally.
-          This is called <strong>augmentation</strong>, and it buys some tolerance for free: you do
-          not need to worry about which way round your cells happen to lie, or about small
-          exposure and focus differences between images.
-        </p>
-        <p>
-          What augmentation cannot do is invent data. It only perturbs the examples you supplied,
-          so it will never conjure up a lighting rig, a magnification, or a morphology you never
-          imaged. Genuine diversity in the training set is what buys generalisation; augmentation
-          just smooths the edges of it.
-        </p>
-
-        <h3>When training Cellpose, outline <em>every</em> cell in the image</h3>
-        <p>
-          This is the single most common annotation mistake, and it is easy to make because nothing
-          warns you about it. Cellpose trains on the <strong>whole image</strong>. Anything not
-          inside an outline is not treated as &ldquo;unknown&rdquo; or &ldquo;skipped&rdquo; -
-          it is an explicit example of <strong>background</strong>. A cell you did not get around
-          to outlining is therefore active training data teaching the model that things which look
-          like that are not cells.
-        </p>
-
-        <div class="desc-figure">
-          <img src="descriptor_diagrams/unlabelled_cells.svg" style="width:72%"
-               alt="Diagram: two cells outlined and one missed; the missed cell becomes a background example" />
-          <p class="desc-caption">
-            Segmentation training has no &ldquo;unlabelled&rdquo; category. A cell left without an
-            outline is not ignored - it teaches the model that such cells are background.
-          </p>
-        </div>
-
-        <p>In practice this means:</p>
-        <ul>
-          <li>
-            Skipping the faint, small, clumped, or unusual cells teaches the model to ignore exactly
-            those cells - the hard cases you most wanted help with. The easy ones it could
-            probably already find.
-          </li>
-          <li>
-            A half-annotated dense image is worse than no image at all: every cell left unoutlined
-            contributes a wrong signal, and dense images contain many of them.
-          </li>
-          <li>
-            Be consistent about cells cut off at the image border. Decide a rule - always
-            outline partial cells, or always leave them - and apply it to every image.
-            Doing it both ways teaches the model that such objects are sometimes cells and sometimes
-            not, and it will hedge accordingly.
-          </li>
-        </ul>
-        <p>
-          <strong>Rule of thumb:</strong> ten fully annotated images beat fifty partly annotated ones.
-          If an image is too dense to finish, crop a region you <em>can</em> annotate completely and
-          train on that instead. Mycol&rsquo;s <em>min cells per image</em> setting (default 5) drops
-          near-empty images from training, but do not rely on it to catch partial annotations -
-          an image with twenty of its forty cells outlined passes that filter easily.
-        </p>
-
-        <h3>Classification labels behave differently - partial is fine, inconsistent is not</h3>
-        <p>
-          DenseNet classifies individual cell patches, so a cell you never assigned a class to is
-          simply left out of the training set. It is not taught as a wrong answer. Partial labelling
-          is therefore safe for classification, unlike segmentation, and you can label as many or as
-          few cells as you have patience for.
-        </p>
-        <p>
-          What does hurt is <strong>inconsistency</strong>. If you call borderline cells one thing at
-          the start of a session and the opposite thing two hours later, or two people apply subtly
-          different criteria, the model receives contradictory examples of the same appearance and
-          learns the boundary between your classes as noise. Write down your criteria for the
-          ambiguous cases before you start, and treat &ldquo;I cannot tell&rdquo; as a legitimate
-          answer - leaving a cell unlabelled is much better than guessing.
-        </p>
-
-        <h3>Watch out for imbalanced classes</h3>
-        <p>
-          If 95% of your labelled cells are &ldquo;normal&rdquo; and 5% are &ldquo;abnormal&rdquo;,
-          a model that answers &ldquo;normal&rdquo; for every single cell scores 95% accuracy while
-          being completely useless. A headline accuracy figure hides this entirely.
-        </p>
-        <p>
-          After training, read the <strong>confusion matrix</strong> rather than the accuracy figure.
-          Each row shows what actually happened to the cells of one class, so a rare class the model
-          never predicts shows up immediately as a row whose counts have all drifted into the wrong
-          column. The macro-averaged precision, recall, and F1 that Mycol reports alongside it also
-          help, because they weight every class equally rather than by how many cells it has.
-          Aim for a roughly similar number of labelled cells per class; if the interesting class
-          genuinely is rare, deliberately go and find more examples of it to label, and judge the
-          model on how it handles that class.
-        </p>
-
-        <h3>Good numbers on your own data are not proof that it works</h3>
-        <p>
-          During training, part of your data is held back as a <strong>validation set</strong> and the
-          reported scores are measured on it. That is a real check that the model has not simply
-          memorised its training examples - but it is a weak one, because the held-back data
-          came from the same session, the same plates, and the same imaging setup as everything else.
-          It tells you the model generalises to more of the same. It does not tell you it will
-          generalise to next month&rsquo;s plates.
-        </p>
-        <p>
-          The only test that counts is running the model on a fresh batch of images it has never seen
-          - ideally acquired on a different day, ideally by a different person - and
-          looking at the output yourself. Set a few such images aside at the very beginning and never
-          train on them.
-        </p>
-        <p>
-          Beware repeated tuning, too. If you re-train several times with different settings and keep
-          whichever version scored best, you have quietly started fitting to the validation set as
-          well. The more times you consult that number to make a decision, the less it means.
-        </p>
-
-        <h3>More images only help if they are <em>different</em> images</h3>
-        <p>
-          Two hundred fields from one plate on one afternoon are, as far as the model is concerned,
-          close to a single image repeated two hundred times. They mostly make training slower.
-          Twenty images spanning three lighting conditions, two magnifications, and a range of cell
-          densities teach far more.
-        </p>
-        <p>
-          When choosing what to annotate next, the most informative images are the ones your current
-          model gets wrong. Run it, find the failures, correct those, and add them - the
-          <a href="#tips">annotate &rarr; train &rarr; correct &rarr; repeat</a> cycle is efficient
-          precisely because it keeps steering your training set towards what the model still lacks.
-        </p>
-
-        <div class="tip-box" style="margin-top:0.75rem;">
-          <p>
-            <strong>Before trusting a model, check:</strong> does the training set contain examples of
-            every condition you intend to run it on? Is every cell outlined in every Cellpose training
-            image? Are the class labels consistent and roughly balanced? Has it been tested on images
-            from a different day that were never used in training? A &ldquo;no&rdquo; to any of these
-            predicts the direction in which the model will fail.
-          </p>
-        </div>
-
+  <section class="page" id="uploading">
+    <header class="page-banner" data-mark="↑">
+      <div class="page-num">↑</div>
+      <div>
+        <h2>Uploading your data</h2>
+        <p>What Mycol accepts, and what each kind of file is for.</p>
       </div>
-    </div>
-  </div>
+    </header>
+    <div class="page-body">
 
-  <!-- ── 2. Cellpose ── -->
-  <div class="faq-card" id="cellpose">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Segmentation</span>
-      <span class="faq-q-text">What is Cellpose and how does it work?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          <strong>Cellpose</strong> is a deep-learning model purpose-built for biological cell and nucleus segmentation.
-          Rather than predicting a simple foreground/background mask, it learns to predict
-          <strong>gradient flows</strong> - vectors that point from every pixel toward the center of the nearest cell.
-          A simple post-processing step then follows those gradients to group pixels into individual cell instances,
-          making it remarkably robust to cells of different sizes, shapes, and imaging conditions.
-        </p>
+      <div class="faq-card" id="uploads">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Upload</span>
+          <span class="faq-q-text">What can I upload to Mycol, and what does each file type do?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
 
-        <div class="desc-figure">
-          <img src="descriptor_diagrams/segmentation_task.svg" style="width:72%"
-               alt="Diagram: a raw image of four cells, and the same image with one mask outlining each cell" />
-          <p class="desc-caption">
-            The aim of segmentation: turn a raw image into one mask per cell. Predicting a centre for
-            every cell is what lets touching neighbours be split apart rather than fused into a
-            single blob, and separate masks are what make counting and per-cell measurement possible.
-          </p>
-        </div>
-        <p>
-          Cellpose is pre-trained on a large, diverse collection of microscopy images and generalises
-          well out of the box. When your images differ significantly from the training data (unusual stains,
-          atypical morphology, low magnification), fine-tuning on a small set of your own annotated images
-          - which Mycol supports directly - can dramatically improve results.
-        </p>
+            <h3>Images <em>(required)</em></h3>
+            <p>
+              The microscopy or sample images you want to analyse. Standard formats such as TIFF, PNG,
+              and JPEG are supported. Every other file type is optional and supplementary: images are
+              the only thing you must upload to start working.
+            </p>
 
-        <h3>Versions used in Mycol</h3>
-        <ul>
-          <li>
-            <strong>Cellpose 2</strong> introduced a human-in-the-loop training workflow,
-            allowing users to correct segmentation errors and immediately improve the model with very few
-            additional annotations.
-            <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">
-              Read the Cellpose 2 paper (Nature Methods, 2022) &rarr;
-            </a>
-          </li>
-          <li>
-            <strong>Cellpose 3</strong> added image restoration capabilities (denoising, deblurring,
-            and upsampling) so that segmentation quality is maintained even on noisy or low-resolution data.
-            <a href="https://www.nature.com/articles/s41592-024-02215-8" target="_blank" rel="noopener">
-              Read the Cellpose 3 paper (Nature Methods, 2024) &rarr;
-            </a>
-          </li>
-        </ul>
+            <h3>Masks <em>(optional)</em></h3>
+            <p>
+              Segmentation masks that outline the cells or regions of interest in your images.
+              Each mask is a labelled image where every cell is represented by a unique integer ID,
+              and background pixels are zero. Uploading existing masks lets you skip the automatic
+              segmentation step and jump straight to classification or analysis, or to continue
+              refining masks you created in a previous session. You can upload the Cellpose .npy format
+              or a tiff where each cell is a different integer value.
+            </p>
 
-        <div class="tip-box">
-          <p>
-            Official website and documentation:
-            <a href="https://www.cellpose.org/" target="_blank" rel="noopener">cellpose.org</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
+            <h3>Cellpose model <em>(optional)</em></h3>
+            <p>
+              A trained segmentation model as a <code>.pt</code> or <code>.pth</code> file, either
+              fine-tuned in Mycol and downloaded earlier or trained elsewhere. It then replaces the
+              default model everywhere segmentation runs. Without one, Mycol falls back to its built-in
+              pre-trained model, which is usually a reasonable starting point.
+            </p>
 
-  <!-- ── 3. DenseNet ── -->
-  <div class="faq-card" id="densenet">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Classification</span>
-      <span class="faq-q-text">What is DenseNet and why is it used for cell classification?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          <strong>DenseNet</strong> (Densely Connected Convolutional Network) is a convolutional neural
-          network architecture designed for image classification.
-          Its key idea is that <strong>every layer is directly connected to every other layer</strong> within
-          a dense block: the input to each layer is the concatenation of the feature maps from all preceding
-          layers, not just the previous one.
-        </p>
-        <p>
-          This dense connectivity has two practical benefits:
-        </p>
-        <ul>
-          <li>
-            <strong>Feature reuse</strong> - early low-level features (edges, textures) remain
-            accessible to later layers without having to be re-learned, so the network extracts richer
-            representations with fewer parameters.
-          </li>
-          <li>
-            <strong>Gradient flow</strong> - during training, gradients can travel directly from
-            the loss back to the earliest layers, which prevents the &ldquo;vanishing gradient&rdquo;
-            problem and makes training more stable, especially on small datasets.
-          </li>
-        </ul>
-        <p>
-          Mycol uses <strong>DenseNet-121</strong>, applied at the <strong>individual cell level</strong>:
-          each segmented cell is cropped out as its own small patch and classified into one of your
-          user-defined classes.
-        </p>
+            <h3>DenseNet model <em>(optional)</em></h3>
+            <p>
+              A trained cell classification model, also <code>.pt</code> or <code>.pth</code>. Unlike
+              segmentation there is no default classifier, so automatic classification stays unavailable
+              until you upload one or train one. Mycol tells the two model types apart from their
+              contents, so both go in the same uploader and neither needs special naming.
+            </p>
 
-        <div class="desc-figure">
-          <img src="descriptor_diagrams/classification_task.svg" style="width:72%"
-               alt="Diagram: masked but unlabelled cells cropped into patches, each assigned a class" />
-          <p class="desc-caption">
-            Classification picks up where segmentation stops. Masks locate the cells but say nothing
-            about them, so each one is cropped out and judged on its own appearance. The classes mean
-            whatever you decide they mean, which is why this step always needs a model trained on
-            your labels.
-          </p>
-        </div>
-        <p>
-          Training never starts from scratch. Mycol begins from a backbone pre-trained on ImageNet
-          and replaces only its final layer with one sized to your classes, so the low-level features
-          above are already learned before it sees a single cell of yours. That is why a useful
-          classifier needs tens of labelled cells per class rather than thousands. You can also skip
-          training entirely and upload a checkpoint trained earlier.
-        </p>
-        <div class="tip-box">
-          <p>
-            Original paper: Huang et al., <em>Densely Connected Convolutional Networks</em>, CVPR 2017.
-            <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf"
-               target="_blank" rel="noopener">Read the paper &rarr;</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
+            <h3>Cellpose inference hyperparameters CSV <em>(optional)</em></h3>
+            <p>
+              A small two-column <code>parameter,value</code> file listing the Cellpose inference
+              settings - diameter, cell-probability threshold, flow threshold, minimum size,
+              and number of iterations. These significantly affect segmentation, so uploading the
+              <code>cellpose_inference_hyperparameters.csv</code> (found in a downloaded model or a
+              saved-session zip) automatically applies those settings on the Annotation page,
+              letting you reproduce a previous segmentation without re-entering each value by hand.
+            </p>
 
-  <!-- ── 4. Pixel to distance ── -->
-  <div class="faq-card" id="px2dist">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Measurement</span>
-      <span class="faq-q-text">How does the pixel-to-distance conversion work?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          When Mycol measures a cell - its area, perimeter, diameter, and so on - the raw
-          number is always in <strong>pixels</strong>, because that is what the image is made of.
-          A pixel has no inherent physical size; it depends entirely on your microscope&rsquo;s
-          magnification and camera settings.
-        </p>
-        <p>
-          The <strong>pixel-to-distance conversion</strong> lets you express measurements in
-          real-world units by supplying a single number: <strong>how much physical distance one pixel
-          represents</strong> in your images (the <em>pixel size</em> or <em>image scale</em>, often
-          found in your microscope software or image metadata). Turn it on with the
-          <em>Convert to distance</em> option on the <strong>Visualize Cell Attributes</strong> page,
-          then enter the pixel size and its unit. The unit is only a label, so any text works; it
-          defaults to &micro;m and follows through to the plot axes and the exported table.
-        </p>
-        <p>For example:</p>
-        <ul>
-          <li>If 1 pixel = 0.5 &micro;m and a cell has an area of 400 px&sup2;, its physical area is 400 &times; 0.5&sup2; = <strong>100 &micro;m&sup2;</strong>.</li>
-          <li>Linear measurements (perimeter, diameter) scale by the factor directly: 40 px &times; 0.5 = <strong>20 &micro;m</strong>.</li>
-        </ul>
-        <p>
-          Without a conversion factor, Mycol reports sizes in pixels. Either way this touches only the
-          descriptors that carry a unit: area, perimeter, the two axis lengths and the Feret diameter.
-          Ratios such as circularity, solidity and eccentricity are dimensionless and never converted.
-        </p>
-        <p>
-          Pixels are fine for comparing cells within one experiment, but cross-experiment or
-          publication comparisons need physical units. Enter the pixel size of your
-          <strong>original</strong> images: if resize-on-upload was left on, Mycol has already
-          converted every measurement back to original-image pixels.
-        </p>
-        <div class="tip-box">
-          <p>
-            <strong>How to find your pixel size:</strong> check the metadata embedded in the image file
-            (e.g. the TIFF tags), your microscope acquisition software, or ask your facility&rsquo;s
-            imaging staff for the calibration value at the magnification you used.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
+            <h3>Saved Session <em>(optional)</em></h3>
+            <p>
+              A zip archive produced by the <strong>Session Restore</strong> download option.
+              Uploading it reloads a previous Mycol session in full: all images, masks, class labels,
+              trained models, and settings are restored exactly as they were when the session was saved.
+              This is the recommended way to pause and resume long annotation or training projects,
+              or to share a complete working state with a collaborator.
+            </p>
 
-  <!-- ── 5. SAM2 ── -->
-  <div class="faq-card" id="sam2">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Segmentation</span>
-      <span class="faq-q-text">What is SAM2 and when should I use it?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          <strong>SAM2</strong> (Segment Anything Model 2) is a general-purpose segmentation model
-          developed by Meta AI. Unlike Cellpose, which was trained specifically on microscopy images,
-          SAM2 was trained on an enormous and diverse collection of natural images and videos.
-          Its strength is <strong>promptable segmentation</strong>: given a point, bounding box, or
-          rough outline supplied by the user, SAM2 predicts a precise mask for the object at that location.
-        </p>
-        <p>
-          In Mycol, SAM2 is used as an <strong>interactive segmentation tool</strong>.
-          Instead of running fully automatically across the whole image, you highlight a cell
-          with a box and SAM2 will generate a high-quality mask for that cell.
-          This makes it especially useful for:
-        </p>
-        <ul>
-          <li>Segmenting unusual cell types or objects where Cellpose may struggle.</li>
-          <li>Quickly annotating small numbers of cells for a training set without running a full automatic pass.</li>
-        </ul>
-        <p>
-          Because SAM2 relies on your prompt rather than learning from your specific image type,
-          it does not need to be fine-tuned - it works out of the box. However, for fully
-          automatic, hands-off segmentation of large image sets, a trained Cellpose model will
-          generally be faster and more consistent.
-        </p>
-        <div class="tip-box">
-          <p>
-            Learn more about SAM2:
-            <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">ai.meta.com/sam2</a>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 6. Upload types ── -->
-  <div class="faq-card" id="uploads">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Upload</span>
-      <span class="faq-q-text">What can I upload to Mycol, and what does each file type do?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-
-        <h3>Images <em>(required)</em></h3>
-        <p>
-          The microscopy or sample images you want to analyse. Standard formats such as TIFF, PNG,
-          and JPEG are supported. Every other file type is optional and supplementary: images are
-          the only thing you must upload to start working.
-        </p>
-
-        <h3>Masks <em>(optional)</em></h3>
-        <p>
-          Segmentation masks that outline the cells or regions of interest in your images.
-          Each mask is a labelled image where every cell is represented by a unique integer ID,
-          and background pixels are zero. Uploading existing masks lets you skip the automatic
-          segmentation step and jump straight to classification or analysis, or to continue
-          refining masks you created in a previous session. You can upload the Cellpose .npy format
-          or a tiff where each cell is a different integer value.
-        </p>
-
-        <h3>Cellpose model <em>(optional)</em></h3>
-        <p>
-          A trained segmentation model as a <code>.pt</code> or <code>.pth</code> file, either
-          fine-tuned in Mycol and downloaded earlier or trained elsewhere. It then replaces the
-          default model everywhere segmentation runs. Without one, Mycol falls back to its built-in
-          pre-trained model, which is usually a reasonable starting point.
-        </p>
-
-        <h3>DenseNet model <em>(optional)</em></h3>
-        <p>
-          A trained cell classification model, also <code>.pt</code> or <code>.pth</code>. Unlike
-          segmentation there is no default classifier, so automatic classification stays unavailable
-          until you upload one or train one. Mycol tells the two model types apart from their
-          contents, so both go in the same uploader and neither needs special naming.
-        </p>
-
-        <h3>Cellpose inference hyperparameters CSV <em>(optional)</em></h3>
-        <p>
-          A small two-column <code>parameter,value</code> file listing the Cellpose inference
-          settings - diameter, cell-probability threshold, flow threshold, minimum size,
-          and number of iterations. These significantly affect segmentation, so uploading the
-          <code>cellpose_inference_hyperparameters.csv</code> (found in a downloaded model or a
-          saved-session zip) automatically applies those settings on the Annotation page,
-          letting you reproduce a previous segmentation without re-entering each value by hand.
-        </p>
-
-        <h3>Saved Session <em>(optional)</em></h3>
-        <p>
-          A zip archive produced by the <strong>Session Restore</strong> download option.
-          Uploading it reloads a previous Mycol session in full: all images, masks, class labels,
-          trained models, and settings are restored exactly as they were when the session was saved.
-          This is the recommended way to pause and resume long annotation or training projects,
-          or to share a complete working state with a collaborator.
-        </p>
-
-        <h3>Practical notes</h3>
-        <ul>
-          <li>
-            <strong>Masks are paired to images by filename.</strong> A mask is named after its image
-            plus a suffix, <code>_masks</code> by default, so <code>plate1.tif</code> pairs with
-            <code>plate1_masks.tif</code>. The suffix can be changed next to the uploader. A mask
-            with no matching image is skipped and reported.
-          </li>
-          <li>
-            <strong>Images are resized to 512 x 512 by default</strong>, to keep the app responsive
-            on large images. Measurements are unaffected: Mycol converts every size back, so areas
-            and lengths always refer to your original image. Untick the box beside the uploader to
-            keep full resolution.
-          </li>
-          <li>
-            <strong>The limit is 512 MB per upload.</strong> Larger sets are fine, just add them in
-            batches; later uploads extend your session rather than replacing it.
-          </li>
-          <li>
-            <strong>You do not need your own data to start.</strong> <em>Use demo data</em> loads a
-            small example set so you can walk through the whole workflow first.
-          </li>
-        </ul>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 7. Training tips ── -->
-  <div class="faq-card" id="tips">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Tips</span>
-      <span class="faq-q-text">General tips for training Cellpose and DenseNet models</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-        <p>
-          You do not need a machine learning background to train useful models in Mycol.
-          The guidelines below cover the most impactful things you can do to get good results.
-        </p>
-
-        <h3>Start with the pre-trained Cellpose model</h3>
-        <p>
-          Before training any segmentation model, run the default Cellpose model on a few images.
-          Often the out-of-the-box result is already good enough, or needs only minor corrections.
-          Training is worth the effort only when automatic results are consistently poor.
-        </p>
-        <p>
-          Classification has no equivalent starting point: your classes are whatever you define them
-          to be, so no general-purpose classifier can exist, and the automatic classification buttons
-          stay disabled until you train a DenseNet model or upload one. The question is never whether
-          to train, only how many cells to label first.
-        </p>
-
-        <h3>Data quality beats data quantity</h3>
-        <p>
-          A small set of carefully checked annotations is almost always better than a large set
-          of sloppy ones. For Cellpose, 10&ndash;30 well-corrected images are usually enough to
-          see a meaningful improvement. For DenseNet classification, aim for
-          <strong>at least 50&ndash;100 annotated cells per class</strong>, and ensure the classes
-          are balanced (similar numbers per class).
-        </p>
-
-        <h3>Cover the diversity in your data</h3>
-        <p>
-          Training images should represent the full range of conditions you will encounter:
-          different brightness levels, focal planes, cell densities, and edge cases.
-          A model trained only on the &ldquo;easy&rdquo; images will struggle with the harder ones.
-          This matters more than almost anything else - see
-          <a href="#ml-caveats">why models fail on images that look obvious to you</a>.
-        </p>
-
-        <h3>Watch the loss curves</h3>
-        <p>
-          After training, Mycol shows a plot of how the model&rsquo;s error (the &ldquo;loss&rdquo;)
-          decreased over each training epoch. A healthy training run shows both the
-          <strong>training loss</strong> and the <strong>validation loss</strong> falling steadily
-          and then levelling off close together. If the validation loss starts rising while the
-          training loss keeps falling, the model is <strong>overfitting</strong> - it is
-          memorising your training data rather than learning general patterns. In that case,
-          stop training earlier (fewer epochs) or add more diverse training images.
-        </p>
-
-        <h3>Iterate in small steps</h3>
-        <p>
-          Train a model, test it on new images, correct the errors, add those corrected
-          images back to your training set, and re-train. This cycle of
-          <em>annotate &rarr; train &rarr; correct &rarr; repeat</em> is the most efficient
-          way to improve a model without needing thousands of images up front.
-        </p>
-
-
-        <div class="tip-box" style="margin-top:0.75rem;">
-          <p>
-            <strong>DenseNet tip:</strong> DenseNet classifies individual cell patches, so the quality
-            of your segmentation masks directly affects classification accuracy. Fix obvious
-            segmentation errors (merged cells, background fragments) before training a classifier.
-          </p>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 8. Cell descriptors ── -->
-  <div class="faq-card" id="descriptors">
-    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
-      <span class="faq-q-label">Analysis</span>
-      <span class="faq-q-text">What do the cell shape descriptors mean?</span>
-      <span class="faq-chevron">&#9660;</span>
-    </button>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">
-
-        <p>
-          For every segmented cell, Mycol computes a set of descriptors from the mask region: eight
-          describing its <strong>shape</strong> and three describing its <strong>colour</strong>. All
-          of them appear in the downloadable cell metrics table and can be plotted by class on the
-          Visualize Cell Attributes page. Shape descriptors are computed using
-          <a href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops"
-             target="_blank" rel="noopener"><code>skimage.measure.regionprops</code></a>
-          from the <a href="https://scikit-image.org/" target="_blank" rel="noopener">scikit-image</a> library.
-        </p>
-        <p>
-          Only the size descriptors carry a unit: <strong>area</strong>, <strong>perimeter</strong>,
-          the two <strong>axis lengths</strong> and the <strong>Feret diameter</strong> are in pixels
-          unless a <a href="#px2dist">pixel-to-distance conversion</a> is supplied. The remaining
-          descriptors are ratios or fractions and are dimensionless, so they read the same whatever
-          units you work in.
-        </p>
-
-        <div class="desc-notation">
-          <div class="desc-notation-text">
-            <p><strong>Notation used below:</strong></p>
+            <h3>Practical notes</h3>
             <ul>
-              <li><strong>A</strong> - area (number of pixels inside the cell mask)</li>
-              <li><strong>P</strong> - perimeter (length of the cell boundary)</li>
-              <li><strong>a, b</strong> - semi-major and semi-minor axes of the best-fit ellipse</li>
+              <li>
+                <strong>Masks are paired to images by filename.</strong> A mask is named after its image
+                plus a suffix, <code>_masks</code> by default, so <code>plate1.tif</code> pairs with
+                <code>plate1_masks.tif</code>. The suffix can be changed next to the uploader. A mask
+                with no matching image is skipped and reported.
+              </li>
+              <li>
+                <strong>Images are resized to 512 x 512 by default</strong>, to keep the app responsive
+                on large images. Measurements are unaffected: Mycol converts every size back, so areas
+                and lengths always refer to your original image. Untick the box beside the uploader to
+                keep full resolution.
+              </li>
+              <li>
+                <strong>The limit is 512 MB per upload.</strong> Larger sets are fine, just add them in
+                batches; later uploads extend your session rather than replacing it.
+              </li>
+              <li>
+                <strong>You do not need your own data to start.</strong> <em>Use demo data</em> loads a
+                small example set so you can walk through the whole workflow first.
+              </li>
             </ul>
-          </div>
-          <div class="desc-notation-img">
-            <img src="descriptor_diagrams/plot_download.svg" alt="Example cell measurement plot" />
+
           </div>
         </div>
-
-        <!-- area -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Area (A)</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p><strong>What it describes:</strong> The size of the cell in pixels.</p>
-          </div>
-        </div>
-
-        <!-- perimeter -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Perimeter (P)</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p><strong>What it describes:</strong> The length of the cell&rsquo;s boundary.</p>
-          </div>
-        </div>
-
-        <!-- major / minor axes -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Major &amp; Minor Axis Lengths</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> The longest (major) and shortest (minor) diameters of the
-              best-fit ellipse. Larger major-axis values relative to cell size indicate a more elongated cell.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/axes.svg" alt="Major and minor axis diagram" />
-              <p class="desc-caption">
-                The major axis is the longest diameter of the best-fit ellipse; the minor axis is the
-                shortest diameter perpendicular to it.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- feret diameter -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Feret Diameter</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> The largest distance between any two points on the
-              cell&rsquo;s boundary, as if measured with callipers. Unlike the major axis length it assumes
-              no particular shape, so it is the more reliable size measure for irregular or bent cells.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/feret_diameter.svg" alt="Feret diameter diagram" />
-              <p class="desc-caption">
-                A calliper reading depends on the direction it is taken in: Fh across and Fv down.
-                Turning the same cell changes both. Mycol reports the maximum Feret diameter, the
-                largest reading over every direction, so it does not depend on how the cell lies.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- circularity / roundness -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Circularity &amp; Roundness</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> Two related measures of how circle-like and compact a
-              shape is. Both are close to 1 for near-circular cells and decrease with
-              elongation or irregular boundaries.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/circularity_roundness.svg"
-                   alt="Circularity roundness diagram" />
-              <p class="desc-caption">
-                For the same area A, shapes with longer perimeters P have lower circularity and roundness.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- eccentricity -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Eccentricity</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> How stretched the best-fit ellipse is, from 0 to 1. A value
-              of 0 is a perfect circle; values approaching 1 are increasingly elongated. It compares the two
-              axes, so it does not change with the size of the cell.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/eccentricity.svg"
-                   alt="Eccentricity diagram" />
-              <p class="desc-caption">
-                As the major axis grows relative to the minor axis, eccentricity rises from 0 towards 1.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- solidity -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Solidity</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> How filled the cell is relative to its convex hull.
-              A value of 1 indicates a perfectly convex shape; lower values indicate concavities or
-              irregular boundaries.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/solidity.svg" alt="Solidity diagram" />
-              <p class="desc-caption">
-                A convex shape matches its convex hull (solidity &asymp; 1). Indentations or irregular
-                boundaries reduce area relative to the hull, lowering solidity.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- extent -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Extent</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What it describes:</strong> The fraction of the bounding box area occupied by the
-              cell. Values near 1 indicate the cell nearly fills its bounding box.
-            </p>
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/extent.svg" alt="Extent diagram" />
-              <p class="desc-caption">
-                Extent measures how much of the bounding box the cell occupies. Thin or irregular cells
-                leave more empty space in their bounding box and have lower extent values.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- colour -->
-        <div class="desc-item">
-          <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
-            <span class="desc-name">Redness, Greenness &amp; Blueness</span>
-            <span class="desc-chevron">&#9660;</span>
-          </button>
-          <div class="desc-body">
-            <p>
-              <strong>What they describe:</strong> The colour balance of the cell, measured only from
-              the pixels inside its mask so the background cannot influence it. Each value is that
-              channel&rsquo;s mean divided by the sum of all three, so the three always add up to 1.
-              A cell at 0.5 red, 0.3 green, 0.2 blue is one whose colour leans red.
-            </p>
-            <p>
-              Being fractions rather than raw intensities, they capture <em>hue</em> and not
-              <em>brightness</em>: a dim and a bright cell of the same colour give identical values,
-              which is what makes them comparable across cells that happen to be lit differently.
-              Grayscale images have no colour to measure, so all three read one third.
-            </p>
-            <p>
-              <strong>White balance:</strong> before these are computed, Mycol scales each image&rsquo;s
-              channels until its background is neutral gray. This removes colour casts from lamp
-              temperature or camera settings, so cells imaged on different days stay comparable.
-              Referencing the background rather than the cells is deliberate: it corrects the lighting
-              without flattening real colour differences between cells. Only these three descriptors
-              are affected, never segmentation, classification or the images you download.
-            </p>
-          </div>
-        </div>
-
       </div>
+
+      <!-- ── 7. Training tips ── -->
+
     </div>
-  </div>
+  </section>
+
+  <section class="page" id="models">
+    <header class="page-banner" data-mark="◈">
+      <div class="page-num">◈</div>
+      <div>
+        <h2>How the models work</h2>
+        <p>The three models behind the app - what each does, and when to reach for it.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="faq-card" id="cellpose">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Segmentation</span>
+          <span class="faq-q-text">What is Cellpose and how does it work?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              <strong>Cellpose</strong> is a deep-learning model purpose-built for biological cell and nucleus segmentation.
+              Rather than predicting a simple foreground/background mask, it learns to predict
+              <strong>gradient flows</strong> - vectors that point from every pixel toward the center of the nearest cell.
+              A simple post-processing step then follows those gradients to group pixels into individual cell instances,
+              making it remarkably robust to cells of different sizes, shapes, and imaging conditions.
+            </p>
+
+            <div class="desc-figure">
+              <img src="descriptor_diagrams/segmentation_task.svg" style="width:72%"
+                   alt="Diagram: a raw image of four cells, and the same image with one mask outlining each cell" />
+              <p class="desc-caption">
+                The aim of segmentation: turn a raw image into one mask per cell. Predicting a centre for
+                every cell is what lets touching neighbours be split apart rather than fused into a
+                single blob, and separate masks are what make counting and per-cell measurement possible.
+              </p>
+            </div>
+            <p>
+              Cellpose is pre-trained on a large, diverse collection of microscopy images and generalises
+              well out of the box. When your images differ significantly from the training data (unusual stains,
+              atypical morphology, low magnification), fine-tuning on a small set of your own annotated images
+              - which Mycol supports directly - can dramatically improve results.
+            </p>
+
+            <h3>Versions used in Mycol</h3>
+            <ul>
+              <li>
+                <strong>Cellpose 2</strong> introduced a human-in-the-loop training workflow,
+                allowing users to correct segmentation errors and immediately improve the model with very few
+                additional annotations.
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">
+                  Read the Cellpose 2 paper (Nature Methods, 2022) &rarr;
+                </a>
+              </li>
+              <li>
+                <strong>Cellpose 3</strong> added image restoration capabilities (denoising, deblurring,
+                and upsampling) so that segmentation quality is maintained even on noisy or low-resolution data.
+                <a href="https://www.nature.com/articles/s41592-024-02215-8" target="_blank" rel="noopener">
+                  Read the Cellpose 3 paper (Nature Methods, 2024) &rarr;
+                </a>
+              </li>
+            </ul>
+
+            <div class="tip-box">
+              <p>
+                Official website and documentation:
+                <a href="https://www.cellpose.org/" target="_blank" rel="noopener">cellpose.org</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 3. DenseNet ── -->
+
+      <div class="faq-card" id="sam2">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Segmentation</span>
+          <span class="faq-q-text">What is SAM2 and when should I use it?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              <strong>SAM2</strong> (Segment Anything Model 2) is a general-purpose segmentation model
+              developed by Meta AI. Unlike Cellpose, which was trained specifically on microscopy images,
+              SAM2 was trained on an enormous and diverse collection of natural images and videos.
+              Its strength is <strong>promptable segmentation</strong>: given a point, bounding box, or
+              rough outline supplied by the user, SAM2 predicts a precise mask for the object at that location.
+            </p>
+            <p>
+              In Mycol, SAM2 is used as an <strong>interactive segmentation tool</strong>.
+              Instead of running fully automatically across the whole image, you highlight a cell
+              with a box and SAM2 will generate a high-quality mask for that cell.
+              This makes it especially useful for:
+            </p>
+            <ul>
+              <li>Segmenting unusual cell types or objects where Cellpose may struggle.</li>
+              <li>Quickly annotating small numbers of cells for a training set without running a full automatic pass.</li>
+            </ul>
+            <p>
+              Because SAM2 relies on your prompt rather than learning from your specific image type,
+              it does not need to be fine-tuned - it works out of the box. However, for fully
+              automatic, hands-off segmentation of large image sets, a trained Cellpose model will
+              generally be faster and more consistent.
+            </p>
+            <div class="tip-box">
+              <p>
+                Learn more about SAM2:
+                <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">ai.meta.com/sam2</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 6. Upload types ── -->
+
+      <div class="faq-card" id="densenet">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Classification</span>
+          <span class="faq-q-text">What is DenseNet and why is it used for cell classification?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              <strong>DenseNet</strong> (Densely Connected Convolutional Network) is a convolutional neural
+              network architecture designed for image classification.
+              Its key idea is that <strong>every layer is directly connected to every other layer</strong> within
+              a dense block: the input to each layer is the concatenation of the feature maps from all preceding
+              layers, not just the previous one.
+            </p>
+            <p>
+              This dense connectivity has two practical benefits:
+            </p>
+            <ul>
+              <li>
+                <strong>Feature reuse</strong> - early low-level features (edges, textures) remain
+                accessible to later layers without having to be re-learned, so the network extracts richer
+                representations with fewer parameters.
+              </li>
+              <li>
+                <strong>Gradient flow</strong> - during training, gradients can travel directly from
+                the loss back to the earliest layers, which prevents the &ldquo;vanishing gradient&rdquo;
+                problem and makes training more stable, especially on small datasets.
+              </li>
+            </ul>
+            <p>
+              Mycol uses <strong>DenseNet-121</strong>, applied at the <strong>individual cell level</strong>:
+              each segmented cell is cropped out as its own small patch and classified into one of your
+              user-defined classes.
+            </p>
+
+            <div class="desc-figure">
+              <img src="descriptor_diagrams/classification_task.svg" style="width:72%"
+                   alt="Diagram: masked but unlabelled cells cropped into patches, each assigned a class" />
+              <p class="desc-caption">
+                Classification picks up where segmentation stops. Masks locate the cells but say nothing
+                about them, so each one is cropped out and judged on its own appearance. The classes mean
+                whatever you decide they mean, which is why this step always needs a model trained on
+                your labels.
+              </p>
+            </div>
+            <p>
+              Training never starts from scratch. Mycol begins from a backbone pre-trained on ImageNet
+              and replaces only its final layer with one sized to your classes, so the low-level features
+              above are already learned before it sees a single cell of yours. That is why a useful
+              classifier needs tens of labelled cells per class rather than thousands. You can also skip
+              training entirely and upload a checkpoint trained earlier.
+            </p>
+            <div class="tip-box">
+              <p>
+                Original paper: Huang et al., <em>Densely Connected Convolutional Networks</em>, CVPR 2017.
+                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf"
+                   target="_blank" rel="noopener">Read the paper &rarr;</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 4. Pixel to distance ── -->
+
+    </div>
+  </section>
+
+  <section class="page" id="results">
+    <header class="page-banner" data-mark="★">
+      <div class="page-num">★</div>
+      <div>
+        <h2>Getting good results</h2>
+        <p>Why a model can look perfect on one plate and fall apart on the next, and how to train one that travels.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="faq-card" id="ml-caveats">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">ML basics</span>
+          <span class="faq-q-text">Why does my model work on some images and fail on others?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              A trained model is not a program that understands cells. It is a statistical mapping,
+              fitted to the exact examples you gave it, from patterns of pixels to an output.
+              It has no concept of what a cell <em>is</em>. Nearly every disappointing result traces
+              back to the same root cause: <strong>the images or the labels used for training did not
+              match what the model was later asked to do</strong>. The sections below cover the ways
+              that happens, and how to avoid them.
+            </p>
+
+            <h3>A model learns to be good at exactly what you trained it on</h3>
+            <p>
+              When you look at a dim, oddly lit image and still see the cells instantly, you are using
+              knowledge the model does not have. All the model learned was which pixel patterns earned
+              a reward on <em>your</em> training images. Change those patterns - even in ways you
+              would not consciously notice - and it is being asked to extrapolate into territory
+              it has never seen. It has no fallback of &ldquo;well, obviously that is a cell.&rdquo;
+            </p>
+            <p>
+              This is why a model that worked perfectly last week can fail on today&rsquo;s plate while
+              the task looks completely unchanged to you. The task <em>is</em> unchanged; the input
+              statistics moved.
+            </p>
+
+            <h3>What counts as a &ldquo;different&rdquo; image</h3>
+            <p>
+              Far more than most people expect. Any of the following can be enough to degrade a model,
+              even when the biology and the question are identical:
+            </p>
+            <ul>
+              <li>
+                <strong>Lighting and exposure</strong> - a different lamp setting, a change in
+                illumination angle, ambient room light, or automatic white balance on the camera.
+              </li>
+              <li>
+                <strong>A different microscope, camera, or objective</strong> - even two instruments
+                of the same model can differ enough to matter.
+              </li>
+              <li>
+                <strong>Magnification and pixel size</strong> - a cell 30 px across is a different
+                object to the model than the same cell at 90 px. For Cellpose this also means the
+                <em>diameter</em> setting used at inference has to match what the model was trained for.
+              </li>
+              <li><strong>Focus, motion blur, and noise levels.</strong></li>
+              <li>
+                <strong>Background</strong> - a different agar or medium colour, a different plate
+                or slide, condensation, scratches, or a clean background where training images had a
+                textured one.
+              </li>
+              <li><strong>Stain, channel, or contrast method.</strong></li>
+              <li>
+                <strong>The sample itself</strong> - a new strain, a different growth stage,
+                higher density, or colonies touching where training images had isolated ones.
+              </li>
+              <li>
+                <strong>File handling</strong> - JPEG compression artefacts, 16-bit versus 8-bit,
+                resizing or downscaling, or a different export pipeline from the acquisition software.
+              </li>
+            </ul>
+            <div class="tip-box">
+              <p>
+                There are only two real fixes: <strong>standardise acquisition</strong> so every image
+                resembles the training set, or <strong>add a handful of images from each new condition
+                to the training set and re-train</strong>. The second is usually what you want -
+                one model trained across three lighting setups is far more useful than three models
+                each trained on one.
+              </p>
+            </div>
+
+            <h3>Augmentation helps, but it cannot invent data</h3>
+            <p>
+              During training, Mycol shows the model randomly altered copies of your examples. Cell
+              patches are mirrored, rotated by up to 15 degrees, nudged in brightness and contrast, and
+              slightly blurred; Cellpose applies its own equivalent transformations internally.
+              This is called <strong>augmentation</strong>, and it buys some tolerance for free: you do
+              not need to worry about which way round your cells happen to lie, or about small
+              exposure and focus differences between images.
+            </p>
+            <p>
+              What augmentation cannot do is invent data. It only perturbs the examples you supplied,
+              so it will never conjure up a lighting rig, a magnification, or a morphology you never
+              imaged. Genuine diversity in the training set is what buys generalisation; augmentation
+              just smooths the edges of it.
+            </p>
+
+            <h3>When training Cellpose, outline <em>every</em> cell in the image</h3>
+            <p>
+              This is the single most common annotation mistake, and it is easy to make because nothing
+              warns you about it. Cellpose trains on the <strong>whole image</strong>. Anything not
+              inside an outline is not treated as &ldquo;unknown&rdquo; or &ldquo;skipped&rdquo; -
+              it is an explicit example of <strong>background</strong>. A cell you did not get around
+              to outlining is therefore active training data teaching the model that things which look
+              like that are not cells.
+            </p>
+
+            <div class="desc-figure">
+              <img src="descriptor_diagrams/unlabelled_cells.svg" style="width:72%"
+                   alt="Diagram: two cells outlined and one missed; the missed cell becomes a background example" />
+              <p class="desc-caption">
+                Segmentation training has no &ldquo;unlabelled&rdquo; category. A cell left without an
+                outline is not ignored - it teaches the model that such cells are background.
+              </p>
+            </div>
+
+            <p>In practice this means:</p>
+            <ul>
+              <li>
+                Skipping the faint, small, clumped, or unusual cells teaches the model to ignore exactly
+                those cells - the hard cases you most wanted help with. The easy ones it could
+                probably already find.
+              </li>
+              <li>
+                A half-annotated dense image is worse than no image at all: every cell left unoutlined
+                contributes a wrong signal, and dense images contain many of them.
+              </li>
+              <li>
+                Be consistent about cells cut off at the image border. Decide a rule - always
+                outline partial cells, or always leave them - and apply it to every image.
+                Doing it both ways teaches the model that such objects are sometimes cells and sometimes
+                not, and it will hedge accordingly.
+              </li>
+            </ul>
+            <p>
+              <strong>Rule of thumb:</strong> ten fully annotated images beat fifty partly annotated ones.
+              If an image is too dense to finish, crop a region you <em>can</em> annotate completely and
+              train on that instead. Mycol&rsquo;s <em>min cells per image</em> setting (default 5) drops
+              near-empty images from training, but do not rely on it to catch partial annotations -
+              an image with twenty of its forty cells outlined passes that filter easily.
+            </p>
+
+            <h3>Classification labels behave differently - partial is fine, inconsistent is not</h3>
+            <p>
+              DenseNet classifies individual cell patches, so a cell you never assigned a class to is
+              simply left out of the training set. It is not taught as a wrong answer. Partial labelling
+              is therefore safe for classification, unlike segmentation, and you can label as many or as
+              few cells as you have patience for.
+            </p>
+            <p>
+              What does hurt is <strong>inconsistency</strong>. If you call borderline cells one thing at
+              the start of a session and the opposite thing two hours later, or two people apply subtly
+              different criteria, the model receives contradictory examples of the same appearance and
+              learns the boundary between your classes as noise. Write down your criteria for the
+              ambiguous cases before you start, and treat &ldquo;I cannot tell&rdquo; as a legitimate
+              answer - leaving a cell unlabelled is much better than guessing.
+            </p>
+
+            <h3>Watch out for imbalanced classes</h3>
+            <p>
+              If 95% of your labelled cells are &ldquo;normal&rdquo; and 5% are &ldquo;abnormal&rdquo;,
+              a model that answers &ldquo;normal&rdquo; for every single cell scores 95% accuracy while
+              being completely useless. A headline accuracy figure hides this entirely.
+            </p>
+            <p>
+              After training, read the <strong>confusion matrix</strong> rather than the accuracy figure.
+              Each row shows what actually happened to the cells of one class, so a rare class the model
+              never predicts shows up immediately as a row whose counts have all drifted into the wrong
+              column. The macro-averaged precision, recall, and F1 that Mycol reports alongside it also
+              help, because they weight every class equally rather than by how many cells it has.
+              Aim for a roughly similar number of labelled cells per class; if the interesting class
+              genuinely is rare, deliberately go and find more examples of it to label, and judge the
+              model on how it handles that class.
+            </p>
+
+            <h3>Good numbers on your own data are not proof that it works</h3>
+            <p>
+              During training, part of your data is held back as a <strong>validation set</strong> and the
+              reported scores are measured on it. That is a real check that the model has not simply
+              memorised its training examples - but it is a weak one, because the held-back data
+              came from the same session, the same plates, and the same imaging setup as everything else.
+              It tells you the model generalises to more of the same. It does not tell you it will
+              generalise to next month&rsquo;s plates.
+            </p>
+            <p>
+              The only test that counts is running the model on a fresh batch of images it has never seen
+              - ideally acquired on a different day, ideally by a different person - and
+              looking at the output yourself. Set a few such images aside at the very beginning and never
+              train on them.
+            </p>
+            <p>
+              Beware repeated tuning, too. If you re-train several times with different settings and keep
+              whichever version scored best, you have quietly started fitting to the validation set as
+              well. The more times you consult that number to make a decision, the less it means.
+            </p>
+
+            <h3>More images only help if they are <em>different</em> images</h3>
+            <p>
+              Two hundred fields from one plate on one afternoon are, as far as the model is concerned,
+              close to a single image repeated two hundred times. They mostly make training slower.
+              Twenty images spanning three lighting conditions, two magnifications, and a range of cell
+              densities teach far more.
+            </p>
+            <p>
+              When choosing what to annotate next, the most informative images are the ones your current
+              model gets wrong. Run it, find the failures, correct those, and add them - the
+              <a href="#tips">annotate &rarr; train &rarr; correct &rarr; repeat</a> cycle is efficient
+              precisely because it keeps steering your training set towards what the model still lacks.
+            </p>
+
+            <div class="tip-box" style="margin-top:0.75rem;">
+              <p>
+                <strong>Before trusting a model, check:</strong> does the training set contain examples of
+                every condition you intend to run it on? Is every cell outlined in every Cellpose training
+                image? Are the class labels consistent and roughly balanced? Has it been tested on images
+                from a different day that were never used in training? A &ldquo;no&rdquo; to any of these
+                predicts the direction in which the model will fail.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 2. Cellpose ── -->
+
+      <div class="faq-card" id="tips">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Tips</span>
+          <span class="faq-q-text">General tips for training Cellpose and DenseNet models</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              You do not need a machine learning background to train useful models in Mycol.
+              The guidelines below cover the most impactful things you can do to get good results.
+            </p>
+
+            <h3>Start with the pre-trained Cellpose model</h3>
+            <p>
+              Before training any segmentation model, run the default Cellpose model on a few images.
+              Often the out-of-the-box result is already good enough, or needs only minor corrections.
+              Training is worth the effort only when automatic results are consistently poor.
+            </p>
+            <p>
+              Classification has no equivalent starting point: your classes are whatever you define them
+              to be, so no general-purpose classifier can exist, and the automatic classification buttons
+              stay disabled until you train a DenseNet model or upload one. The question is never whether
+              to train, only how many cells to label first.
+            </p>
+
+            <h3>Data quality beats data quantity</h3>
+            <p>
+              A small set of carefully checked annotations is almost always better than a large set
+              of sloppy ones. For Cellpose, 10&ndash;30 well-corrected images are usually enough to
+              see a meaningful improvement. For DenseNet classification, aim for
+              <strong>at least 50&ndash;100 annotated cells per class</strong>, and ensure the classes
+              are balanced (similar numbers per class).
+            </p>
+
+            <h3>Cover the diversity in your data</h3>
+            <p>
+              Training images should represent the full range of conditions you will encounter:
+              different brightness levels, focal planes, cell densities, and edge cases.
+              A model trained only on the &ldquo;easy&rdquo; images will struggle with the harder ones.
+              This matters more than almost anything else - see
+              <a href="#ml-caveats">why models fail on images that look obvious to you</a>.
+            </p>
+
+            <h3>Watch the loss curves</h3>
+            <p>
+              After training, Mycol shows a plot of how the model&rsquo;s error (the &ldquo;loss&rdquo;)
+              decreased over each training epoch. A healthy training run shows both the
+              <strong>training loss</strong> and the <strong>validation loss</strong> falling steadily
+              and then levelling off close together. If the validation loss starts rising while the
+              training loss keeps falling, the model is <strong>overfitting</strong> - it is
+              memorising your training data rather than learning general patterns. In that case,
+              stop training earlier (fewer epochs) or add more diverse training images.
+            </p>
+
+            <h3>Iterate in small steps</h3>
+            <p>
+              Train a model, test it on new images, correct the errors, add those corrected
+              images back to your training set, and re-train. This cycle of
+              <em>annotate &rarr; train &rarr; correct &rarr; repeat</em> is the most efficient
+              way to improve a model without needing thousands of images up front.
+            </p>
+
+
+            <div class="tip-box" style="margin-top:0.75rem;">
+              <p>
+                <strong>DenseNet tip:</strong> DenseNet classifies individual cell patches, so the quality
+                of your segmentation masks directly affects classification accuracy. Fix obvious
+                segmentation errors (merged cells, background fragments) before training a classifier.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 8. Cell descriptors ── -->
+
+    </div>
+  </section>
+
+  <section class="page" id="measuring">
+    <header class="page-banner" data-mark="∑">
+      <div class="page-num">∑</div>
+      <div>
+        <h2>Measurements and descriptors</h2>
+        <p>Turning pixels into real units, and what every shape and colour descriptor means.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="faq-card" id="px2dist">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Measurement</span>
+          <span class="faq-q-text">How does the pixel-to-distance conversion work?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              When Mycol measures a cell - its area, perimeter, diameter, and so on - the raw
+              number is always in <strong>pixels</strong>, because that is what the image is made of.
+              A pixel has no inherent physical size; it depends entirely on your microscope&rsquo;s
+              magnification and camera settings.
+            </p>
+            <p>
+              The <strong>pixel-to-distance conversion</strong> lets you express measurements in
+              real-world units by supplying a single number: <strong>how much physical distance one pixel
+              represents</strong> in your images (the <em>pixel size</em> or <em>image scale</em>, often
+              found in your microscope software or image metadata). Turn it on with the
+              <em>Convert to distance</em> option on the <strong>Visualize Cell Attributes</strong> page,
+              then enter the pixel size and its unit. The unit is only a label, so any text works; it
+              defaults to &micro;m and follows through to the plot axes and the exported table.
+            </p>
+            <p>For example:</p>
+            <ul>
+              <li>If 1 pixel = 0.5 &micro;m and a cell has an area of 400 px&sup2;, its physical area is 400 &times; 0.5&sup2; = <strong>100 &micro;m&sup2;</strong>.</li>
+              <li>Linear measurements (perimeter, diameter) scale by the factor directly: 40 px &times; 0.5 = <strong>20 &micro;m</strong>.</li>
+            </ul>
+            <p>
+              Without a conversion factor, Mycol reports sizes in pixels. Either way this touches only the
+              descriptors that carry a unit: area, perimeter, the two axis lengths and the Feret diameter.
+              Ratios such as circularity, solidity and eccentricity are dimensionless and never converted.
+            </p>
+            <p>
+              Pixels are fine for comparing cells within one experiment, but cross-experiment or
+              publication comparisons need physical units. Enter the pixel size of your
+              <strong>original</strong> images: if resize-on-upload was left on, Mycol has already
+              converted every measurement back to original-image pixels.
+            </p>
+            <div class="tip-box">
+              <p>
+                <strong>How to find your pixel size:</strong> check the metadata embedded in the image file
+                (e.g. the TIFF tags), your microscope acquisition software, or ask your facility&rsquo;s
+                imaging staff for the calibration value at the magnification you used.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 5. SAM2 ── -->
+
+      <div class="faq-card" id="descriptors">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Analysis</span>
+          <span class="faq-q-text">What do the cell shape descriptors mean?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+
+            <p>
+              For every segmented cell, Mycol computes a set of descriptors from the mask region: eight
+              describing its <strong>shape</strong> and three describing its <strong>colour</strong>. All
+              of them appear in the downloadable cell metrics table and can be plotted by class on the
+              Visualize Cell Attributes page. Shape descriptors are computed using
+              <a href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops"
+                 target="_blank" rel="noopener"><code>skimage.measure.regionprops</code></a>
+              from the <a href="https://scikit-image.org/" target="_blank" rel="noopener">scikit-image</a> library.
+            </p>
+            <p>
+              Only the size descriptors carry a unit: <strong>area</strong>, <strong>perimeter</strong>,
+              the two <strong>axis lengths</strong> and the <strong>Feret diameter</strong> are in pixels
+              unless a <a href="#px2dist">pixel-to-distance conversion</a> is supplied. The remaining
+              descriptors are ratios or fractions and are dimensionless, so they read the same whatever
+              units you work in.
+            </p>
+
+            <div class="desc-notation">
+              <div class="desc-notation-text">
+                <p><strong>Notation used below:</strong></p>
+                <ul>
+                  <li><strong>A</strong> - area (number of pixels inside the cell mask)</li>
+                  <li><strong>P</strong> - perimeter (length of the cell boundary)</li>
+                  <li><strong>a, b</strong> - semi-major and semi-minor axes of the best-fit ellipse</li>
+                </ul>
+              </div>
+              <div class="desc-notation-img">
+                <img src="descriptor_diagrams/plot_download.svg" alt="Example cell measurement plot" />
+              </div>
+            </div>
+
+            <!-- area -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Area (A)</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p><strong>What it describes:</strong> The size of the cell in pixels.</p>
+              </div>
+            </div>
+
+            <!-- perimeter -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Perimeter (P)</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p><strong>What it describes:</strong> The length of the cell&rsquo;s boundary.</p>
+              </div>
+            </div>
+
+            <!-- major / minor axes -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Major &amp; Minor Axis Lengths</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> The longest (major) and shortest (minor) diameters of the
+                  best-fit ellipse. Larger major-axis values relative to cell size indicate a more elongated cell.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/axes.svg" alt="Major and minor axis diagram" />
+                  <p class="desc-caption">
+                    The major axis is the longest diameter of the best-fit ellipse; the minor axis is the
+                    shortest diameter perpendicular to it.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- feret diameter -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Feret Diameter</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> The largest distance between any two points on the
+                  cell&rsquo;s boundary, as if measured with callipers. Unlike the major axis length it assumes
+                  no particular shape, so it is the more reliable size measure for irregular or bent cells.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/feret_diameter.svg" alt="Feret diameter diagram" />
+                  <p class="desc-caption">
+                    A calliper reading depends on the direction it is taken in: Fh across and Fv down.
+                    Turning the same cell changes both. Mycol reports the maximum Feret diameter, the
+                    largest reading over every direction, so it does not depend on how the cell lies.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- circularity / roundness -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Circularity &amp; Roundness</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> Two related measures of how circle-like and compact a
+                  shape is. Both are close to 1 for near-circular cells and decrease with
+                  elongation or irregular boundaries.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/circularity_roundness.svg"
+                       alt="Circularity roundness diagram" />
+                  <p class="desc-caption">
+                    For the same area A, shapes with longer perimeters P have lower circularity and roundness.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- eccentricity -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Eccentricity</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> How stretched the best-fit ellipse is, from 0 to 1. A value
+                  of 0 is a perfect circle; values approaching 1 are increasingly elongated. It compares the two
+                  axes, so it does not change with the size of the cell.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/eccentricity.svg"
+                       alt="Eccentricity diagram" />
+                  <p class="desc-caption">
+                    As the major axis grows relative to the minor axis, eccentricity rises from 0 towards 1.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- solidity -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Solidity</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> How filled the cell is relative to its convex hull.
+                  A value of 1 indicates a perfectly convex shape; lower values indicate concavities or
+                  irregular boundaries.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/solidity.svg" alt="Solidity diagram" />
+                  <p class="desc-caption">
+                    A convex shape matches its convex hull (solidity &asymp; 1). Indentations or irregular
+                    boundaries reduce area relative to the hull, lowering solidity.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- extent -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Extent</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What it describes:</strong> The fraction of the bounding box area occupied by the
+                  cell. Values near 1 indicate the cell nearly fills its bounding box.
+                </p>
+                <div class="desc-figure">
+                  <img src="descriptor_diagrams/extent.svg" alt="Extent diagram" />
+                  <p class="desc-caption">
+                    Extent measures how much of the bounding box the cell occupies. Thin or irregular cells
+                    leave more empty space in their bounding box and have lower extent values.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- colour -->
+            <div class="desc-item">
+              <button class="desc-toggle" onclick="toggleDesc(this)" aria-expanded="false">
+                <span class="desc-name">Redness, Greenness &amp; Blueness</span>
+                <span class="desc-chevron">&#9660;</span>
+              </button>
+              <div class="desc-body">
+                <p>
+                  <strong>What they describe:</strong> The colour balance of the cell, measured only from
+                  the pixels inside its mask so the background cannot influence it. Each value is that
+                  channel&rsquo;s mean divided by the sum of all three, so the three always add up to 1.
+                  A cell at 0.5 red, 0.3 green, 0.2 blue is one whose colour leans red.
+                </p>
+                <p>
+                  Being fractions rather than raw intensities, they capture <em>hue</em> and not
+                  <em>brightness</em>: a dim and a bright cell of the same colour give identical values,
+                  which is what makes them comparable across cells that happen to be lit differently.
+                  Grayscale images have no colour to measure, so all three read one third.
+                </p>
+                <p>
+                  <strong>White balance:</strong> before these are computed, Mycol scales each image&rsquo;s
+                  channels until its background is neutral gray. This removes colour casts from lamp
+                  temperature or camera settings, so cells imaged on different days stay comparable.
+                  Referencing the background rather than the cells is deliberate: it corrects the lighting
+                  without flattening real colour differences between cells. Only these three descriptors
+                  are affected, never segmentation, classification or the images you download.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 
 </main>
 
 <!-- ══════════════ FOOTER ══════════════ -->
 <footer>
   <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
-    <a href="index.html">User Guide</a> &nbsp;&middot;&nbsp;
+    <a href="index.html">Workflow</a> &nbsp;&middot;&nbsp;
+    <a href="functionality.html">Functionality Guide</a> &nbsp;&middot;&nbsp;
     <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener">GitHub</a>
   </p>
 </footer>
 
+<script src="site.js"></script>
 <script>
   function toggleFaq(btn) {
     const card = btn.closest('.faq-card');
@@ -1244,6 +1197,15 @@
     const isOpen = item.classList.contains('open');
     item.classList.toggle('open', !isOpen);
     btn.setAttribute('aria-expanded', String(!isOpen));
+  }
+
+  // Open a card automatically when the page is loaded with its #anchor.
+  if (location.hash) {
+    const target = document.querySelector(location.hash);
+    if (target && target.classList.contains('faq-card')) {
+      target.classList.add('open');
+      target.querySelector('.faq-question').setAttribute('aria-expanded', 'true');
+    }
   }
 </script>
 

@@ -1,0 +1,418 @@
+/* Mycol documentation - shared design system.
+   Used by index.html, faq.html and functionality.html.
+   Page-specific layout stays in each page's own <style> block. */
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue-50:  #E9F2FF;
+  --blue-100: #c7dcff;
+  --blue-500: #2563eb;
+  --blue-600: #1d4ed8;
+  --blue-700: #1e40af;
+  --gray-50:  #f6f7f9;
+  --gray-100: #eef0f3;
+  --gray-300: #cbd5e1;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-900: #0f172a;
+  --white:    #ffffff;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
+  --shadow-md: 0 4px 18px rgba(0,0,0,.12);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
+  --radius:   14px;
+  --radius-sm: 8px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-700);
+  line-height: 1.65;
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, var(--blue-50) 0%, var(--white) 60%);
+  border-bottom: 1px solid var(--gray-100);
+  padding: 5rem 2rem 4rem;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 1rem;
+}
+
+.hero h1 span { color: var(--blue-600); }
+
+.hero p {
+  max-width: 640px;
+  margin: 0 auto 2rem;
+  font-size: 1.1rem;
+  color: var(--gray-600);
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.badge {
+  background: var(--white);
+  border: 1.5px solid var(--blue-100);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--blue-600);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.badge:hover { background: var(--blue-100); border-color: var(--blue-500); }
+
+.badge.current {
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+  color: var(--white);
+}
+
+/* ── Sticky section nav ── */
+.section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--gray-100);
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+}
+
+.section-nav-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0.6rem 2rem;
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.section-nav-inner::-webkit-scrollbar { display: none; }
+
+.section-nav a {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.section-nav a:hover { background: var(--gray-50); color: var(--blue-700); }
+
+.section-nav a.active {
+  background: var(--blue-50);
+  border-color: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.section-nav a i {
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.section-nav a.active i { background: var(--blue-600); color: var(--white); }
+
+/* ── Main content ── */
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4.5rem;
+}
+
+/* ── Page section: banner + body ── */
+.page {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  scroll-margin-top: 4.5rem;
+  position: relative;
+}
+
+/* the strong break: a coloured band heading every section */
+.page-banner {
+  background: linear-gradient(120deg, var(--blue-700) 0%, var(--blue-500) 100%);
+  color: var(--white);
+  padding: 1.6rem 6.5rem 1.6rem 2.25rem; /* right pad clears the ghost numeral */
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* oversized ghost numeral watermark */
+.page-banner::after {
+  content: attr(data-mark);
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 6.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(255,255,255,0.13);
+  pointer-events: none;
+  user-select: none;
+}
+
+.page-banner.utility {
+  background: linear-gradient(120deg, var(--gray-900) 0%, #33415a 100%);
+}
+
+.page-num {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 2px solid rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+/* small label above the banner title, e.g. the matching app page name */
+.page-kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 0.15rem;
+}
+
+.page-banner h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 0.15rem;
+}
+
+.page-banner p {
+  font-size: 0.89rem;
+  color: rgba(255,255,255,0.85);
+  max-width: 62ch;
+  margin: 0;
+}
+
+.page-body {
+  background: var(--white);
+  padding: 0.5rem 2.25rem 2rem;
+}
+
+.page-body a { color: var(--blue-500); text-decoration: none; font-weight: 500; }
+.page-body a:hover { text-decoration: underline; }
+
+/* ── Widget groups ── */
+.group { margin-top: 1.9rem; }
+
+.group-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--blue-700);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.15rem;
+}
+
+/* short accent rule after every group title */
+.group-title::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue-100), transparent);
+  border-radius: 2px;
+}
+
+.group-note {
+  font-size: 0.87rem;
+  color: var(--gray-600);
+  margin: 0.35rem 0 0.1rem;
+}
+
+/* nested group = controls that live inside a popover */
+.group.nested {
+  margin-top: 1.4rem;
+  padding: 0.9rem 0 0.4rem 1.1rem;
+  border-left: 3px solid var(--blue-100);
+  background: linear-gradient(90deg, rgba(233,242,255,.5), transparent 70%);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.group.nested .group-title { color: var(--gray-900); }
+.group.nested .group-title::after {
+  background: linear-gradient(90deg, var(--gray-100), transparent);
+}
+
+/* ── Widget rows ── */
+.wrow {
+  display: grid;
+  grid-template-columns: 210px 142px 1fr;  /* name | type + shortcut | description */
+  gap: 0.25rem 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--gray-100);
+  align-items: start;
+}
+
+.wrow:last-child { border-bottom: none; }
+
+.wname {
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+/* type chip and any keyboard shortcut, in their own column */
+.wmeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding-top: 0.2rem;  /* optically aligns the chip with the name's first line */
+}
+
+.wdesc { font-size: 0.91rem; color: var(--gray-600); }
+.wdesc em { color: var(--gray-700); font-style: normal; font-weight: 600; }
+
+.chip {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.chip.action  { background: var(--blue-50);       color: var(--blue-700); }
+.chip.input   { background: rgba(78,177,101,.14); color: #2f7d46; }
+.chip.toggle  { background: rgba(241,147,45,.16); color: #a25e13; }
+.chip.view    { background: rgba(136,46,114,.12); color: #7a2a66; }
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-300);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 0.05rem 0.35rem;
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+/* ── Shortcut reference grid ── */
+.keygrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.keygrid div {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.86rem;
+  color: var(--gray-600);
+}
+
+.keygrid span { flex: none; }
+
+/* ── Callout ── */
+.callout {
+  background: var(--blue-50);
+  border-left: 4px solid var(--blue-500);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.9rem 1.1rem;
+  margin-top: 1.75rem;
+  font-size: 0.89rem;
+  color: var(--gray-700);
+}
+
+.callout strong { color: var(--gray-900); }
+
+/* ── Footer ── */
+footer {
+  background: var(--white);
+  border-top: 1px solid var(--gray-100);
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+footer a { color: var(--blue-500); text-decoration: none; font-weight: 500; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Responsive ── */
+@media (max-width: 720px) {
+  /* keep the chip beside the name on narrow screens, description below */
+  .wrow {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "name meta" "desc desc";
+    gap: 0.3rem 0.75rem;
+  }
+  .wname { grid-area: name; }
+  .wmeta { grid-area: meta; justify-content: flex-end; padding-top: 0.15rem; }
+  .wdesc { grid-area: desc; }
+  main { padding: 2rem 1.1rem 3.5rem; gap: 3rem; }
+  .page-body { padding: 0.4rem 1.25rem 1.6rem; }
+  .page-banner { padding: 1.25rem 1.25rem; gap: 0.9rem; }
+  .page-banner::after { display: none; }  /* no room for the watermark on phones */
+  .section-nav-inner { padding: 0.6rem 1.1rem; }
+}

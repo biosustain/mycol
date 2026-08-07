@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mycol - Functionality Guide</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section class="hero" id="top">
+  <h1>Functionality <span>Guide</span></h1>
+  <p>
+    Every button, slider, checkbox and click-interaction in Mycol - what it is called
+    in the app, and what it does. Organised by app page, in the order you meet them.
+  </p>
+  <div class="badge-row">
+    <a href="index.html" class="badge">Workflow</a>
+    <a href="faq.html" class="badge">FAQ</a>
+    <a href="functionality.html" class="badge current">Functionality Guide</a>
+    <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener" class="badge">GitHub</a>
+  </div>
+</section>
+
+<!-- ══════════════ STICKY NAV ══════════════ -->
+<nav class="section-nav">
+  <div class="section-nav-inner">
+    <a href="#shared"><i>◆</i> Shared controls</a>
+    <a href="#upload"><i>1</i> Upload</a>
+    <a href="#annotate"><i>2</i> Annotate</a>
+    <a href="#train"><i>3</i> Train</a>
+    <a href="#metrics"><i>4</i> Visualize</a>
+    <a href="#downloads"><i>5</i> Downloads</a>
+    <a href="#shortcuts"><i>⌨</i> Shortcuts</a>
+  </div>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+  <!-- ══════════ SHARED ══════════ -->
+  <section class="page" id="shared">
+    <header class="page-banner utility" data-mark="◆">
+      <div class="page-num">◆</div>
+      <div>
+        <h2>Shared controls</h2>
+        <p>Elements that turn up on more than one page. Described here once, then referred to rather than repeated.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Always on screen</div>
+
+        <div class="wrow">
+          <div class="wname">Top navigation bar</div>
+          <div class="wmeta"><span class="chip view">Nav</span></div>
+          <div class="wdesc">
+            Switches between the five app pages: <em>Upload Models and Data</em>,
+            <em>Annotate Images</em>, <em>Train Models</em>, <em>Visualize Cell Attributes</em>
+            and <em>Downloads</em>. Your session - images, masks, labels, models - is kept as
+            you move between them.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Mycol logo</div>
+          <div class="wmeta"><span class="chip action">Link</span></div>
+          <div class="wdesc">Top-left. Opens this documentation site.</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">The image selection table</div>
+        <p class="group-note">
+          The same table appears on three pages. Each page sets its own default and does
+          something different with your ticks; the table itself always works the same way.
+        </p>
+
+        <div class="wrow">
+          <div class="wname">Row ticks</div>
+          <div class="wmeta"><span class="chip toggle">Table select</span></div>
+          <div class="wdesc">
+            One row per uploaded image, showing <em>No.</em>, <em>Image</em> name,
+            <em>Mask Present</em> (✅ / ❌), <em>Number of Masks</em> and <em>Labelled Masks</em>
+            (labelled ÷ total). Tick rows in the checkbox column; use the header checkbox for
+            all or none. Ticks survive moving between pages, and each page remembers its own.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Every plot</div>
+
+        <div class="wrow">
+          <div class="wname">Chart toolbar</div>
+          <div class="wmeta"><span class="chip action">Hover tools</span></div>
+          <div class="wdesc">
+            Appears on hover. The camera icon saves the plot as an <em>SVG</em> - a vector file
+            that stays sharp at any size, suitable for figures. Drag on a plot to zoom into it,
+            double-click to reset, and hover a point for its exact value.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Some pages need data first.</strong> <em>Annotate Images</em>,
+        <em>Train Models</em>, <em>Visualize Cell Attributes</em> and <em>Downloads</em> ask you
+        to upload images before they will open. <em>Train Models</em> and
+        <em>Visualize Cell Attributes</em> also need at least one image carrying masks.
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 1. UPLOAD ══════════ -->
+  <section class="page" id="upload">
+    <header class="page-banner" data-mark="1">
+      <div class="page-num">1</div>
+      <div>
+        <h2>Upload Models and Data</h2>
+        <p>Bring images, masks, models and saved sessions in. One uploader takes the lot - files are sorted by extension, and models by their contents.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Upload Images, Masks and Models</div>
+
+        <div class="wrow">
+          <div class="wname">File uploader</div>
+          <div class="wmeta"><span class="chip input">Drag &amp; drop</span></div>
+          <div class="wdesc">
+            Takes images and masks (<em>.tif, .tiff, .npy, .png, .jpg, .jpeg</em>), model weights
+            (<em>.pt, .pth</em>), a Cellpose hyperparameters table (<em>.csv</em>) and a saved
+            session (<em>.zip</em>) - all at once if you like. Masks pair to images by filename;
+            Cellpose and DenseNet weights are told apart automatically. Unpaired or unrecognised
+            masks are ignored. 512 MB per upload, so split larger sets into batches.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Mask suffix</div>
+          <div class="wmeta"><span class="chip input">Text box</span></div>
+          <div class="wdesc">
+            The text a mask filename adds to its image filename, so the two can be paired.
+            Default <em>_masks</em>, meaning <em>sample1.tif</em> pairs with
+            <em>sample1_masks.tif</em>. Change it to match your own naming.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Resize (512x512)</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            On by default. Shrinks images and masks to 512×512 on the way in, which keeps large
+            images responsive at some cost in detail. Cell measurements are still reported for
+            the original, pre-resize image.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Use demo data</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">Loads an example image set, so you can try the whole workflow without your own data.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Cellpose / DenseNet cards</div>
+          <div class="wmeta"><span class="chip view">Status</span></div>
+          <div class="wdesc">
+            Green <em>MODEL LOADED</em> with the filename once a model is in the session, orange
+            <em>NOT UPLOADED</em> otherwise. Both models are optional.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Uploaded images</div>
+
+        <div class="wrow">
+          <div class="wname">Image table</div>
+          <div class="wmeta"><span class="chip toggle">Table select</span></div>
+          <div class="wdesc">
+            Nothing is ticked by default here - tick only what you want to get rid of.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Remove selected images</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Drops every ticked image, with its masks and labels, from the session. Greyed out
+            until something is ticked, and not reversible afterwards.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 2. ANNOTATE ══════════ -->
+  <section class="page" id="annotate">
+    <header class="page-banner" data-mark="2">
+      <div class="page-num">2</div>
+      <div>
+        <h2>Annotate Images</h2>
+        <p>The main workspace, in three columns: controls on the left, the image in the middle, zoom and pan on the right.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Image navigation &amp; display</div>
+        <p class="group-note">Left column, above the tabs.</p>
+
+        <div class="wrow">
+          <div class="wname">Image n/N banner</div>
+          <div class="wmeta"><span class="chip view">Status</span></div>
+          <div class="wdesc">Position and filename of the image you are looking at.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">◀ / ▶ buttons</div>
+          <div class="wmeta"><span class="chip action">Button</span> <kbd>←</kbd> <kbd>→</kbd></div>
+          <div class="wdesc">
+            Unlabelled buttons either side of the slider. Step to the previous or next image.
+            Hidden when only one image is loaded.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Image index slider</div>
+          <div class="wmeta"><span class="chip input">Slider</span></div>
+          <div class="wdesc">Jumps straight to any image in the set. Also hidden for a single image.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Masks</div>
+          <div class="wmeta"><span class="chip toggle">Toggle</span> <kbd>M</kbd></div>
+          <div class="wdesc">Shows or hides the coloured mask overlay. Filled blue while on.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Normalize</div>
+          <div class="wmeta"><span class="chip toggle">Toggle</span> <kbd>N</kbd></div>
+          <div class="wdesc">
+            Stretches pixel intensities across the full brightness range, making faint cells
+            easier to see. Display only - the stored image and every measurement are unchanged.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Image</div>
+          <div class="wmeta"><span class="chip toggle">Toggle</span> <kbd>I</kbd></div>
+          <div class="wdesc">
+            Shows or hides the photograph underneath. Turn it off to inspect masks alone on
+            black.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Current Mode banner</div>
+          <div class="wmeta"><span class="chip view">Status</span></div>
+          <div class="wdesc">
+            At the top of both tabs. Names the mode the image is in, so you always know what a
+            click will do. In labelling mode it also names the class, e.g.
+            <em>Assign class (spore)</em>.
+          </div>
+        </div>
+      </div>
+
+      <!-- Segmentation tab -->
+      <div class="group">
+        <div class="group-title">Segmentation Controls <span class="chip view">Tab</span></div>
+        <p class="group-note">
+          Three pop-out panels. Both tabs stay loaded behind the scenes, so every keyboard
+          shortcut works from either one.
+        </p>
+
+        <div class="group nested">
+          <div class="group-title">Predict masks with Cellpose <span class="chip action">Popover</span></div>
+          <p class="group-note">Automatic segmentation of a whole image at a time.</p>
+
+          <div class="wrow">
+            <div class="wname">Select model</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+            <div class="wdesc">
+              Which weights to segment with: <em>Cyto3</em>, <em>Cyto2</em>, <em>Cyto</em>,
+              <em>Nuclei</em>, or <em>Fine-tuned Model</em> - your own, uploaded or trained this
+              session. Defaults to the fine-tuned model whenever one is available.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Generate</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+            <div class="wdesc">Segments the image currently on screen.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Batch generate</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+            <div class="wdesc">Segments every uploaded image with the same model and settings.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Cellpose hyperparameters</div>
+          <div class="wmeta"><span class="chip action">Expander</span></div>
+            <div class="wdesc">Reveals the five accuracy settings below.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Mean cell diameter</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+            <div class="wdesc">
+              Typical cell size in pixels. Leave at <em>0</em> to let Cellpose estimate it, or set
+              it yourself when the estimate looks off.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Cell probability threshold</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+            <div class="wdesc">
+              −2 to 2. How sure Cellpose must be that a pixel belongs to a cell. Higher gives
+              fewer, tighter cells; lower gives more, larger ones.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Flow threshold</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+            <div class="wdesc">
+              −2 to 2. How irregular a predicted shape may be before it is thrown out. Lower is
+              more permissive.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Minimum cell size</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+            <div class="wdesc">Discards masks smaller than this area - a quick way to drop debris.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Niter</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+            <div class="wdesc">
+              0 to 2000 refinement iterations. Higher values favour long, stringy cells such as
+              filaments.
+            </div>
+          </div>
+        </div>
+
+        <div class="group nested">
+          <div class="group-title">Predict masks with boxes <span class="chip action">Popover</span></div>
+          <p class="group-note">SAM2, for segmenting chosen cells one at a time.</p>
+
+          <div class="wrow">
+            <div class="wname">Draw box</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>B</kbd></div>
+            <div class="wdesc">Click and drag a red box around each cell you want segmented.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Generate masks from boxes</div>
+          <div class="wmeta"><span class="chip action">Button</span> <kbd>G</kbd></div>
+            <div class="wdesc">
+              Runs SAM2 on every box drawn, turning each into a mask. The boxes clear once their
+              masks are in.
+            </div>
+          </div>
+        </div>
+
+        <div class="group nested">
+          <div class="group-title">Manually edit masks <span class="chip action">Popover</span></div>
+          <p class="group-note">Draw masks by hand, and repair ones that came out wrong.</p>
+
+          <div class="wrow">
+            <div class="wname">Freehand</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>F</kbd></div>
+            <div class="wdesc">Click and hold to trace an outline; releasing closes it into a filled mask.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Ellipse</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>E</kbd></div>
+            <div class="wdesc">
+              Drag a box around a colony and it fills with an ellipse inscribed in that box - a
+              circle if you drag a square. Committed the moment you release.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Split masks</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>S</kbd></div>
+            <div class="wdesc">
+              Drag a line right through a mask to cut it in two. The line has to cross all the
+              way through - partly crossed masks are left alone. Both halves keep the original
+              class.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Join masks</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>J</kbd></div>
+            <div class="wdesc">
+              Lasso a group of masks; those lying <em>entirely</em> inside the lasso and touching
+              each other merge into one.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Classification tab -->
+      <div class="group">
+        <div class="group-title">Classification Controls <span class="chip view">Tab</span></div>
+
+        <div class="group nested">
+          <div class="group-title">Manage Labels <span class="chip action">Popover</span></div>
+          <p class="group-note">Classes are shared across every image in the session.</p>
+
+          <div class="wrow">
+            <div class="wname">Add a new class:</div>
+          <div class="wmeta"><span class="chip input">Text box</span></div>
+            <div class="wdesc">
+              Type a name and press Enter. The class is created, given a colour, and made the
+              current one.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Delete a class:</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+            <div class="wdesc">
+              Removes a class everywhere. Cells that carried it become unlabelled - the masks
+              themselves stay. <em>No label</em> is reserved and cannot be deleted.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Rename:</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+            <div class="wdesc">Picks which class to rename.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">To:</div>
+          <div class="wmeta"><span class="chip input">Text box</span></div>
+            <div class="wdesc">
+              The new name; press Enter to apply it across every image at once. Typing the name
+              of a class that already exists <em>merges</em> the two.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Map model predictions to cell classes</div>
+          <div class="wmeta"><span class="chip action">Expander</span></div>
+            <div class="wdesc">
+              Only present once a DenseNet model is loaded. One <em>Map model class n to</em>
+              dropdown per model output, tying the model's numbered outputs to your class names.
+              Until at least one is mapped, the classify buttons stay disabled.
+            </div>
+          </div>
+        </div>
+
+        <div class="group nested">
+          <div class="group-title">Classify cells with Densenet <span class="chip action">Popover</span></div>
+
+          <div class="wrow">
+            <div class="wname">Classify</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+            <div class="wdesc">
+              Labels every mask in the current image with the loaded model. Disabled - with a
+              tooltip saying why - when no model is loaded or nothing has been mapped yet.
+            </div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Batch classify</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+            <div class="wdesc">
+              The same across every uploaded image, with a progress bar. Batch runs are not
+              recorded for undo.
+            </div>
+          </div>
+        </div>
+
+        <div class="group nested">
+          <div class="group-title">Class rows <span class="chip view">List</span></div>
+          <p class="group-note">
+            One row per class - a colour chip matching the overlay colour, the name, then two
+            buttons. <em>No label</em> sits first, and is how you strip a label back off.
+          </p>
+
+          <div class="wrow">
+            <div class="wname">All</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+            <div class="wdesc">Assigns every mask in the current image to that class in one go.</div>
+          </div>
+
+          <div class="wrow">
+            <div class="wname">Click</div>
+          <div class="wmeta"><span class="chip action">Mode</span></div>
+            <div class="wdesc">
+              Makes that class active and switches the image into <em>Assign class</em> mode, so
+              clicking a cell labels it.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Common tools -->
+      <div class="group">
+        <div class="group-title">Editing tools</div>
+        <p class="group-note">Below the tabs, and available from both.</p>
+
+        <div class="wrow">
+          <div class="wname">Remove</div>
+          <div class="wmeta"><span class="chip action">Mode</span> <kbd>D</kbd></div>
+          <div class="wdesc">
+            Click a mask to delete it, or click a drawn box to delete the box. Boxes take
+            priority where the two overlap.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Clear All</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Wipes every mask, label and box from the current image. Other images are untouched,
+            and Undo will bring it back if you press it straight away.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Undo</div>
+          <div class="wmeta"><span class="chip action">Button</span> <kbd>Ctrl</kbd>+<kbd>Z</kbd></div>
+          <div class="wdesc">
+            Reverts the last mask or box action. Single-level - only the most recent action can
+            be recovered.
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="group">
+        <div class="group-title">The image itself <span class="chip view">Canvas</span></div>
+
+        <div class="wrow">
+          <div class="wname">Click and drag behaviour</div>
+          <div class="wmeta"></div>
+          <div class="wdesc">
+            Exactly one mode is active at a time, named in the Current Mode banner and set by the
+            mode buttons above. <em>Remove</em> and <em>Assign class</em> respond to a single
+            click; the rest are drag actions.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Chart toolbar</div>
+          <div class="wmeta"><span class="chip view">Read-only</span></div>
+          <div class="wdesc">
+            In drag modes a small toolbar appears above the image with the one tool that mode
+            uses - box select, or lasso. Nothing to choose; it reflects the mode you are in.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Scroll wheel</div>
+          <div class="wmeta"><span class="chip view">Disabled</span></div>
+          <div class="wdesc">
+            Deliberately off, so the view does not jump while you work. Use the Zoom slider, or
+            your browser's own pinch-zoom.
+          </div>
+        </div>
+      </div>
+
+      <!-- Zoom panel -->
+      <div class="group">
+        <div class="group-title">Zoom &amp; pan</div>
+        <p class="group-note">Right column, beside the image.</p>
+
+        <div class="wrow">
+          <div class="wname">Zoom</div>
+          <div class="wmeta"><span class="chip input">Slider</span></div>
+          <div class="wdesc">
+            1× to 10× in steps of 0.5, magnifying around the current view centre. The image stays
+            the same size on screen - you simply see less of it. At 1× the whole image is shown.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Minimap</div>
+          <div class="wmeta"><span class="chip action">Click target</span></div>
+          <div class="wdesc">
+            Thumbnail of the whole image with a red rectangle marking the part you are viewing.
+            Click anywhere on it to recentre the view there.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">▲ ◀ ◎ ▶ ▼ pad</div>
+          <div class="wmeta"><span class="chip action">Buttons</span></div>
+          <div class="wdesc">
+            Nudges the view by most of a screenful, keeping a sliver of the old view to orient
+            by. <em>◎</em> recentres on the middle of the image. All disabled at 1×, where
+            everything is visible anyway.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 3. TRAIN ══════════ -->
+  <section class="page" id="train">
+    <header class="page-banner" data-mark="3">
+      <div class="page-num">3</div>
+      <div>
+        <h2>Train Models</h2>
+        <p>Fine-tune a model on what you have annotated. Numbered steps; the parameters in step 3 depend on which model you picked in step 1.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Step 1 - Choose which model to fine-tune</div>
+
+        <div class="wrow">
+          <div class="wname">Model type</div>
+          <div class="wmeta"><span class="chip toggle">Pills</span></div>
+          <div class="wdesc">
+            Pick one: <em>Train a Cellpose model to identify cells</em> for better segmentation,
+            or <em>Train a DenseNet model to classify cells</em> for better labelling. Everything
+            below re-renders to match.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 2 - Select images to train on</div>
+
+        <div class="wrow">
+          <div class="wname">Image table</div>
+          <div class="wmeta"><span class="chip toggle">Table select</span></div>
+          <div class="wdesc">
+            All images ticked by default; untick any to exclude. Cellpose uses the masks on the
+            ticked images, DenseNet uses their labelled cells.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 3 - Cellpose segmenter parameters</div>
+
+        <div class="wrow">
+          <div class="wname">Base model</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+          <div class="wdesc">
+            Weights to start from - <em>cyto</em>, <em>cyto2</em>, <em>cyto3</em>,
+            <em>nuclei</em> - or <em>scratch</em> to train from random initialisation.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Max epochs</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">
+            1 to 1000 passes over the training set. More can improve results, at the cost of time.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Learning rate</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">Step size the optimizer takes. Lower trains more slowly but more stably.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Weight decay</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">
+            Regularisation over the final epochs, discouraging the model from over-fitting to
+            your training images.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Min cells per image</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">
+            Images with fewer annotated cells than this are dropped from training - Cellpose's
+            own default is 5. The step 4 summary reports how many this excludes.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Batch size</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+          <div class="wdesc">
+            8, 16, 32 or 64 images per training step. Larger is faster but needs more memory.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Images per epoch</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+          <div class="wdesc">How many training images to sample each epoch - <em>All</em>, or 8 / 32 / 64 / 128 / 256.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Optimise hyperparameters</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            After training, searches for the inference settings - diameter, thresholds and so on -
+            that suit the new model best. Note the winning values down: you will want to re-enter
+            them on the Annotate Images page when you use the model.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Optimisation iterations</div>
+          <div class="wmeta"><span class="chip input">Slider</span></div>
+          <div class="wdesc">
+            10 to 60 combinations to try, in steps of 5. Only shown when the box above is ticked.
+            More trials, better settings, longer wait.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Train / test split</div>
+          <div class="wmeta"><span class="chip input">Slider</span></div>
+          <div class="wdesc">
+            10% to 90% in steps of 5, labelled with the share of <em>images</em> used for
+            training. The rest are held out as a test set and never trained on, so the step 5
+            plots measure performance on images the model has not seen.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 3 - DenseNet classifier parameters</div>
+
+        <div class="wrow">
+          <div class="wname">Input size</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+          <div class="wdesc">
+            64, 96 or 128 pixels - the size each cell crop is scaled to before the model sees it.
+            Larger keeps more detail and trains more slowly.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Batch size</div>
+          <div class="wmeta"><span class="chip input">Dropdown</span></div>
+          <div class="wdesc">As above, but counted in cell crops rather than whole images.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Max epochs</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">1 to 500 passes over the labelled cells.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Train / validation split</div>
+          <div class="wmeta"><span class="chip input">Slider</span></div>
+          <div class="wdesc">
+            Works like the Cellpose split, but divides <em>labelled cells</em>. The held-out
+            share becomes the validation set behind the accuracy and confusion matrix plots.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 4 - Train the model</div>
+        <p class="group-note">Only one model trains at a time; starting one greys out the other.</p>
+
+        <div class="wrow">
+          <div class="wname">Training set summary</div>
+          <div class="wmeta"><span class="chip view">Status</span></div>
+          <div class="wdesc">
+            Sits just above the button. Cellpose reports total masks, images passing the
+            minimum-cells filter, and the train/test breakdown. DenseNet reports total labelled
+            cells, the train/validation breakdown, and a per-class count table.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Fine-tune Cellpose</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">Starts training in the background.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Fine tune Densenet121</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            The same, and additionally disabled until at least two classes have two or more
+            labelled cells each.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">View Training Log</div>
+          <div class="wmeta"><span class="chip action">Expander</span></div>
+          <div class="wdesc">
+            Appears while a job runs - live worker output, so you can follow progress epoch by
+            epoch. Cellpose shows a matching <em>View Validation Log</em> during its evaluation
+            pass afterwards.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Cancel Training</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Stops the running job; nothing is kept from a cancelled run. Reads
+            <em>Cancel Validation</em> during the evaluation pass.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Show Error Details</div>
+          <div class="wmeta"><span class="chip action">Expander</span></div>
+          <div class="wdesc">Appears if a job fails, holding the full error from the worker.</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 5 - Review model training</div>
+        <p class="group-note">Appears once a model has finished.</p>
+
+        <div class="wrow">
+          <div class="wname">How do I interpret these graphs?</div>
+          <div class="wmeta"><span class="chip action">Popover</span></div>
+          <div class="wdesc">
+            Plain-language notes on each plot, one expander apiece - training vs test loss, IoU
+            comparison and predicted vs real counts for Cellpose; loss, accuracy / precision /
+            recall / F1, and the confusion matrix for DenseNet.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Tested hyperparameters</div>
+          <div class="wmeta"><span class="chip view">Table</span></div>
+          <div class="wdesc">
+            Shown when <em>Optimise hyperparameters</em> was ticked: every combination tried and
+            how it scored, so you can copy the best into the Annotate Images page.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>A newly trained model goes straight to work.</strong> As soon as training
+        finishes it becomes the <em>Fine-tuned Model</em> option on the Annotate Images page,
+        and the <em>Cellpose model</em> / <em>DenseNet model</em> tick on the Downloads page.
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 4. METRICS ══════════ -->
+  <section class="page" id="metrics">
+    <header class="page-banner" data-mark="4">
+      <div class="page-num">4</div>
+      <div>
+        <h2>Visualize Cell Attributes</h2>
+        <p>Plot the shape and colour descriptors of your segmented cells, grouped by class. Nothing is calculated until you press the button in step 5.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Step 1 - Select images to compare</div>
+
+        <div class="wrow">
+          <div class="wname">Image table</div>
+          <div class="wmeta"><span class="chip toggle">Table select</span></div>
+          <div class="wdesc">
+            All ticked by default. Untick to plot a subset - one condition against another, say.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Steps 2 &amp; 3 - Choose what to plot</div>
+
+        <div class="wrow">
+          <div class="wname">Choose classes to compare</div>
+          <div class="wmeta"><span class="chip input">Multiselect</span></div>
+          <div class="wdesc">
+            The classes present in the ticked images, plus <em>Unlabelled</em> for cells with no
+            class. Each becomes one group in the plots; remove one with the × on its tag.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Choose cell descriptors to compare</div>
+          <div class="wmeta"><span class="chip toggle">Segmented control</span></div>
+          <div class="wdesc">
+            Pick as many as you like - area, perimeter, circularity, solidity, eccentricity and
+            the rest, colour measures included. One plot comes out per descriptor.
+            <em>area</em> is selected to begin with.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Attribute Information</div>
+          <div class="wmeta"><span class="chip action">Popover</span></div>
+          <div class="wdesc">
+            An expander per descriptor explaining what it measures and how to read it, with a
+            diagram.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 4 - Select plot parameters</div>
+
+        <div class="wrow">
+          <div class="wname">Plot type</div>
+          <div class="wmeta"><span class="chip toggle">Pills</span></div>
+          <div class="wdesc">
+            <em>Violin</em> shows the full distribution per class; <em>Bar</em> shows the summary.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Overlay datapoints</div>
+          <div class="wmeta"><span class="chip toggle">Option pill</span></div>
+          <div class="wdesc">
+            Draws every individual cell over the plot, so the sample size and any outliers behind
+            the summary are visible.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Convert to distance</div>
+          <div class="wmeta"><span class="chip toggle">Option pill</span></div>
+          <div class="wdesc">
+            Turns pixel measurements into real units, and reveals the two controls below.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Pixel size</div>
+          <div class="wmeta"><span class="chip input">Number</span></div>
+          <div class="wdesc">The physical size of one pixel, in whatever unit you name alongside.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Unit</div>
+          <div class="wmeta"><span class="chip input">Text box</span></div>
+          <div class="wdesc">
+            Labels the axes - <em>µm</em> gives “Area (µm²)”. Defaults to µm.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Step 5 - Generate plots</div>
+
+        <div class="wrow">
+          <div class="wname">Generate Plots</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Builds the measurement table and draws one plot per selected descriptor. Press it
+            again after changing anything above to refresh them.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 5. DOWNLOADS ══════════ -->
+  <section class="page" id="downloads">
+    <header class="page-banner" data-mark="5">
+      <div class="page-num">5</div>
+      <div>
+        <h2>Downloads</h2>
+        <p>Tick what you want across four columns, build the zip, then save it. Changing any tick clears a zip you already built, so you always get what is currently ticked.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="group-title">Images and Masks</div>
+
+        <div class="wrow">
+          <div class="wname">Images and masks</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            On by default. The image files and their mask files. Unticking it greys out the four
+            options below, which all build on it.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Colored mask overlays</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            On by default. Copies of each image with the cells drawn over them in their class
+            colours - the view you see in the app.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Per-image class counts</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">Prints how many cells of each class there are into the corner of each saved image.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Normalize images</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">Rescales pixel intensities to the full 0-255 range before saving.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Cell patch images</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            A small cropped image of every individual cell - useful as training data or for
+            figure panels.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Tables</div>
+
+        <div class="wrow">
+          <div class="wname">Per-image cell counts</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">On by default. A CSV of how many cells of each class appear in each image.</div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Cell metrics</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            On by default. A CSV with every morphological and colour descriptor for every single
+            cell - the raw data behind the page 4 plots.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Trained Models</div>
+
+        <div class="wrow">
+          <div class="wname">Cellpose model</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            Fine-tuned weights, the training dataset and the loss curves. Greyed out until a
+            model has been trained or uploaded.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">DenseNet model</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">The same, with evaluation metrics in place of the loss curves.</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Session Restore</div>
+
+        <div class="wrow">
+          <div class="wname">Save Session</div>
+          <div class="wmeta"><span class="chip toggle">Checkbox</span></div>
+          <div class="wdesc">
+            Adds <em>mycol_saved_session.zip</em> to the download. Drop that zip back into the
+            uploader on page 1 to restore your images, masks, labels, models and settings exactly
+            as you left them.
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Building the download</div>
+
+        <div class="wrow">
+          <div class="wname">Prepare Download</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Packs everything ticked into a single zip. Large sets take a while - a spinner shows
+            while it works.
+          </div>
+        </div>
+
+        <div class="wrow">
+          <div class="wname">Download Files</div>
+          <div class="wmeta"><span class="chip action">Button</span></div>
+          <div class="wdesc">
+            Saves the prepared zip to your computer. Greyed out until <em>Prepare Download</em>
+            has been pressed.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ SHORTCUTS ══════════ -->
+  <section class="page" id="shortcuts">
+    <header class="page-banner utility" data-mark="⌨">
+      <div class="page-num">⌨</div>
+      <div>
+        <h2>Keyboard shortcuts</h2>
+        <p>All on the Annotate Images page, and all working from either control tab.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="keygrid">
+          <div><span><kbd>←</kbd> <kbd>→</kbd></span> Previous / next image</div>
+          <div><span><kbd>M</kbd></span> Toggle mask overlay</div>
+          <div><span><kbd>N</kbd></span> Toggle normalization</div>
+          <div><span><kbd>I</kbd></span> Toggle underlying image</div>
+          <div><span><kbd>B</kbd></span> Draw box mode</div>
+          <div><span><kbd>G</kbd></span> Generate masks from boxes</div>
+          <div><span><kbd>F</kbd></span> Freehand mode</div>
+          <div><span><kbd>E</kbd></span> Ellipse mode</div>
+          <div><span><kbd>S</kbd></span> Split masks mode</div>
+          <div><span><kbd>J</kbd></span> Join masks mode</div>
+          <div><span><kbd>D</kbd></span> Remove mode</div>
+          <div><span><kbd>Ctrl</kbd>+<kbd>Z</kbd></span> Undo last action</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Shortcuts know when you are typing.</strong> Letter shortcuts stand down while
+        the cursor is in a text box, so naming a class never triggers a mode change. The zoom
+        slider hands the arrow keys back as soon as you move away from it, so <kbd>←</kbd> and
+        <kbd>→</kbd> keep changing image.
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
+    <a href="index.html">Workflow</a> &nbsp;&middot;&nbsp;
+    <a href="faq.html">FAQ</a> &nbsp;&middot;&nbsp;
+    <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener">GitHub</a>
+  </p>
+</footer>
+
+<script src="site.js"></script>
+
+</body>
+</html>

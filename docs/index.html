@@ -4,237 +4,106 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mycol - User Guide</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    /* ── Reset & Base ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --blue-50:  #E9F2FF;
-      --blue-100: #c7dcff;
-      --blue-500: #2563eb;
-      --blue-600: #1d4ed8;
-      --blue-700: #1e40af;
-      --gray-50:  #f6f7f9;
-      --gray-100: #eef0f3;
-      --gray-300: #cbd5e1;
-      --gray-600: #475569;
-      --gray-700: #334155;
-      --gray-900: #0f172a;
-      --white:    #ffffff;
-      --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
-      --shadow-md: 0 4px 18px rgba(0,0,0,.12);
-      --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
-      --radius:   14px;
-      --radius-sm: 8px;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--gray-50);
-      color: var(--gray-700);
-      line-height: 1.65;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      background: linear-gradient(135deg, var(--blue-50) 0%, var(--white) 60%);
-      border-bottom: 1px solid var(--gray-100);
-      padding: 5rem 2rem 4rem;
-      text-align: center;
-    }
-
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 800;
-      color: var(--gray-900);
-      margin-bottom: 1rem;
-    }
-
-    .hero h1 span { color: var(--blue-600); }
-
-    .hero p {
-      max-width: 640px;
-      margin: 0 auto 2rem;
-      font-size: 1.1rem;
-      color: var(--gray-600);
-    }
-
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      justify-content: center;
-    }
-
-    .badge {
-      background: var(--white);
-      border: 1.5px solid var(--blue-100);
-      border-radius: 999px;
-      padding: 0.35rem 0.9rem;
-      font-size: 0.83rem;
-      font-weight: 600;
-      color: var(--blue-600);
-      box-shadow: var(--shadow-sm);
-      text-decoration: none;
-      transition: background 0.15s, border-color 0.15s;
-    }
-
-    .badge:hover {
-      background: var(--blue-100);
-      border-color: var(--blue-500);
-    }
-
-    /* ── Main content ── */
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 3rem 2rem 5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 5rem;
-    }
-
-    /* ── Section ── */
-    .section {
+    /* ── Page-specific: text beside a video or figure ── */
+    .split {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3rem;
+      gap: 2.25rem;
       align-items: center;
     }
 
-    .section.reverse { direction: rtl; }
-    .section.reverse > * { direction: ltr; }
-
-    .section-text {
-      background: var(--white);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      padding: 2rem 2.25rem;
-    }
-
-    .step-label {
-      display: inline-block;
-      background: var(--blue-50);
-      color: var(--blue-600);
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      border-radius: 999px;
-      padding: 0.25rem 0.75rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .section-text h2 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--gray-900);
-      margin-bottom: 1rem;
-    }
-
-    .section-text p,
-    .section-text li {
+    .split-text p,
+    .split-text li {
       font-size: 0.97rem;
       color: var(--gray-600);
       margin-bottom: 0.5rem;
     }
 
-    .section-text ul {
+    .split-text ul {
       padding-left: 1.25rem;
       margin-top: 0.5rem;
     }
 
-    .section-text li { margin-bottom: 0.35rem; }
+    .split-text li { margin-bottom: 0.35rem; }
+    .split-text strong { color: var(--gray-900); }
 
-    .section-text a {
-      color: var(--blue-500);
-      text-decoration: none;
-      font-weight: 500;
-    }
-    .section-text a:hover { text-decoration: underline; }
-
-    .section-text strong { color: var(--gray-900); }
-
-    .section-img {
-      border-radius: var(--radius);
+    .split-media {
+      border-radius: var(--radius-sm);
       box-shadow: var(--shadow-md);
       overflow: hidden;
       background: var(--white);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
+      position: relative;
     }
 
-    .section-img img {
+    .split-media video,
+    .split-media img {
       width: 100%;
       height: auto;
-      max-height: 480px;
-      object-fit: contain;
-      border-radius: var(--radius-sm);
       display: block;
-    }
-
-    /* ── Workflow timeline ── */
-    .workflow-steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.25rem;
-      margin-top: 1.5rem;
-    }
-
-    .wf-step {
-      background: var(--gray-50);
-      border: 1.5px solid var(--gray-100);
       border-radius: var(--radius-sm);
-      padding: 1rem 1.1rem;
     }
 
-    .wf-step-num {
-      font-size: 1.4rem;
-      font-weight: 800;
+    /* stacked cross-fading videos need a fixed box to sit in */
+    .split-media.stack { min-height: 260px; }
+
+    .split-media.stack video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: opacity 0.8s ease;
+      opacity: 0;
+    }
+
+    .split-media.stack video.active { opacity: 1; }
+    .split-media.stack .ratio { width: 100%; padding-top: 60.8%; }
+
+    /* ── Workflow overview ── */
+    .overview-p {
+      font-size: 0.97rem;
+      color: var(--gray-600);
+      margin-bottom: 0.75rem;
+      text-align: justify;
+    }
+
+    .overview-p strong { color: var(--gray-900); }
+
+    .overview-img {
+      width: 100%;
+      height: auto;
+      border-radius: var(--radius-sm);
+      margin-top: 1.25rem;
+    }
+
+
+    /* ── Link through to the matching controls reference ── */
+    .see-also {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 1.25rem;
+      font-size: 0.86rem;
+      font-weight: 600;
       color: var(--blue-600);
-      margin-bottom: 0.3rem;
-    }
-
-    .wf-step h3 {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--gray-900);
-      margin-bottom: 0.3rem;
-    }
-
-    .wf-step p {
-      font-size: 0.82rem;
-      color: var(--gray-600);
-      margin: 0;
-    }
-
-    /* ── Footer ── */
-    footer {
-      background: var(--white);
-      border-top: 1px solid var(--gray-100);
-      text-align: center;
-      padding: 2rem;
-      font-size: 0.85rem;
-      color: var(--gray-600);
-    }
-
-    footer a {
-      color: var(--blue-500);
       text-decoration: none;
-      font-weight: 500;
+      background: var(--blue-50);
+      border: 1.5px solid var(--blue-100);
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      transition: background 0.15s, border-color 0.15s;
     }
-    footer a:hover { text-decoration: underline; }
 
-    /* ── Responsive ── */
+    .see-also:hover {
+      background: var(--blue-100);
+      border-color: var(--blue-500);
+      text-decoration: none;
+    }
+
     @media (max-width: 760px) {
-      .section, .section.reverse {
-        grid-template-columns: 1fr;
-        direction: ltr;
-      }
+      .split { grid-template-columns: 1fr; gap: 1.5rem; }
     }
   </style>
 </head>
@@ -248,267 +117,296 @@
     powered by AI and designed to streamline your analysis workflow.
   </p>
   <div class="badge-row">
-    <a href="index.html" class="badge">Workflow</a>
+    <a href="index.html" class="badge current">Workflow</a>
     <a href="faq.html" class="badge">FAQ</a>
+    <a href="functionality.html" class="badge">Functionality Guide</a>
     <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener" class="badge">GitHub</a>
   </div>
 </section>
 
+<!-- ══════════════ STICKY NAV ══════════════ -->
+<nav class="section-nav">
+  <div class="section-nav-inner">
+    <a href="#workflow"><i>◆</i> Overview</a>
+    <a href="#upload"><i>1</i> Upload</a>
+    <a href="#annotate"><i>2</i> Annotate</a>
+    <a href="#train"><i>3</i> Train</a>
+    <a href="#analyze"><i>4</i> Visualize</a>
+    <a href="#downloads"><i>5</i> Downloads</a>
+  </div>
+</nav>
+
 <!-- ══════════════ MAIN ══════════════ -->
 <main>
 
-  <!-- ── Workflow Overview ── -->
-  <div id="workflow" style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:2.5rem 2.75rem;">
-    <span class="step-label">Overview</span>
-    <h2 style="font-size:1.4rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem;">Mycol Workflow</h2>
-    <p style="font-size:0.97rem;color:var(--gray-600);margin-bottom:0.75rem;text-align:justify;">
-      Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
-    </p>
-    <p style="font-size:0.97rem;color:var(--gray-600);margin-bottom:1.5rem;text-align:justify;">
-      Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
-    </p>
-    <img src="pipeline_summary.svg" alt="Mycol pipeline overview" style="width:100%;height:auto;border-radius:var(--radius-sm);" />
-  </div>
+  <!-- ══════════ OVERVIEW ══════════ -->
+  <section class="page" id="workflow">
+    <header class="page-banner utility" data-mark="◆">
+      <div class="page-num">◆</div>
+      <div>
+        <h2>The Mycol Workflow</h2>
+        <p>From raw microscopy images to trained models and quantitative cell-level insights - each stage builds on the last.</p>
+      </div>
+    </header>
+    <div class="page-body">
 
-  <!-- ── Upload ── -->
-  <div class="section reverse" id="upload">
-    <div class="section-text">
-      <span class="step-label">Step 1 - Upload Models and Data</span>
-      <h2>Upload Your Data</h2>
-      <p>This is where your analysis begins. Upload the key files Mycol will use in later steps:</p>
-      <ul>
-        <li><strong>Images</strong> <em>(required)</em> - the microscopy or sample images you want to analyze.</li>
-        <li><strong>Masks</strong> <em>(optional)</em> - segmentation masks that outline cells or regions of interest.</li>
-        <li>
-          <strong>Cellpose model</strong> <em>(optional)</em> - a trained model for automatic cell segmentation.
-          <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Learn about Cellpose →</a>
-        </li>
-        <li>
-          <strong>DenseNet model</strong> <em>(optional)</em> - a classification model for labeling segmented cells.
-          <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
-        </li>
-        <li>
-          <strong>Cellpose settings CSV</strong> <em>(optional)</em> - the inference hyperparameters
-          saved alongside a downloaded model, which reapply a previous segmentation setup without
-          re-entering each value by hand.
-        </li>
-        <li>
-          <strong>Saved session</strong> <em>(optional)</em> - a session zip downloaded earlier,
-          which restores your images, masks, labels, models and settings exactly as you left them.
-        </li>
-      </ul>
-      <p style="margin-top:1rem;">
-        Everything goes into one uploader and Mycol sorts it out: images and masks are paired by
-        filename, and model files are identified from their contents.
-      </p>
-      <p>
-        Once uploaded, a <strong>summary table</strong> shows which images have masks linked,
-        how many cells are highlighted in each image, and any models you've provided.
-        No data of your own to hand? <strong>Use demo data</strong> loads an example set so you can
-        try the full workflow first.
-      </p>
-    </div>
-    <div class="section-img" style="padding:0;">
-      <video autoplay muted loop playsinline
-        style="width:100%;height:auto;border-radius:var(--radius-sm);display:block;">
-        <source src="upload_demo.mp4" type="video/mp4" />
-      </video>
-    </div>
-  </div>
+      <div class="group">
+        <p class="overview-p">
+          Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
+        </p>
+        <p class="overview-p">
+          Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
+        </p>
 
-  <!-- ── Annotate ── -->
-  <div class="section" id="annotate">
-    <div class="section-text">
-      <span class="step-label">Step 2 - Annotate Images</span>
-      <h2>Segment and Classify Your Cells</h2>
-      <p>
-        The central workspace where annotated datasets are produced. Here you can:
-      </p>
-      <ul>
-        <li><strong>View images</strong> overlaid with their associated cell masks.</li>
-        <li>
-          <strong>Generate new masks</strong> automatically with
-          <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Cellpose</a>
-          or <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">SAM2</a>.
-        </li>
-        <li><strong>Manually edit or correct masks</strong> - add, remove, or adjust individual cells.</li>
-        <li>
-          <strong>Classify cells</strong> using an uploaded DenseNet model for automated classification,
-          or by clicking directly on cells in the image for manual labeling.
-        </li>
-      </ul>
-      <p style="margin-top:1rem;">
-        Once ready, download your dataset (including images, masks and tabulated cell counts) or move on to phenotypic comparison or training new models.
-      </p>
-    </div>
-    <div class="section-img" style="position:relative;padding:0;overflow:hidden;min-height:300px;">
-      <video id="vid0" autoplay muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:1;">
-        <source src="demo0.mp4" type="video/mp4" />
-      </video>
-      <video id="vid1" muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:0;">
-        <source src="demo.mp4" type="video/mp4" />
-      </video>
-      <video id="vid2" muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:0;">
-        <source src="demo2.mp4" type="video/mp4" />
-      </video>
-      <div style="width:100%;padding-top:60.8%;"></div>
-    </div>
-    <script>
-      (function () {
-        const videos = [
-          document.getElementById('vid0'),
-          document.getElementById('vid1'),
-          document.getElementById('vid2')
-        ];
-        let current = 0;
+        <img src="pipeline_summary.svg" alt="Mycol pipeline overview" class="overview-img" />
+      </div>
 
-        function playNext() {
-          const hide = videos[current];
-          current = (current + 1) % videos.length;
-          const show = videos[current];
-          show.currentTime = 0;
-          show.play();
-          show.style.opacity = '1';
-          hide.style.opacity = '0';
-        }
-
-        videos.forEach(v => v.addEventListener('ended', playNext));
-      })();
-    </script>
-  </div>
-
-  <!-- ── Train ── -->
-  <div class="section reverse" id="train">
-    <div class="section-text">
-      <span class="step-label">Step 3 - Train Models</span>
-      <h2>Train Your Own Analysis Models</h2>
-      <p>
-        Use the datasets you've created to fine-tune your own models. Choose from:
-      </p>
-      <ul>
-        <li><strong>Cellpose segmentation model</strong> - improve or customize how cells are automatically detected and outlined.</li>
-        <li><strong>DenseNet classification model</strong> - fine-tune how cells are categorized based on their features.</li>
-      </ul>
-      <p style="margin-top:1rem;">
-        Sensible default parameters are provided, but you can also run
-        <strong>hyperparameter optimization</strong> to explore how different settings
-        affect model performance.
-      </p>
-      <p>
-        After training, performance plots show training progress, accuracy, loss, and
-        validation metrics. Trained models can be <strong>used immediately</strong> in
-        the annotation page or <strong>downloaded</strong> for reuse.
-      </p>
     </div>
-    <div class="section-img" style="position:relative;padding:0;overflow:hidden;min-height:300px;">
-      <video id="tvid0" autoplay muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:1;">
-        <source src="training_demo1.mp4" type="video/mp4" />
-      </video>
-      <video id="tvid1" muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:0;">
-        <source src="training_demo2.mp4" type="video/mp4" />
-      </video>
-      <video id="tvid2" muted playsinline
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:var(--radius-sm);transition:opacity 0.8s ease;opacity:0;">
-        <source src="training_demo3.mp4" type="video/mp4" />
-      </video>
-      <div style="width:100%;padding-top:60.8%;"></div>
-    </div>
-    <script>
-      (function () {
-        const tvideos = [
-          document.getElementById('tvid0'),
-          document.getElementById('tvid1'),
-          document.getElementById('tvid2')
-        ];
-        let tcurrent = 0;
+  </section>
 
-        function tplayNext() {
-          const hide = tvideos[tcurrent];
-          tcurrent = (tcurrent + 1) % tvideos.length;
-          const show = tvideos[tcurrent];
-          show.currentTime = 0;
-          show.play();
-          show.style.opacity = '1';
-          hide.style.opacity = '0';
-        }
+  <!-- ══════════ 1. UPLOAD ══════════ -->
+  <section class="page" id="upload">
+    <header class="page-banner" data-mark="1">
+      <div class="page-num">1</div>
+      <div>
+        <div class="page-kicker">Step 1 &middot; Upload Models and Data</div>
+        <h2>Upload Your Data</h2>
+        <p>Where your analysis begins. Everything goes into one uploader and Mycol sorts it out.</p>
+      </div>
+    </header>
+    <div class="page-body">
 
-        tvideos.forEach(v => v.addEventListener('ended', tplayNext));
-      })();
-    </script>
-  </div>
+      <div class="group">
+        <div class="split">
+          <div class="split-text">
+            <p>Upload the key files Mycol will use in later steps:</p>
+            <ul>
+              <li><strong>Images</strong> <em>(required)</em> - the microscopy or sample images you want to analyze.</li>
+              <li><strong>Masks</strong> <em>(optional)</em> - segmentation masks that outline cells or regions of interest.</li>
+              <li>
+                <strong>Cellpose model</strong> <em>(optional)</em> - a trained model for automatic cell segmentation.
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Learn about Cellpose →</a>
+              </li>
+              <li>
+                <strong>DenseNet model</strong> <em>(optional)</em> - a classification model for labeling segmented cells.
+                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
+              </li>
+              <li>
+                <strong>Cellpose settings CSV</strong> <em>(optional)</em> - the inference hyperparameters
+                saved alongside a downloaded model, which reapply a previous segmentation setup without
+                re-entering each value by hand.
+              </li>
+              <li>
+                <strong>Saved session</strong> <em>(optional)</em> - a session zip downloaded earlier,
+                which restores your images, masks, labels, models and settings exactly as you left them.
+              </li>
+            </ul>
+            <p style="margin-top:1rem;">
+              Images and masks are paired by filename, and model files are identified from their
+              contents. Once uploaded, a <strong>summary table</strong> shows which images have
+              masks linked, how many cells are highlighted in each, and any models you've provided.
+            </p>
+            <p>
+              No data of your own to hand? <strong>Use demo data</strong> loads an example set so
+              you can try the full workflow first.
+            </p>
+            <a class="see-also" href="functionality.html#upload">Every control on this page →</a>
+          </div>
+          <div class="split-media">
+            <video autoplay muted loop playsinline>
+              <source src="upload_demo.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
 
-  <!-- ── Analyze ── -->
-  <div class="section" id="analyze">
-    <div class="section-text">
-      <span class="step-label">Step 4 - Visualize Cell Attributes</span>
-      <h2>Get to Know Your Data</h2>
-      <p>
-        Explore and summarize the quantitative results of your analyses. Create and download
-        plots of <strong>cell population statistics</strong> - such as cell area, perimeter,
-        and other morphological features - grouped by <strong>cell class</strong>.
-      </p>
-      <p>Select which classes and characteristics to include, and Mycol generates plots that help you:</p>
-      <ul>
-        <li>Compare cell features across classes or conditions.</li>
-        <li>Identify trends in cell populations across multiple images or experiments.</li>
-        <li>Quantify variability and relationships among measured features.</li>
-      </ul>
-      <p style="margin-top:1rem;">
-        Downloadable results include <strong>per-image cell counts by class</strong>, a
-        <strong>per-cell metrics table</strong> holding every shape and colour descriptor for
-        every segmented cell, and <strong>publication-ready plots</strong>.
-      </p>
     </div>
-    <div class="section-img" style="padding:0;">
-      <video autoplay muted loop playsinline
-        style="width:100%;height:auto;border-radius:var(--radius-sm);display:block;">
-        <source src="analyze_demo.mp4" type="video/mp4" />
-      </video>
-    </div>
-  </div>
+  </section>
 
-  <!-- ── Downloads ── -->
-  <div class="section reverse" id="downloads">
-    <div class="section-text">
-      <span class="step-label">Downloads</span>
-      <h2>Export Your Results</h2>
-      <p>
-        The Downloads page lets you package and export everything produced during your session.
-        Choose exactly what to include before preparing the zip:
-      </p>
-      <ul>
-        <li>
-          <strong>Images &amp; Masks</strong> - export your images with colored mask overlays,
-          optional per-image class count labels, intensity-normalized images, and cropped
-          <strong>cell patch images</strong> for every individual segmented cell.
-        </li>
-        <li>
-          <strong>Tables</strong> - CSV files with per-image cell counts and full
-          <strong>cell metrics</strong> (area, circularity, elongation, and more) for every cell.
-        </li>
-        <li>
-          <strong>Trained Models</strong> - fine-tuned Cellpose or DenseNet weights together
-          with the training dataset, loss curves, and evaluation metrics.
-        </li>
-        <li>
-          <strong>Session Restore</strong> - save a zip you can re-upload to pick up exactly
-          where you left off in a future session.
-        </li>
-      </ul>
-      <p style="margin-top:1rem;">
-        Click <strong>Prepare Download</strong> to build the zip, then
-        <strong>Download Files</strong> to save it locally.
-      </p>
+  <!-- ══════════ 2. ANNOTATE ══════════ -->
+  <section class="page" id="annotate">
+    <header class="page-banner" data-mark="2">
+      <div class="page-num">2</div>
+      <div>
+        <div class="page-kicker">Step 2 &middot; Annotate Images</div>
+        <h2>Segment and Classify Your Cells</h2>
+        <p>The central workspace, where annotated datasets are produced.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="split">
+          <div class="split-text">
+            <p>Here you can:</p>
+            <ul>
+              <li><strong>View images</strong> overlaid with their associated cell masks.</li>
+              <li>
+                <strong>Generate new masks</strong> automatically with
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Cellpose</a>
+                or <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">SAM2</a>.
+              </li>
+              <li><strong>Manually edit or correct masks</strong> - add, remove, split, join, or adjust individual cells.</li>
+              <li>
+                <strong>Classify cells</strong> using an uploaded DenseNet model for automated classification,
+                or by clicking directly on cells in the image for manual labeling.
+              </li>
+            </ul>
+            <p style="margin-top:1rem;">
+              Once ready, download your dataset - images, masks and tabulated cell counts - or move
+              on to phenotypic comparison or training new models.
+            </p>
+            <a class="see-also" href="functionality.html#annotate">Every control on this page →</a>
+          </div>
+          <div class="split-media stack" id="annotate-videos">
+            <video class="active" autoplay muted playsinline><source src="demo0.mp4" type="video/mp4" /></video>
+            <video muted playsinline><source src="demo.mp4" type="video/mp4" /></video>
+            <video muted playsinline><source src="demo2.mp4" type="video/mp4" /></video>
+            <div class="ratio"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
-    <div class="section-img">
-      <img src="export_summary.svg" alt="Export options summary" />
+  </section>
+
+  <!-- ══════════ 3. TRAIN ══════════ -->
+  <section class="page" id="train">
+    <header class="page-banner" data-mark="3">
+      <div class="page-num">3</div>
+      <div>
+        <div class="page-kicker">Step 3 &middot; Train Models</div>
+        <h2>Train Your Own Analysis Models</h2>
+        <p>Use the datasets you've created to fine-tune models that suit your own images.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="split">
+          <div class="split-text">
+            <p>Choose from:</p>
+            <ul>
+              <li><strong>Cellpose segmentation model</strong> - improve or customize how cells are automatically detected and outlined.</li>
+              <li><strong>DenseNet classification model</strong> - fine-tune how cells are categorized based on their features.</li>
+            </ul>
+            <p style="margin-top:1rem;">
+              Sensible default parameters are provided, but you can also run
+              <strong>hyperparameter optimization</strong> to explore how different settings
+              affect model performance.
+            </p>
+            <p>
+              After training, performance plots show training progress, accuracy, loss, and
+              validation metrics. Trained models can be <strong>used immediately</strong> in
+              the annotation page or <strong>downloaded</strong> for reuse.
+            </p>
+            <a class="see-also" href="functionality.html#train">Every control on this page →</a>
+          </div>
+          <div class="split-media stack" id="train-videos">
+            <video class="active" autoplay muted playsinline><source src="training_demo1.mp4" type="video/mp4" /></video>
+            <video muted playsinline><source src="training_demo2.mp4" type="video/mp4" /></video>
+            <video muted playsinline><source src="training_demo3.mp4" type="video/mp4" /></video>
+            <div class="ratio"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
-  </div>
+  </section>
+
+  <!-- ══════════ 4. ANALYZE ══════════ -->
+  <section class="page" id="analyze">
+    <header class="page-banner" data-mark="4">
+      <div class="page-num">4</div>
+      <div>
+        <div class="page-kicker">Step 4 &middot; Visualize Cell Attributes</div>
+        <h2>Get to Know Your Data</h2>
+        <p>Explore and summarize the quantitative results of your analyses.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="split">
+          <div class="split-text">
+            <p>
+              Create and download plots of <strong>cell population statistics</strong> - such as
+              cell area, perimeter, and other morphological features - grouped by
+              <strong>cell class</strong>.
+            </p>
+            <p>Select which classes and characteristics to include, and Mycol generates plots that help you:</p>
+            <ul>
+              <li>Compare cell features across classes or conditions.</li>
+              <li>Identify trends in cell populations across multiple images or experiments.</li>
+              <li>Quantify variability and relationships among measured features.</li>
+            </ul>
+            <p style="margin-top:1rem;">
+              Downloadable results include <strong>per-image cell counts by class</strong>, a
+              <strong>per-cell metrics table</strong> holding every shape and colour descriptor for
+              every segmented cell, and <strong>publication-ready plots</strong>.
+            </p>
+            <a class="see-also" href="functionality.html#metrics">Every control on this page →</a>
+          </div>
+          <div class="split-media">
+            <video autoplay muted loop playsinline>
+              <source src="analyze_demo.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 5. DOWNLOADS ══════════ -->
+  <section class="page" id="downloads">
+    <header class="page-banner" data-mark="5">
+      <div class="page-num">5</div>
+      <div>
+        <div class="page-kicker">Downloads</div>
+        <h2>Export Your Results</h2>
+        <p>Package and export everything produced during your session.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="group">
+        <div class="split">
+          <div class="split-text">
+            <p>Choose exactly what to include before preparing the zip:</p>
+            <ul>
+              <li>
+                <strong>Images &amp; Masks</strong> - export your images with colored mask overlays,
+                optional per-image class count labels, intensity-normalized images, and cropped
+                <strong>cell patch images</strong> for every individual segmented cell.
+              </li>
+              <li>
+                <strong>Tables</strong> - CSV files with per-image cell counts and full
+                <strong>cell metrics</strong> (area, circularity, elongation, and more) for every cell.
+              </li>
+              <li>
+                <strong>Trained Models</strong> - fine-tuned Cellpose or DenseNet weights together
+                with the training dataset, loss curves, and evaluation metrics.
+              </li>
+              <li>
+                <strong>Session Restore</strong> - save a zip you can re-upload to pick up exactly
+                where you left off in a future session.
+              </li>
+            </ul>
+            <p style="margin-top:1rem;">
+              Click <strong>Prepare Download</strong> to build the zip, then
+              <strong>Download Files</strong> to save it locally.
+            </p>
+            <a class="see-also" href="functionality.html#downloads">Every control on this page →</a>
+          </div>
+          <div class="split-media">
+            <img src="export_summary.svg" alt="Export options summary" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 
 </main>
 
@@ -516,9 +414,29 @@
 <footer>
   <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
     <a href="faq.html">FAQ</a> &nbsp;&middot;&nbsp;
+    <a href="functionality.html">Functionality Guide</a> &nbsp;&middot;&nbsp;
     <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener">GitHub</a>
   </p>
 </footer>
+
+<script src="site.js"></script>
+<script>
+  // Cross-fade through each stack of demo videos, one after the other.
+  document.querySelectorAll('.split-media.stack').forEach((stack) => {
+    const videos = [...stack.querySelectorAll('video')];
+    if (videos.length < 2) return;
+    let current = 0;
+
+    videos.forEach(v => v.addEventListener('ended', () => {
+      videos[current].classList.remove('active');
+      current = (current + 1) % videos.length;
+      const next = videos[current];
+      next.currentTime = 0;
+      next.play();
+      next.classList.add('active');
+    }));
+  });
+</script>
 
 </body>
 </html>
