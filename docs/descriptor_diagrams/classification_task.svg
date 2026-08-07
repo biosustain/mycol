@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="400"
+   height="152"
+   viewBox="0 0 400 152"
+   version="1.1"
+   id="svg-classification-task"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <g id="layer1">
+
+    <!-- ══ panel titles ══ -->
+    <text x="85" y="15" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cls-title-a">Segmented cells</text>
+    <text x="290" y="15" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cls-title-b">One patch, one class</text>
+
+    <!-- ══ PANEL A: segmentation has run, but no cell has a class yet ══ -->
+    <rect x="10" y="24" width="150" height="98"
+       style="fill:#94a3b8;fill-opacity:0.12;stroke:#000000;stroke-width:1.2" id="cls-frame-a" />
+
+    <ellipse cx="46" cy="52" rx="21" ry="10" transform="rotate(-18,46,52)"
+       style="fill:#E5E5E5;fill-opacity:0.85;stroke:#000000;stroke-width:1.4" id="cls-a1" />
+    <ellipse cx="112" cy="58" rx="13" ry="12.5" transform="rotate(24,112,58)"
+       style="fill:#E5E5E5;fill-opacity:0.85;stroke:#000000;stroke-width:1.4" id="cls-a2" />
+    <ellipse cx="52" cy="98" rx="20" ry="10" transform="rotate(8,52,98)"
+       style="fill:#E5E5E5;fill-opacity:0.85;stroke:#000000;stroke-width:1.4" id="cls-a3" />
+    <ellipse cx="118" cy="97" rx="13" ry="12.5" transform="rotate(-14,118,97)"
+       style="fill:#E5E5E5;fill-opacity:0.85;stroke:#000000;stroke-width:1.4" id="cls-a4" />
+
+    <text x="46" y="55" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-a-q1">?</text>
+    <text x="112" y="61" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-a-q2">?</text>
+    <text x="52" y="101" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-a-q3">?</text>
+    <text x="118" y="100" style="font-size:9px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-a-q4">?</text>
+
+    <!-- ══ arrow: each cell is cropped out on its own ══ -->
+    <text x="173" y="60" style="font-size:6px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cls-arrow-label"><tspan x="173" y="60">crop</tspan><tspan x="173" y="68">each</tspan><tspan x="173" y="76">cell</tspan></text>
+    <path d="M 164,84 H 175.5" style="stroke:#000000;stroke-width:1.5;fill:none" id="cls-arrow-line" />
+    <path d="M 181,84 173.5,80.6 173.5,87.4 Z" style="fill:#000000;stroke:none" id="cls-arrow-head" />
+
+    <!-- ══ PANEL B: the four patches, each given a class of its own ══ -->
+    <!-- patch 1 -->
+    <rect x="190" y="40" width="44" height="44"
+       style="fill:#ffffff;stroke:#000000;stroke-width:1.1" id="cls-p1-frame" />
+    <ellipse cx="212" cy="62" rx="17" ry="8" transform="rotate(-18,212,62)"
+       style="fill:#DC050C;fill-opacity:0.50;stroke:#000000;stroke-width:1.3" id="cls-p1-cell" />
+    <text x="212" y="96" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-p1-label">Class A</text>
+
+    <!-- patch 2 -->
+    <rect x="242" y="40" width="44" height="44"
+       style="fill:#ffffff;stroke:#000000;stroke-width:1.1" id="cls-p2-frame" />
+    <ellipse cx="264" cy="62" rx="11" ry="10.5" transform="rotate(24,264,62)"
+       style="fill:#5289C7;fill-opacity:0.50;stroke:#000000;stroke-width:1.3" id="cls-p2-cell" />
+    <text x="264" y="96" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-p2-label">Class B</text>
+
+    <!-- patch 3 -->
+    <rect x="294" y="40" width="44" height="44"
+       style="fill:#ffffff;stroke:#000000;stroke-width:1.1" id="cls-p3-frame" />
+    <ellipse cx="316" cy="62" rx="16" ry="8" transform="rotate(8,316,62)"
+       style="fill:#DC050C;fill-opacity:0.50;stroke:#000000;stroke-width:1.3" id="cls-p3-cell" />
+    <text x="316" y="96" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-p3-label">Class A</text>
+
+    <!-- patch 4 -->
+    <rect x="346" y="40" width="44" height="44"
+       style="fill:#ffffff;stroke:#000000;stroke-width:1.1" id="cls-p4-frame" />
+    <ellipse cx="368" cy="62" rx="11" ry="10.5" transform="rotate(-14,368,62)"
+       style="fill:#5289C7;fill-opacity:0.50;stroke:#000000;stroke-width:1.3" id="cls-p4-cell" />
+    <text x="368" y="96" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000" id="cls-p4-label">Class B</text>
+
+    <!-- ══ captions ══ -->
+    <text x="85" y="137" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cls-cap-a"><tspan x="85" y="137">Masks say where the cells are,</tspan><tspan x="85" y="147">not what any of them is</tspan></text>
+    <text x="290" y="137" style="font-size:7px;font-family:sans-serif;text-anchor:middle;fill:#000000"
+       id="cls-cap-b"><tspan x="290" y="137">DenseNet sees one cell at a time and picks</tspan><tspan x="290" y="147">a class, so the classes are yours to define</tspan></text>
+
+  </g>
+</svg>

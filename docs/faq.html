@@ -622,6 +622,17 @@
           A simple post-processing step then follows those gradients to group pixels into individual cell instances,
           making it remarkably robust to cells of different sizes, shapes, and imaging conditions.
         </p>
+
+        <div class="desc-figure">
+          <img src="descriptor_diagrams/segmentation_task.svg" style="width:92%"
+               alt="Diagram: an input image, a merged foreground mask, and instance masks separating every cell" />
+          <p class="desc-caption">
+            The aim of segmentation is not to find cell pixels but to separate cells from
+            <em>each other</em>. Deciding only which pixels are cell leaves touching neighbours fused
+            into a single object; predicting a centre for each one recovers them individually, which
+            is what makes counting and per-cell measurement possible.
+          </p>
+        </div>
         <p>
           Cellpose is pre-trained on a large, diverse collection of microscopy images and generalises
           well out of the box. When your images differ significantly from the training data (unusual stains,
@@ -694,6 +705,17 @@
           each segmented cell is cropped out as its own small patch and classified into one of your
           user-defined classes.
         </p>
+
+        <div class="desc-figure">
+          <img src="descriptor_diagrams/classification_task.svg" style="width:88%"
+               alt="Diagram: segmented but unlabelled cells cropped into patches, each assigned a class" />
+          <p class="desc-caption">
+            Classification picks up where segmentation stops. Masks locate the cells but say nothing
+            about them, so each one is cropped out and judged on its own appearance. The classes mean
+            whatever you decide they mean, which is why this step always needs a model trained on
+            your labels.
+          </p>
+        </div>
         <p>
           Training never starts from scratch. Mycol begins from a backbone pre-trained on ImageNet
           and replaces only its final layer with one sized to your classes, so the low-level features
