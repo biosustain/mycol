@@ -27,15 +27,26 @@ from src.helpers.help_panels import (
 ss = st.session_state
 
 
-def render_train_split_slider(key: str, *, unit: str, held_out: str) -> float:
+def held_out_count(n: int, fraction: float) -> int:
+    """Items the workers will hold out: rounded up, clamped so neither side is empty.
+
+    Mirrors `src/training/data_split.held_out_count` so the summaries show the split
+    that training will actually use.
+    """
+    if n < 2:
+        return 0
+    return min(max(int(np.ceil(n * fraction)), 1), n - 1)
+
+
+def render_train_split_slider(container, key: str, *, unit: str, held_out: str) -> float:
     """Train/held-out split slider, shown as train % and stored as the held-out fraction.
 
     `key` is the session-state key holding the held-out fraction (e.g. 0.2 for 80/20).
     """
-    train_pct = st.slider(
+    train_pct = container.slider(
         f"Train / {held_out} split",
-        min_value=50,
-        max_value=95,
+        min_value=10,
+        max_value=90,
         value=int(round((1.0 - float(ss[key])) * 100)),
         step=5,
         format="%d%%",
@@ -46,7 +57,7 @@ def render_train_split_slider(key: str, *, unit: str, held_out: str) -> float:
         ),
     )
     ss[key] = round(1.0 - train_pct / 100.0, 2)
-    st.caption(f"{train_pct}% train / {100 - train_pct}% {held_out}")
+    container.caption(f"{train_pct}% train / {100 - train_pct}% {held_out}")
     return float(ss[key])
 
 
@@ -84,7 +95,7 @@ def render_densenet_params():
     )
 
     render_train_split_slider(
-        "dn_val_split", unit="labelled cells", held_out="validation"
+        c4, "dn_val_split", unit="labelled cells", held_out="validation"
     )
 
 
@@ -110,8 +121,7 @@ def render_densenet_summary_fragment():
     freq_df = pd.DataFrame({"Class": list(classes), "Count": counts.astype(int)})
 
     n_cells = int(counts.sum())
-    # sklearn rounds the validation set up, so mirror that here
-    n_val = int(np.ceil(n_cells * float(ss.get("dn_val_split", 0.2))))
+    n_val = held_out_count(n_cells, float(ss.get("dn_val_split", 0.2)))
 
     st.info(
         f"Training set: {n_cells} labelled cells across {len(classes)} classes, "
@@ -329,7 +339,8 @@ def render_cellpose_params():
                     help="Number of hyperparameter combinations to try during optimisation. More trials may yield better results but take longer.",
                 )
 
-    render_train_split_slider("cp_test_split", unit="images", held_out="test")
+    # third row of c3, alongside the images-per-epoch and hyperparameter options
+    render_train_split_slider(c3, "cp_test_split", unit="images", held_out="test")
 
 
 def render_cellpose_summary():
@@ -351,9 +362,7 @@ def render_cellpose_summary():
         else:
             n_fail_images += 1
 
-    # sklearn rounds the test set up, so mirror that here
-    test_split = float(ss.get("cp_test_split", 0.2))
-    n_test = int(np.ceil(n_pass_images * test_split)) if n_pass_images >= 2 else 0
+    n_test = held_out_count(n_pass_images, float(ss.get("cp_test_split", 0.2)))
 
     st.info(
         f"Training set: {n_pass_masks} cell masks across {n_pass_images} images "

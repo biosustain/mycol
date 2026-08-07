@@ -1,3 +1,4 @@
+import math
 import sys
 import numpy as np
 import torch
@@ -79,9 +80,21 @@ def train_densenet(X, y, classes, batch_size, epochs, val_split):
     """Train DenseNet model and return history and best model state"""
     device = get_device()
 
+    # Stratifying needs every class present on both sides, so the held-out count is
+    # clamped to [n_classes, n - n_classes] -- an extreme split on a small dataset
+    # would otherwise leave the training set empty (or short of a class) and raise.
+    n, n_classes = len(y), len(np.unique(y))
+    n_val = math.ceil(n * val_split)
+    if n - n_classes >= n_classes:
+        n_val, stratify = min(max(n_val, n_classes), n - n_classes), y
+    else:  # too few cells to keep every class on both sides
+        n_val, stratify = min(max(n_val, 1), n - 1), None
+
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=val_split, stratify=y, random_state=42
+        X, y, test_size=n_val, stratify=stratify, random_state=42
     )
+    print(f"Split {n} cells into {len(y_train)} train / {len(y_val)} validation")
+    sys.stdout.flush()
 
     train_ds = CellDataset(X_train, y_train, transform=_TRAIN_TF)
     val_ds = CellDataset(X_val, y_val, transform=_VAL_TF)
