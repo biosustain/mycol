@@ -238,15 +238,32 @@ def add_plotly_as_png_to_zip(fig_key, zip_file, out_path, default_w=900, default
     """Adds a plotly figure stored in st.session_state[fig_key] as a PNG to the given zip file.
 
     Silently skips figures that were never created (e.g. when a model was uploaded
-    rather than trained, so no training plots exist)."""
+    rather than trained, so no training plots exist).
+
+    PNG export needs a working headless Chrome (kaleido drives a real browser), which
+    a slim server install may lack. Rather than failing the whole download, the figure
+    falls back to a self-contained HTML file."""
     fig = ss.get(fig_key)
     if fig is None:
         return
-    png = pio.to_image(
-        fig,
-        format="png",
-        scale=3,
-        width=int(getattr(fig.layout, "width", default_w) or default_w),
-        height=int(getattr(fig.layout, "height", default_h) or default_h),
-    )
+    try:
+        png = pio.to_image(
+            fig,
+            format="png",
+            scale=3,
+            width=int(getattr(fig.layout, "width", default_w) or default_w),
+            height=int(getattr(fig.layout, "height", default_h) or default_h),
+        )
+    except Exception as e:  # noqa: BLE001 - any browser failure degrades to HTML
+        if not ss.get("_png_export_warned"):
+            ss["_png_export_warned"] = True
+            st.warning(
+                "Could not render plots as PNG on this server, so they are included "
+                f"as interactive HTML instead. ({type(e).__name__})"
+            )
+        zip_file.writestr(
+            str(Path(out_path).with_suffix(".html")),
+            pio.to_html(fig, include_plotlyjs="cdn", full_html=True),
+        )
+        return
     zip_file.writestr(out_path, png)
