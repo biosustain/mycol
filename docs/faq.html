@@ -624,13 +624,12 @@
         </p>
 
         <div class="desc-figure">
-          <img src="descriptor_diagrams/segmentation_task.svg" style="width:92%"
-               alt="Diagram: an input image, a merged foreground mask, and instance masks separating every cell" />
+          <img src="descriptor_diagrams/segmentation_task.svg" style="width:72%"
+               alt="Diagram: a raw image of four cells, and the same image with one mask outlining each cell" />
           <p class="desc-caption">
-            The aim of segmentation is not to find cell pixels but to separate cells from
-            <em>each other</em>. Deciding only which pixels are cell leaves touching neighbours fused
-            into a single object; predicting a centre for each one recovers them individually, which
-            is what makes counting and per-cell measurement possible.
+            The aim of segmentation: turn a raw image into one mask per cell. Predicting a centre for
+            every cell is what lets touching neighbours be split apart rather than fused into a
+            single blob, and separate masks are what make counting and per-cell measurement possible.
           </p>
         </div>
         <p>
@@ -707,8 +706,8 @@
         </p>
 
         <div class="desc-figure">
-          <img src="descriptor_diagrams/classification_task.svg" style="width:88%"
-               alt="Diagram: segmented but unlabelled cells cropped into patches, each assigned a class" />
+          <img src="descriptor_diagrams/classification_task.svg" style="width:72%"
+               alt="Diagram: masked but unlabelled cells cropped into patches, each assigned a class" />
           <p class="desc-caption">
             Classification picks up where segmentation stops. Masks locate the cells but say nothing
             about them, so each one is cropped out and judged on its own appearance. The classes mean
