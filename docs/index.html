@@ -71,11 +71,19 @@
 
     .overview-p strong { color: var(--gray-900); }
 
+    /* the workflow figure is detailed, so let it use the full card width
+       rather than sitting inside the prose padding */
     .overview-img {
-      width: 100%;
+      display: block;
+      width: calc(100% + 4.5rem);
+      max-width: none;
       height: auto;
       border-radius: var(--radius-sm);
-      margin-top: 1.25rem;
+      margin: 1.5rem -2.25rem 0;
+    }
+
+    @media (max-width: 720px) {
+      .overview-img { width: calc(100% + 2.5rem); margin: 1.25rem -1.25rem 0; }
     }
 
 
@@ -144,7 +152,7 @@
     <header class="page-banner utility" data-mark="◆">
       <div class="page-num">◆</div>
       <div>
-        <h2>The Mycol Workflow</h2>
+        <h2>Mycol helps you build, deploy and verify automated image analysis pipelines in minutes</h2>
         <p>From raw microscopy images to trained models and quantitative cell-level insights - each stage builds on the last.</p>
       </div>
     </header>
@@ -158,7 +166,7 @@
           Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
         </p>
 
-        <img src="pipeline_summary.svg" alt="Mycol pipeline overview" class="overview-img" />
+        <img src="pipeline_overview_correct.svg" alt="The Mycol workflow: mask a few cells by hand or with SAM2, train a Cellpose model and improve it by correcting and retraining; then label some cells, train a DenseNet121 classifier and improve it the same way; finally compare cell descriptors between classes and download the results." class="overview-img" />
       </div>
 
     </div>
