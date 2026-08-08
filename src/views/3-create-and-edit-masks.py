@@ -86,7 +86,7 @@ with st.spinner("Loading Annotator..."):
 
             # --- View toggle buttons (active view shows as a filled/primary button) ---
             _views = [
-                ("Masks", "show_overlay", "M"),
+                ("Masks", "show_overlay", "space"),
                 ("Normalize", "show_normalized", "N"),
                 ("Image", "show_image", "I"),
             ]
@@ -105,7 +105,7 @@ with st.spinner("Loading Annotator..."):
                     on_click=_toggle_view,
                     args=(_state_key,),
                     width="stretch",
-                    help=f"Toggle {_label.lower()} (shortcut: {_short})",
+                    help=f"Toggle {_label.lower()} (shortcut: {_short.title()})",
                 )
 
             # segmentation / classification controls as tabs: both panels render
