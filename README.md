@@ -1,28 +1,50 @@
-# **Mycol**
+<div align="center">
 
-**[Homepage](https://biosustain.github.io/mycol/)**
+# Mycol
 
 _A lightweight, human-in-the-loop microscopy image analysis app._
 
+**[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html)
+
+</div>
+
 Mycol is a Streamlit-based application that makes machine-learning-assisted microscopy analysis accessible to non-specialists. It enables fast annotation, automated segmentation and classification, model fine-tuning, and quantitative phenotyping, all on a standard laptop and without coding.
+
+<div align="center">
+
+[**◆** Overview](#overview) &nbsp;&middot;&nbsp; [**1** Upload](#upload) &nbsp;&middot;&nbsp; [**2** Annotate](#annotate) &nbsp;&middot;&nbsp; [**3** Train](#train) &nbsp;&middot;&nbsp; [**4** Visualize](#visualize) &nbsp;&middot;&nbsp; [**5** Downloads](#downloads) &nbsp;&middot;&nbsp; [Install](#installation)
+
+</div>
 
 ---
 
-## **How It Works**
+<a id="overview"></a>
 
-Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
+<sub>◆ &nbsp;&nbsp; THE MYCOL WORKFLOW</sub>
+
+## How It Works
+
+> Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights.
+
+Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
 
 Start by **uploading** your images and any existing masks or models. Move to the **annotation** page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the **training** page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the **analysis** page lets you visualize and export cell population statistics across classes and experiments. At any point you can **download** your annotated data, trained models, or a full session restore file for reuse and publication.
 
 <p align="center">
-  <img src="docs/pipeline_summary.svg" alt="Mycol pipeline overview" width="100%" />
+  <img src="docs/pipeline_overview_correct.svg" alt="Mycol pipeline overview" width="100%" />
 </p>
 
 ---
 
-### **Step 1 - Upload Models and Data**
+<a id="upload"></a>
 
-This is where your analysis begins. Upload the key files Mycol will use in later steps:
+<sub>STEP 1 &nbsp;&middot;&nbsp; UPLOAD MODELS AND DATA</sub>
+
+## Upload Your Data
+
+> This is where your analysis begins.
+
+Upload the key files Mycol will use in later steps:
 
 - **Images** _(required)_ - the microscopy or sample images you want to analyze.
 - **Masks** _(optional)_ - segmentation masks that outline cells or regions of interest.
@@ -46,9 +68,15 @@ Once uploaded, a **summary table** shows which images have masks linked, how man
 
 ---
 
-### **Step 2 - Annotate Images**
+<a id="annotate"></a>
 
-The central workspace where annotated datasets are produced. Here you can:
+<sub>STEP 2 &nbsp;&middot;&nbsp; ANNOTATE IMAGES</sub>
+
+## Segment and Classify Your Cells
+
+> The central workspace where annotated datasets are produced.
+
+Here you can:
 
 - **View images** overlaid with their associated cell masks.
 - **Generate new masks** automatically with [Cellpose](https://www.nature.com/articles/s41592-022-01663-4) or [SAM2](https://ai.meta.com/sam2/).
@@ -92,9 +120,15 @@ Once ready, download your dataset (including images, masks and tabulated cell co
 
 ---
 
-### **Step 3 - Train Models**
+<a id="train"></a>
 
-Use the datasets you've created to fine-tune your own models. Choose from:
+<sub>STEP 3 &nbsp;&middot;&nbsp; TRAIN MODELS</sub>
+
+## Train Your Own Analysis Models
+
+> Use the datasets you've created to fine-tune your own models.
+
+Choose from:
 
 - **Cellpose segmentation model** - improve or customize how cells are automatically detected and outlined.
 - **DenseNet classification model** - fine-tune how cells are categorized based on their features.
@@ -138,9 +172,15 @@ After training, performance plots show training progress, accuracy, loss, and va
 
 ---
 
-### **Step 4 - Visualize Cell Attributes**
+<a id="visualize"></a>
 
-Explore and summarize the quantitative results of your analyses. Create and download plots of **cell population statistics** - such as cell area, perimeter, and other morphological features - grouped by **cell class**.
+<sub>STEP 4 &nbsp;&middot;&nbsp; VISUALIZE CELL ATTRIBUTES</sub>
+
+## Get to Know Your Data
+
+> Explore and summarize the quantitative results of your analyses.
+
+Create and download plots of **cell population statistics** - such as cell area, perimeter, and other morphological features - grouped by **cell class**.
 
 Select which classes and characteristics to include, and Mycol generates plots that help you:
 
@@ -165,9 +205,15 @@ Downloadable results include **cell counts per class**, **descriptive statistics
 
 ---
 
-### **Downloads - Export Your Results**
+<a id="downloads"></a>
 
-The Downloads page lets you package and export everything produced during your session. Choose exactly what to include before preparing the zip:
+<sub>DOWNLOADS</sub>
+
+## Export Your Results
+
+> The Downloads page lets you package and export everything produced during your session.
+
+Choose exactly what to include before preparing the zip:
 
 - **Images & Masks** - export your images with colored mask overlays, optional per-image class count labels, intensity-normalized images, and cropped **cell patch images** for every individual segmented cell.
 - **Tables** - CSV files with per-image cell counts and full **cell metrics** (area, circularity, elongation, and more) for every cell.
@@ -182,9 +228,11 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 
 ---
 
-## **Features**
+<a id="features"></a>
 
-### **Annotation & QC**
+## Features
+
+#### Annotation & QC
 
 - Upload images and optional masks
 - Manual mask drawing and editing
@@ -192,7 +240,7 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 - Automated Cellpose segmentation (single or batch mode)
 - Interactive classification (manual or DenseNet-based)
 
-### **Model Fine-Tuning**
+#### Model Fine-Tuning
 
 - Train Cellpose (segmentation) and DenseNet (classification) models directly in the app
 - Default training settings for general use
@@ -203,14 +251,14 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
   - Accuracy, precision, F1, confusion matrix
 - Download trained models and training summaries
 
-### **Cell Metrics & Phenotyping**
+#### Cell Metrics & Phenotyping
 
 - Automatic computation of cell descriptors (size, shape, elongation, compactness, etc.)
 - Visual comparison of phenotypic classes
 - Export plots and tabulated descriptors
 - Built-in explanations for descriptor interpretation
 
-### **Lightweight & Accessible**
+#### Lightweight & Accessible
 
 - Runs locally on standard hardware
 - Minimal dependencies
@@ -218,7 +266,9 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 
 ---
 
-## **Installation**
+<a id="installation"></a>
+
+## Installation
 
 > [!NOTE]
 > This project uses [`uv`](https://docs.astral.sh/uv/) as its package manager. It is a drop-in replacement for `pip` and `conda` that handles the virtual environment and dependencies for you. To install it, run `pip install uv` or follow the [official instructions](https://docs.astral.sh/uv/getting-started/installation/).
@@ -245,7 +295,7 @@ uv sync
 
 ---
 
-## **Run the App locally**
+## Run the App Locally
 
 From inside the repository, run:
 
@@ -257,7 +307,7 @@ uv run streamlit run app.py
 
 ---
 
-## **Example Use Cases**
+## Example Use Cases
 
 - Rapid cell counting
 - Creating curated datasets of annotated images
@@ -266,6 +316,6 @@ uv run streamlit run app.py
 
 ---
 
-## **License**
+## License
 
 MIT
