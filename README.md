@@ -4,7 +4,7 @@
 
 _A lightweight, human-in-the-loop microscopy image analysis app._
 
-**[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html)
+**[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Preprint](https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1)
 
 </div>
 
@@ -313,6 +313,47 @@ uv run streamlit run app.py
 - Creating curated datasets of annotated images
 - Automating image annotation (with human QC)
 - Morphology-based phenotypic comparison
+
+Each example below was segmented in Mycol and exported with its mask overlay. Where the study defines classes, cells are coloured by class; where it does not, masks take the unlabelled colour.
+
+<table>
+<tr>
+<td width="38%" valign="middle">
+
+**Spore germination**
+
+Every cell segmented, then classified as **Germinated** (red) or **Ungerminated** (blue) - 27 and 35 respectively in this frame.
+
+</td>
+<td width="62%">
+<img src="docs/case_study_examples/cs1_spore_germination.png" alt="Spore germination example, cells coloured by germination class" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="38%" valign="middle">
+
+**Larval morphology**
+
+Larvae segmented and classified as **normal** (blue) or **abnormal** (red), so shape descriptors can be compared between the two groups.
+
+</td>
+<td width="62%">
+<img src="docs/case_study_examples/cs2_larvae_morphology.png" alt="Larval morphology example, larvae coloured by normal or abnormal class" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="38%" valign="middle">
+
+**Colony (CFU) counting**
+
+All 734 colonies on this plate segmented in one pass. No classes are defined here, so every mask is drawn in the unlabelled colour.
+
+</td>
+<td width="62%">
+<img src="docs/case_study_examples/cs3_cfu_counting.png" alt="Agar plate with every colony segmented" width="100%" />
+</td>
+</tr>
+</table>
 
 ---
 
