@@ -322,7 +322,7 @@ Each example below was segmented in Mycol and exported with its mask overlay. Wh
 
 **Spore germination**
 
-Every cell segmented, then classified as **Germinated** (red) or **Ungerminated** (blue) - 27 and 35 respectively in this frame.
+Segmented cells classified as **Germinated** (red) or **Ungerminated** (blue). This frame carries 27 and 35 of each.
 
 </td>
 <td width="62%">
@@ -346,11 +346,11 @@ Larvae segmented and classified as **normal** (blue) or **abnormal** (red), so s
 
 **Colony (CFU) counting**
 
-All 734 colonies on this plate segmented in one pass. No classes are defined here, so every mask is drawn in the unlabelled colour.
+Colonies on an agar plate, segmented into 734 individual masks. No classes are defined for this study, so the masks are drawn in the unlabelled colour.
 
 </td>
 <td width="62%">
-<img src="docs/case_study_examples/cs3_cfu_counting.png" alt="Agar plate with every colony segmented" width="100%" />
+<img src="docs/case_study_examples/cs3_cfu_counting.png" alt="Agar plate with segmented colony masks" width="100%" />
 </td>
 </tr>
 </table>
