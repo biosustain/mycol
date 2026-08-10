@@ -320,13 +320,25 @@ Each example below was segmented in Mycol and exported with its mask overlay. Wh
 <tr>
 <td width="38%" valign="middle">
 
+**Colony (CFU) counting**
+
+Colonies on an agar plate, segmented into 734 individual masks. No classes are defined for this study, so the masks are drawn in the unlabelled colour.
+
+</td>
+<td width="62%">
+<img src="docs/case_study_examples/cs1_cfu_counting.png" alt="Agar plate with segmented colony masks" width="100%" />
+</td>
+</tr>
+<tr>
+<td width="38%" valign="middle">
+
 **Spore germination**
 
 Segmented cells classified as **Germinated** (red) or **Ungerminated** (blue). This frame carries 27 and 35 of each.
 
 </td>
 <td width="62%">
-<img src="docs/case_study_examples/cs1_spore_germination.png" alt="Spore germination example, cells coloured by germination class" width="100%" />
+<img src="docs/case_study_examples/cs2_spore_germination.png" alt="Spore germination example, cells coloured by germination class" width="100%" />
 </td>
 </tr>
 <tr>
@@ -338,19 +350,7 @@ Larvae segmented and classified as **normal** (blue) or **abnormal** (red), so s
 
 </td>
 <td width="62%">
-<img src="docs/case_study_examples/cs2_larvae_morphology.png" alt="Larval morphology example, larvae coloured by normal or abnormal class" width="100%" />
-</td>
-</tr>
-<tr>
-<td width="38%" valign="middle">
-
-**Colony (CFU) counting**
-
-Colonies on an agar plate, segmented into 734 individual masks. No classes are defined for this study, so the masks are drawn in the unlabelled colour.
-
-</td>
-<td width="62%">
-<img src="docs/case_study_examples/cs3_cfu_counting.png" alt="Agar plate with segmented colony masks" width="100%" />
+<img src="docs/case_study_examples/cs3_larvae_morphology.png" alt="Larval morphology example, larvae coloured by normal or abnormal class" width="100%" />
 </td>
 </tr>
 </table>
