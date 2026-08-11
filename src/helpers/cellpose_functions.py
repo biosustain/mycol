@@ -9,7 +9,7 @@ from cellpose import core
 import torch
 from PIL import Image
 import io as IO
-from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.metrics import r2_score
 import zipfile
 from src.helpers.state_ops import (
     ordered_keys,
@@ -315,8 +315,18 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
     return fig
 
 
+def count_mape(gt_counts, pred_counts):
+    """Mean absolute percentage error, ignoring images with a true count of 0."""
+    true = np.asarray(gt_counts, dtype=float)
+    pred = np.asarray(pred_counts, dtype=float)
+    scorable = true > 0
+    if not scorable.any():
+        return None
+    return float((np.abs(pred[scorable] - true[scorable]) / true[scorable]).mean() * 100)
+
+
 def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
-    """Plots predicted vs true counts scatter plot with R² and MAE annotations."""
+    """Plots predicted vs true counts scatter plot with R² and MAPE annotations."""
 
     # determine plot limits
     lim = max(1, max(gt_counts + base_counts))
@@ -346,13 +356,15 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
     )
     # add annotations if more than one data point
     if len(gt_counts) > 1:
+        mape = count_mape(gt_counts, base_counts)
+        mape_text = f"{mape:.2f}%" if mape is not None else "n/a"
         fig.add_annotation(
             xref="paper",
             yref="paper",
             x=0.05,
             y=0.95,
             showarrow=False,
-            text=f"R² = {r2_score(gt_counts, base_counts):.3f}<br>MAE = {mean_absolute_error(gt_counts, base_counts):.3f}",
+            text=f"R² = {r2_score(gt_counts, base_counts):.3f}<br>MAPE = {mape_text}",
             bgcolor="white",
             opacity=0.7,
             align="left",
