@@ -14,7 +14,6 @@ import zipfile
 from src.helpers.state_ops import (
     ordered_keys,
     get_current_rec,
-    normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
     write_image_to_zip,
@@ -44,7 +43,8 @@ ss = st.session_state
 
 
 def preprocess_for_cellpose(rec):
-    """takes record input and prepares the stored image for cellpose"""
+    """takes record input and prepares the stored image for cellpose
+    """
 
     img = rec["image"]
 
@@ -58,10 +58,7 @@ def preprocess_for_cellpose(rec):
             f"Unsupported image shape {img.shape}; expected (H,W) or (H,W,C)"
         )
 
-    # normalize
-    im_in = normalize_image(img)
-
-    return im_in
+    return img
 
 
 def convert_cellpose_mask_to_single_array(mask_output, H, W):
