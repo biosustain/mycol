@@ -74,7 +74,7 @@ pages = [
     ),
     st.Page(
         "src/views/5-cell-metrics.py",
-        title="Visualize Cell Attributes",
+        title="Compare Phenotypes",
     ),
     st.Page(
         "src/views/6-downloads.py",
