@@ -320,10 +320,7 @@ def classify_actions_fragment():
 
 
 def batch_classify(keys=None):
-    """classify masks in a range of images
-
-    ``keys`` limits the run to those image keys; defaults to every image.
-    """
+    """classify masks in ``keys`` (default: all images)"""
     ok = ordered_keys() if keys is None else list(keys)
     if not ok:
         return

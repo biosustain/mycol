@@ -648,10 +648,7 @@ def segment_current_and_refresh(model_type: str | None = None):
 
 
 def batch_segment_and_refresh(model_type: str | None = None, keys=None):
-    """calls cellpose to segment a range of images with progress bar
-
-    ``keys`` limits the run to those image keys; defaults to every image.
-    """
+    """calls cellpose to segment ``keys`` (default: all images) with progress bar"""
     ok = ordered_keys() if keys is None else list(keys)
     if not ok:
         return

@@ -827,24 +827,26 @@ def render_common_tools_fragment(key_ns="tools"):
     render_undo_button(c2, key_ns=key_ns)
 
 
-def _free_arrow_keys_from_slider(slider_key: str) -> None:
-    """Blur the zoom slider on focus so Left/Right always change image.
+def _free_shortcut_keys_from_sliders() -> None:
+    """Blur any slider that takes focus so button shortcuts keep working.
 
-    Streamlit's button shortcuts stand down only for text inputs, but a slider thumb
-    handles the arrow keys itself and swallows them. Mouse use is unaffected. The
-    listener is delegated so it survives reruns; the window flag stops duplicates."""
+    Mouse use is unaffected. The handler is swapped rather than guarded by a flag:
+    it lives in this iframe's realm, so a rebuilt iframe leaves the old one dead."""
     components.html(
         """<script>
 const w = window.parent;
-if (!w.__mycolArrowNav) {
-    w.__mycolArrowNav = true;
-    w.document.addEventListener("focusin", (e) => {
-        const t = e.target;  // deferred: a synchronous blur here can re-enter
-        if (t && t.closest && t.closest("%s")) setTimeout(() => t.blur(), 0);
-    });
+if (w.__mycolSliderBlur) {
+    w.document.removeEventListener("focusin", w.__mycolSliderBlur);
 }
-</script>"""
-        % f".st-key-{slider_key}",
+w.__mycolSliderBlur = (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("[data-testid='stSlider'], [role='slider']")) {
+        setTimeout(() => t.blur(), 0);  // deferred: a synchronous blur re-enters
+    }
+};
+w.document.addEventListener("focusin", w.__mycolSliderBlur);
+</script>""",
         height=0,
     )
 
@@ -878,7 +880,7 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
         args=(slider_key,),
         help="Zoom into the image; click the minimap or use the arrows to move the view.",
     )
-    _free_arrow_keys_from_slider(slider_key)
+    _free_shortcut_keys_from_sliders()
     _render_minimap(rec)
     _render_nudge_pad(rec, key_ns)
     if ss.pop("_refocus_after_zoom", False):
