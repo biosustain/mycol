@@ -9,12 +9,11 @@ from cellpose import core
 import torch
 from PIL import Image
 import io as IO
-from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.metrics import r2_score, mean_absolute_percentage_error
 import zipfile
 from src.helpers.state_ops import (
     ordered_keys,
     get_current_rec,
-    normalize_image,
     add_plotly_as_png_to_zip,
     params_to_csv,
     write_image_to_zip,
@@ -44,7 +43,8 @@ ss = st.session_state
 
 
 def preprocess_for_cellpose(rec):
-    """takes record input and prepares the stored image for cellpose"""
+    """takes record input and prepares the stored image for cellpose
+    """
 
     img = rec["image"]
 
@@ -58,10 +58,7 @@ def preprocess_for_cellpose(rec):
             f"Unsupported image shape {img.shape}; expected (H,W) or (H,W,C)"
         )
 
-    # normalize
-    im_in = normalize_image(img)
-
-    return im_in
+    return img
 
 
 def convert_cellpose_mask_to_single_array(mask_output, H, W):
@@ -319,7 +316,7 @@ def plot_iou_comparison(base_ious, tuned_ious, image_names=None):
 
 
 def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
-    """Plots predicted vs true counts scatter plot with R² and MAE annotations."""
+    """Plots predicted vs true counts scatter plot with R² and MAPE annotations."""
 
     # determine plot limits
     lim = max(1, max(gt_counts + base_counts))
@@ -349,13 +346,14 @@ def plot_pred_vs_true_counts(gt_counts, base_counts, title, image_names=None):
     )
     # add annotations if more than one data point
     if len(gt_counts) > 1:
+        mape = mean_absolute_percentage_error(gt_counts, base_counts) * 100
         fig.add_annotation(
             xref="paper",
             yref="paper",
             x=0.05,
             y=0.95,
             showarrow=False,
-            text=f"R² = {r2_score(gt_counts, base_counts):.3f}<br>MAE = {mean_absolute_error(gt_counts, base_counts):.3f}",
+            text=f"R² = {r2_score(gt_counts, base_counts):.3f}<br>MAPE = {mape:.2f}%",
             bgcolor="white",
             opacity=0.7,
             align="left",
@@ -649,9 +647,11 @@ def segment_current_and_refresh(model_type: str | None = None):
     st.rerun()
 
 
-def batch_segment_and_refresh(model_type: str | None = None):
-    """calls cellpose to segment all images with progress bar"""
-    ok = ordered_keys()
+def batch_segment_and_refresh(model_type: str | None = None, keys=None):
+    """calls cellpose to segment ``keys`` (default: all images) with progress bar"""
+    ok = ordered_keys() if keys is None else list(keys)
+    if not ok:
+        return
     params = get_cellpose_hparams_from_state()
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")

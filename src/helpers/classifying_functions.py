@@ -1,7 +1,13 @@
 import numpy as np
 import streamlit as st
 
-from src.helpers.state_ops import ordered_keys, get_current_rec, snapshot_for_undo
+from src.helpers.state_ops import (
+    ordered_keys,
+    get_current_rec,
+    snapshot_for_undo,
+    batch_range_keys,
+    render_batch_range_slider,
+)
 from src.helpers.densenet_functions import (
     classify_cells_with_densenet,
     densenet_mapping_fragment,
@@ -282,7 +288,7 @@ def classify_actions_fragment():
 
     rec = get_current_rec()
 
-    # buttons to classify masks in current image or batch classify all images
+    # buttons to classify masks in current image or batch classify a range of images
     col1, col2 = st.columns(2)
     with col1:
         help = densenet_help(ss["densenet_model"] is not None, needs_mapping)
@@ -296,7 +302,7 @@ def classify_actions_fragment():
             classify_cells_with_densenet(rec)
             st.rerun()
     with col2:
-        # batch classify masks in all images
+        # batch classify masks in the selected range of images
         if st.button(
             "Batch classify",
             key="btn_batch_classify_cellpose",
@@ -304,13 +310,20 @@ def classify_actions_fragment():
             help=help,
             disabled=ss["densenet_model"] is None or needs_mapping,
         ):
-            batch_classify()
+            batch_classify(keys=batch_range_keys("dn_batch_range"))
             st.rerun()
 
+    render_batch_range_slider(
+        "dn_batch_range",
+        help="Batch classify covers only the images inside this range.",
+    )
 
-def batch_classify():
-    """classify masks in the all images"""
-    ok = ordered_keys()
+
+def batch_classify(keys=None):
+    """classify masks in ``keys`` (default: all images)"""
+    ok = ordered_keys() if keys is None else list(keys)
+    if not ok:
+        return
     n = len(ok)
     pb = st.progress(0.0, text="Starting…")
     for i, k in enumerate(ok, 1):

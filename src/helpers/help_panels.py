@@ -82,9 +82,9 @@ def cellpose_training_plot_help():
 
                 - Points close to the **x = y line** → predictions match the true counts.
                 - **High R² (coefficient of determination)** → predictions explain most of the variance in true counts.
-                - **Low mean absolute error (MAE)** → on average, the predicted counts are close to the real counts.
+                - **Low mean absolute percentage error (MAPE)** → on average, the predicted counts are close to the real counts, as a percentage of the true count.
 
-                Models with points tightly clustered around the x = y line, **R² close to 1**, and **low MAE**
+                Models with points tightly clustered around the x = y line, **R² close to 1**, and **low MAPE**
                 are performing well on the counting task.
                 """
             )

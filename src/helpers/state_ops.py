@@ -127,6 +127,46 @@ def selected_training_keys(namespace: str):
     return [k for k in ordered_keys() if k in selected]
 
 
+def _batch_slider_key(state_key: str, n: int) -> str:
+    """Widget key for the batch range slider; the image count rebuilds it."""
+    return f"{state_key}_{n}"
+
+
+def batch_range_keys(state_key: str):
+    """Ordered image keys covered by the batch range stored under ``state_key``."""
+    ok = ordered_keys()
+    n = len(ok)
+    lo, hi = ss.get(_batch_slider_key(state_key, n)) or ss.get(state_key) or (1, n)
+    lo = max(1, min(n, int(lo)))
+    hi = max(lo, min(n, int(hi)))
+    return ok[lo - 1 : hi]
+
+
+def render_batch_range_slider(state_key: str, *, help: str) -> None:
+    """Slider limiting a batch action to a span of the image list.
+
+    Read the chosen span with :func:`batch_range_keys`."""
+    ok = ordered_keys()
+    n = len(ok)
+    if n <= 1:
+        return
+
+    # clamp: the stored span can outlive the images it was picked on
+    lo, hi = ss.get(state_key) or (1, n)
+    lo = max(1, min(n, int(lo)))
+    hi = max(lo, min(n, int(hi)))
+
+    lo, hi = st.slider(
+        "Batch call range",
+        1,
+        n,
+        value=(lo, hi),
+        key=_batch_slider_key(state_key, n),
+        help=help,
+    )
+    ss[state_key] = (lo, hi)
+
+
 def require_images():
     """Stop the page with a warning if no images have been uploaded yet."""
     if not ss["images"]:
@@ -190,8 +230,9 @@ def set_current_by_index(idx: int):
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
     """
-    Normalize image intensities to uint8, for Cellpose, DenseNet patches and downloads.
+    Normalize image intensities to uint8, for mask-editing display and downloads.
     Scales mean intensity to ~127.5, or to the full uint8 range if mean <= 0.
+
     """
     im = image.astype(np.float32)
     if im.size == 0:

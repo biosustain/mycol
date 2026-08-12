@@ -1,6 +1,10 @@
 import streamlit as st
 
-from src.helpers.state_ops import ordered_keys
+from src.helpers.state_ops import (
+    ordered_keys,
+    batch_range_keys,
+    render_batch_range_slider,
+)
 from src.helpers.mask_editing_functions import (
     render_cellpose_hyperparameters_fragment,
     render_box_tools_fragment,
@@ -81,10 +85,17 @@ def render_segment_sidebar(*, key_ns: str = "side"):
                     "Batch generate",
                     width="stretch",
                     key="batch_segment_image",
-                    help="Segment all uploaded images with Cellpose.",
+                    help="Segment every image in the selected range with Cellpose.",
                     disabled=disabled,
                 ):
-                    batch_segment_and_refresh(model_type)
+                    batch_segment_and_refresh(
+                        model_type, keys=batch_range_keys("cp_batch_range")
+                    )
+
+            render_batch_range_slider(
+                "cp_batch_range",
+                help="Batch generate segments only the images inside this range.",
+            )
 
             st.caption("Change hyperparameters to increase accuracy:")
 
