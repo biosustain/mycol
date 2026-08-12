@@ -34,9 +34,9 @@ def render_main():
     with st.container(border=True):
         st.subheader("Upload Images, Masks and Models")
         st.caption(
-            "Upload images (.tif, .png, .jpg), to begin analysis. Optionally, masks,"
+            "Upload images (.tif, .png, .jpg), to begin analysis. Optionally, masks, "
             "segmentation models and classification models can also be uploaded or a previous "
-            "session zip file can be uploaded to restore your session."
+            "session zip file can be uploaded to restore your session. "
             "Masks must share the image filename plus a suffix (default: _masks)."
         )
 

@@ -174,7 +174,7 @@ After training, performance plots show training progress, accuracy, loss, and va
 
 <a id="visualize"></a>
 
-<sub>STEP 4 &nbsp;&middot;&nbsp; VISUALIZE CELL ATTRIBUTES</sub>
+<sub>STEP 4 &nbsp;&middot;&nbsp; COMPARE PHENOTYPES</sub>
 
 ## Get to Know Your Data
 
