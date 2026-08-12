@@ -127,6 +127,60 @@ def selected_training_keys(namespace: str):
     return [k for k in ordered_keys() if k in selected]
 
 
+def _batch_slider_key(state_key: str, n: int) -> str:
+    """Widget key for the batch range slider over ``n`` images.
+
+    The image count is part of the key so that uploading or deleting images
+    rebuilds the slider on the new bounds, instead of Streamlit restoring a span
+    that is now out of range and raising.
+    """
+    return f"{state_key}_{n}"
+
+
+def batch_range_keys(state_key: str):
+    """Ordered image keys covered by the batch range stored under ``state_key``.
+
+    Defaults to every image: the span is only recorded once the slider renders,
+    and the slider sits below the buttons that read this.
+    """
+    ok = ordered_keys()
+    n = len(ok)
+    # The widget's own key carries this run's value; the mirror under `state_key`
+    # is what survives a change in image count.
+    lo, hi = ss.get(_batch_slider_key(state_key, n)) or ss.get(state_key) or (1, n)
+    lo = max(1, min(n, int(lo)))
+    hi = max(lo, min(n, int(hi)))
+    return ok[lo - 1 : hi]
+
+
+def render_batch_range_slider(state_key: str, *, help: str) -> None:
+    """Slider limiting a batch action to a span of the image list.
+
+    The handles are the 1-based image numbers shown by the navigation slider.
+    Read the chosen span with :func:`batch_range_keys`. With a single image there
+    is nothing to choose, so no widget is drawn.
+    """
+    ok = ordered_keys()
+    n = len(ok)
+    if n <= 1:
+        return
+
+    # A span picked when more images were loaded outlives them, so clamp it.
+    lo, hi = ss.get(state_key) or (1, n)
+    lo = max(1, min(n, int(lo)))
+    hi = max(lo, min(n, int(hi)))
+
+    lo, hi = st.slider(
+        "Batch call range",
+        1,
+        n,
+        value=(lo, hi),
+        key=_batch_slider_key(state_key, n),
+        help=help,
+    )
+    ss[state_key] = (lo, hi)
+
+
 def require_images():
     """Stop the page with a warning if no images have been uploaded yet."""
     if not ss["images"]:
