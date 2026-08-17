@@ -1,6 +1,7 @@
 """Segmentation and interactive mask editing for the Streamlit app."""
 
-import hashlib
+import base64
+import io
 from streamlit_image_coordinates import streamlit_image_coordinates
 import numpy as np
 import streamlit as st
@@ -14,6 +15,7 @@ from src.helpers.state_ops import (
     apply_undo,
     disp_to_full,
     full_to_disp,
+    view_token,
 )
 from src.helpers.classifying_functions import (
     classes_map_from_labels,
@@ -95,16 +97,30 @@ def create_image_mask_overlay(image, mask, classes_map, palette, alpha=0.5):
     return (np.clip(out, 0, 1) * 255).astype(np.uint8)
 
 
-# Caches the current and previous mask overlay.
-@st.cache_data(show_spinner=False, max_entries=2)
 def cached_image_mask_overlay(
     image: np.ndarray,
     mask: np.ndarray,
     classes_map: dict,
     palette: dict,
     alpha: float,
+    token: str,
 ) -> np.ndarray:
-    return create_image_mask_overlay(image, mask, classes_map, palette, alpha)
+    """The current view's overlay, memoised in one session slot keyed on `token`.
+
+    One slot is enough: only the view on screen is ever redrawn, and anything that
+    would change it (an edit, a zoom, a toggle, undo restoring the previous masks)
+    moves the token, so a second entry could never be hit. Holding one overlay
+    rather than two also halves what a session pins for a 5 MP image.
+
+    Replaces an @st.cache_data memo, which kept two entries in a process-wide cache
+    and hashed megabytes of pixels on every hit — and, for masks above 500k
+    elements, hashed only a 100k sample of them."""
+    slot = ss.get("_overlay_slot")
+    if slot is not None and slot[0] == token:
+        return slot[1]
+    out = create_image_mask_overlay(image, mask, classes_map, palette, alpha)
+    ss["_overlay_slot"] = (token, out)
+    return out
 
 
 def create_image_display(rec, viewport=800):
@@ -145,8 +161,10 @@ def create_image_display(rec, viewport=800):
             else bg_disp
         )
         # the cropped mask is downsized (NEAREST) to the background in the overlay helper
+        # (ss["view"] is set above, so the token already reflects this crop)
         base_img = cached_image_mask_overlay(
-            background, mask[oy : oy + ch, ox : ox + cw], classes_map, palette, alpha=0.35
+            background, mask[oy : oy + ch, ox : ox + cw], classes_map, palette, 0.35,
+            view_token(),
         )
     else:
         base_img = bg_disp
@@ -162,12 +180,41 @@ def _commit_mask(rec: Record, mask_full: MaskArray) -> None:
         rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(int(new_id), None)
 
 
-def _chart_bg(base_img: ImageArray, key_ns: str, name: str) -> tuple[Image.Image, str]:
-    """Plotly background image plus its chart key.
+# Background encoder. PNG at the fastest compression keeps mask edges crisp; "jpeg"
+# encodes ~20x faster again and halves the payload, at the cost of being lossy.
+_BG_FORMAT = "png"
 
-    The key carries an image hash so Streamlit doesn't reuse chart state across images."""
-    bg = Image.fromarray(base_img).convert("RGBA")
-    return bg, f"{key_ns}_plotly_{name}_{hashlib.md5(bg.tobytes()).hexdigest()[:8]}"
+
+def _background_source(base_img: ImageArray, token: str) -> str:
+    """Base64 data-URI of the display image, encoded once per view.
+
+    Plotly re-encodes a PIL image to base64 PNG inside every `add_layout_image`
+    call, which dominates a rerun. Handing it an already-encoded string instead
+    means unchanged views (mode switches, shortcuts, the refocus shim) skip the
+    encode entirely. One slot: only the current view is ever redrawn."""
+    slot = ss.get("_bg_uri_slot")
+    if slot is not None and slot[0] == token:
+        return slot[1]
+
+    buf = io.BytesIO()
+    im = Image.fromarray(base_img).convert("RGB")
+    if _BG_FORMAT == "jpeg":
+        im.save(buf, format="JPEG", quality=90)
+    else:
+        im.save(buf, format="PNG", compress_level=1)
+    uri = f"data:image/{_BG_FORMAT};base64," + base64.b64encode(buf.getvalue()).decode()
+    ss["_bg_uri_slot"] = (token, uri)
+    return uri
+
+
+def _chart_bg(base_img: ImageArray, key_ns: str, name: str) -> tuple[str, str]:
+    """Plotly background source plus its chart key, both keyed on the view token.
+
+    The token stands in for a hash of the display image: it changes whenever the
+    view does, so Streamlit still doesn't reuse chart state across images, without
+    hashing megabytes of pixels on every rerun."""
+    token = view_token()
+    return _background_source(base_img, token), f"{key_ns}_plotly_{name}_{token}"
 
 
 def _selection_of(chart_key: str, kind: str) -> list:
@@ -177,7 +224,7 @@ def _selection_of(chart_key: str, kind: str) -> list:
 
 
 def _selection_chart(
-    bg: Image.Image,
+    bg: str,
     disp_w: int,
     disp_h: int,
     chart_key: str,

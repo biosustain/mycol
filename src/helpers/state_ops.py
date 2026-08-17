@@ -1,5 +1,7 @@
 import copy
+import hashlib
 import io
+import zlib
 from pathlib import Path
 import streamlit as st
 import numpy as np
@@ -184,6 +186,47 @@ def require_images():
 def get_current_rec():
     k = ss.get("current_key")
     return ss.images.get(k) if k is not None else None
+
+
+def view_token() -> str:
+    """Short fingerprint of everything the annotate display is drawn from.
+
+    Changes whenever the pixels on screen would change — the image, its masks or
+    labels, the zoom/pan crop, the view toggles — and stays put otherwise, so it can
+    key both the chart widget and the encoded background image.
+
+    Derived from the data rather than bumped by callers: a missed call site would
+    leave a stale image on screen, whereas a missed *input* here costs only a
+    redundant re-render. Boxes are deliberately excluded — they are drawn as figure
+    shapes, not into the background, so including them would remount the chart on
+    every box drawn.
+    """
+    rec = get_current_rec()
+    if rec is None:
+        return "empty"
+    labels = rec.get("labels") or {}
+    fingerprint = (
+        ss.get("current_key"),
+        _mask_crc(rec.get("masks")),
+        len(labels),
+        hash(frozenset(labels.items())),
+        ss.get("view"),
+        ss.get("show_overlay"),
+        ss.get("show_image"),
+        ss.get("show_normalized"),
+    )
+    return hashlib.md5(repr(fingerprint).encode()).hexdigest()[:8]
+
+
+def _mask_crc(masks) -> int | None:
+    """CRC32 of the label image. Exact, and faster than max()+count_nonzero() on the
+    same array — zlib's crc32 is hardware-accelerated, so even a 10 MB mask costs
+    ~0.4 ms. Being exact matters: summary statistics miss an edit that renumbers
+    instances without changing how many pixels are covered."""
+    if masks is None:
+        return None
+    buf = masks if masks.flags.c_contiguous else np.ascontiguousarray(masks)
+    return zlib.crc32(memoryview(buf).cast("B"))
 
 
 def snapshot_for_undo(rec) -> None:

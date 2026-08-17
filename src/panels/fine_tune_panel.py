@@ -400,9 +400,12 @@ def get_train_setup():
     )
 
 
-@st.cache_data(show_spinner=False)
 def prepare_eval_data(recs):
-    """Preprocess all images in recs order (matches the finetune worker's order)."""
+    """Preprocess all images in recs order (matches the finetune worker's order).
+
+    Deliberately uncached: it runs once when validation starts, so an @st.cache_data
+    memo here only pinned a grayscale copy of every training image for the rest of
+    the session (with no max_entries, one set per distinct selection)."""
     names = [rec.get("name", f"Image {i}") for i, rec in enumerate(recs.values())]
     masks = [rec["masks"] for rec in recs.values()]
     images = [preprocess_for_cellpose(rec) for rec in recs.values()]
