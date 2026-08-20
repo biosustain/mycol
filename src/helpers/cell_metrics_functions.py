@@ -1,3 +1,5 @@
+import hashlib
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -397,59 +399,78 @@ def available_labels(keys):
     return sorted(classes | {"Unlabelled"}, key=lambda x: (x != "Unlabelled", str(x)))
 
 
-@st.cache_data(show_spinner="Building analysis DataFrame...", max_entries=2)
-def build_analysis_df(records):
+def _record_key(key, rec):
+    """Cache key for one record: everything `_record_rows` reads."""
+    m, im = rec["masks"], rec["image"]
+    return (key, rec["name"], rec.get("orig_H"), rec.get("orig_W"),
+            m.shape, m.dtype.str, hashlib.blake2b(np.ascontiguousarray(m)).digest(),
+            im.shape, hashlib.blake2b(np.ascontiguousarray(im[::16, ::16])).digest(),
+            tuple(sorted(rec.get("labels", {}).items())))
+
+
+@st.cache_data(show_spinner="Building analysis DataFrame...", max_entries=4096)
+def _record_rows(_rec, cache_key):
+    """Per-mask metric rows for one image (`cache_key` is the cache key for `_rec`)."""
+    rec, inst = _rec, _rec["masks"]
+
+    # per-image resize scale: how many original pixels = 1 stored pixel
+    orig_H = rec.get("orig_H", rec["H"])
+    orig_W = rec.get("orig_W", rec["W"])
+    pixel_scale = max(orig_H, orig_W) / max(rec["H"], rec["W"])
+
+    # white-balance so cell colour is comparable across images
+    wb_img = white_balance_by_background(rec["image"], inst)
+
+    rows = []
+    labdict = rec.get("labels", {})  # dict {instance_id -> class/None}
+    for prop in regionprops(inst, intensity_image=wb_img):  # prop.label is the instance id
+        iid = int(prop.label)
+        cls = labdict.get(iid)
+
+        # compute shape metrics and normalise to original-pixel units
+        shape_metrics = mask_shape_metrics(prop)
+        for col in _DIST_COLS:
+            if col in shape_metrics:
+                shape_metrics[col] *= pixel_scale
+        for col in _AREA_COLS:
+            if col in shape_metrics:
+                shape_metrics[col] *= pixel_scale**2
+
+        row = {
+            "image": rec["name"],
+            "mask #": iid,
+            "mask label": ("Unlabelled" if cls in (None, "No label") else cls),
+        }
+
+        # merge in shape + colour metrics
+        row.update(shape_metrics)
+        row.update(mask_color_metrics(prop))
+
+        rows.append(row)
+
+    return rows
+
+
+def build_analysis_df():
     """
     Build a DataFrame with per-mask metrics for all images in session state.
     Always returns raw pixel values with original column names.
     """
-
-    rows = []
+    rows, numbers = [], []
     # iterate through the image records (img_no matches the 1-based "No." shown
     # in the image selection table)
     for img_no, k in enumerate(ordered_keys(), start=1):
         rec = ss.images[k]
-        inst = rec.get("masks")
         # skip invalid masks
-        if not inst.any():
+        if not rec["masks"].any():
             continue
+        r = _record_rows(rec, _record_key(k, rec))
+        rows += r
+        numbers += [img_no] * len(r)
 
-        # per-image resize scale: how many original pixels = 1 stored pixel
-        orig_H = rec.get("orig_H", rec["H"])
-        orig_W = rec.get("orig_W", rec["W"])
-        pixel_scale = max(orig_H, orig_W) / max(rec["H"], rec["W"])
-
-        # white-balance so cell colour is comparable across images
-        wb_img = white_balance_by_background(rec["image"], inst)
-
-        labdict = rec.get("labels", {})  # dict {instance_id -> class/None}
-        for prop in regionprops(inst, intensity_image=wb_img):  # prop.label is the instance id
-            iid = int(prop.label)
-            cls = labdict.get(iid)
-
-            # compute shape metrics and normalise to original-pixel units
-            shape_metrics = mask_shape_metrics(prop)
-            for col in _DIST_COLS:
-                if col in shape_metrics:
-                    shape_metrics[col] *= pixel_scale
-            for col in _AREA_COLS:
-                if col in shape_metrics:
-                    shape_metrics[col] *= pixel_scale**2
-
-            row = {
-                "image #": img_no,
-                "image": rec["name"],
-                "mask #": iid,
-                "mask label": ("Unlabelled" if cls in (None, "No label") else cls),
-            }
-
-            # merge in shape + colour metrics
-            row.update(shape_metrics)
-            row.update(mask_color_metrics(prop))
-
-            rows.append(row)
-
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows, columns=["image", "mask #", "mask label", *METRIC_COLS])
+    df.insert(0, "image #", numbers)
+    return df
 
 
 # Columns that represent distances (multiply by pixel_size).
@@ -523,7 +544,7 @@ def build_per_image_counts(keys=None):
 
 
 def build_cell_metrics_csv(labels_selected):
-    df = build_analysis_df(ss["images"])
+    df = build_analysis_df()
 
     if labels_selected:
         df = df[df["mask label"].isin(labels_selected)]

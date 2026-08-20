@@ -127,7 +127,7 @@ def render_plotting_options():
 def render_plotting_main():
 
     # build dataframes (only runs here, on the Generate Plots button click)
-    df = build_analysis_df(ss["images"])
+    df = build_analysis_df()
     selected_names = ss.get("cell_metrics_selected_names")
     if selected_names is not None:
         df = df[df["image"].isin(selected_names)]
