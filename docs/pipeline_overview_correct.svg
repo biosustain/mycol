@@ -258,7 +258,7 @@
      class="tag-b"
      x="280"
      y="144"
-     id="text27">SAM2 box</text>
+     id="text27">MobileSAM box</text>
   <rect
      class="frame"
      x="128"
@@ -357,12 +357,12 @@
      class="cap"
      x="256"
      y="280"
-     id="text36">Outline a few cells yourself, or drop a SAM2</text>
+     id="text36">Outline a few cells yourself, or drop a</text>
   <text
      class="cap"
      x="256"
      y="298"
-     id="text37">box around one and let it trace the outline.</text>
+     id="text37">MobileSAM box around one to trace the outline.</text>
   <rect
      class="panel"
      x="508.75"

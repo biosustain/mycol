@@ -23,8 +23,8 @@ from src.helpers.classifying_functions import (
 )
 from src.helpers.state_ops import normalize_image
 from src.helpers.plot_helpers import MIN_DRAG_PX, make_base_figure
-from src.helpers.sam2_functions import (
-    segment_with_sam2,
+from src.helpers.box_segment_functions import (
+    segment_boxes,
     box_draw_fragment,
     integrate_new_mask,
 )
@@ -755,7 +755,7 @@ def _set_mode(mode: str) -> None:
 
 
 def render_box_tools_fragment(key_ns="side"):
-    """Render SAM2 box drawing and segmentation fragment."""
+    """Render MobileSAM box drawing and segmentation fragment."""
 
     # get current record
     rec = get_current_rec()
@@ -771,16 +771,16 @@ def render_box_tools_fragment(key_ns="side"):
         args=("Draw box",),
     )
 
-    # button to segment with SAM2 the current boxes
+    # button to segment with MobileSAM the current boxes
     if st.button(
         "Generate masks from boxes",
         width="stretch",
         key=f"{key_ns}_predict",
         shortcut="G",
-        help="Use SAM2 to segment cells in boxes (shortcut: G)",
+        help="Use MobileSAM to segment cells in boxes (shortcut: G)",
     ):
         # create new masks from boxes and add them to rec["mask"]
-        segment_with_sam2(rec)
+        segment_boxes(rec)
         st.rerun()
 
 

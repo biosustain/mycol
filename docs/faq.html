@@ -459,22 +459,24 @@
       <div class="faq-card" id="sam2">
         <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
           <span class="faq-q-label">Segmentation</span>
-          <span class="faq-q-text">What is SAM2 and when should I use it?</span>
+          <span class="faq-q-text">What is MobileSAM and when should I use it?</span>
           <span class="faq-chevron">&#9660;</span>
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
             <p>
-              <strong>SAM2</strong> (Segment Anything Model 2) is a general-purpose segmentation model
-              developed by Meta AI. Unlike Cellpose, which was trained specifically on microscopy images,
-              SAM2 was trained on an enormous and diverse collection of natural images and videos.
+              <strong>MobileSAM</strong> is a compact version of Meta AI's Segment Anything Model (SAM),
+              a general-purpose segmentation model. Unlike Cellpose, which was trained specifically on
+              microscopy images, SAM was trained on an enormous and diverse collection of natural images.
               Its strength is <strong>promptable segmentation</strong>: given a point, bounding box, or
-              rough outline supplied by the user, SAM2 predicts a precise mask for the object at that location.
+              rough outline supplied by the user, it predicts a precise mask for the object at that location.
+              MobileSAM keeps SAM's mask decoder but distils its image encoder down to about 10 million
+              parameters, so it runs comfortably on a laptop without a GPU.
             </p>
             <p>
-              In Mycol, SAM2 is used as an <strong>interactive segmentation tool</strong>.
+              In Mycol, MobileSAM is used as an <strong>interactive segmentation tool</strong>.
               Instead of running fully automatically across the whole image, you highlight a cell
-              with a box and SAM2 will generate a high-quality mask for that cell.
+              with a box and MobileSAM will generate a high-quality mask for that cell.
               This makes it especially useful for:
             </p>
             <ul>
@@ -482,15 +484,15 @@
               <li>Quickly annotating small numbers of cells for a training set without running a full automatic pass.</li>
             </ul>
             <p>
-              Because SAM2 relies on your prompt rather than learning from your specific image type,
+              Because MobileSAM relies on your prompt rather than learning from your specific image type,
               it does not need to be fine-tuned - it works out of the box. However, for fully
               automatic, hands-off segmentation of large image sets, a trained Cellpose model will
               generally be faster and more consistent.
             </p>
             <div class="tip-box">
               <p>
-                Learn more about SAM2:
-                <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">ai.meta.com/sam2</a>
+                Learn more about MobileSAM:
+                <a href="https://github.com/ChaoningZhang/MobileSAM" target="_blank" rel="noopener">github.com/ChaoningZhang/MobileSAM</a>
               </p>
             </div>
           </div>
@@ -940,7 +942,7 @@
         </div>
       </div>
 
-      <!-- ── 5. SAM2 ── -->
+      <!-- ── 5. MobileSAM ── -->
 
       <div class="faq-card" id="descriptors">
         <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">

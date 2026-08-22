@@ -2,7 +2,7 @@
 
 Kept as a leaf module (plotly only, no other app imports) so any module can use
 it without creating an import cycle — e.g. ``mask_editing_functions`` already
-imports ``sam2_functions``. Also the single source of truth for the plot palette.
+imports ``box_segment_functions``. Also the single source of truth for the plot palette.
 """
 
 import plotly.graph_objects as go

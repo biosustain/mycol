@@ -6,9 +6,6 @@ from PIL import Image
 from huggingface_hub import hf_hub_download
 from scipy import ndimage as ndi
 
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-
 from src.helpers.state_ops import snapshot_for_undo, disp_to_full, full_to_disp
 from src.helpers.plot_helpers import MIN_DRAG_PX, make_base_figure
 
@@ -87,10 +84,7 @@ def _update_boxes(chart_key: str, rec: dict):
         y0_plot, y1_plot = map(float, b["y"])
 
         # stray click, not a box
-        if (
-            abs(x1_plot - x0_plot) < MIN_DRAG_PX
-            or abs(y1_plot - y0_plot) < MIN_DRAG_PX
-        ):
+        if abs(x1_plot - x0_plot) < MIN_DRAG_PX or abs(y1_plot - y0_plot) < MIN_DRAG_PX:
             continue
 
         # Normalize ordering
@@ -176,129 +170,87 @@ def box_draw_fragment(bg_img, disp_w, disp_h, chart_key: str, rec: dict):
     )
 
 
-def prep_image_for_sam2(img: np.ndarray) -> np.ndarray:
-    """preprocess image into correct format for mask prediction with sam2"""
+def prep_image_for_sam(img: np.ndarray) -> np.ndarray:
+    """Return img as (H, W, 3) uint8, the form the predictor expects"""
     a = img
     if a.ndim == 2:
         a = np.repeat(a[..., None], 3, axis=2)
     elif a.ndim == 3 and a.shape[2] == 4:
         a = np.array(Image.fromarray(a).convert("RGB"))
-    a = a.astype(np.float32)
-    mx = a.max() if a.size else 1.0
-    if mx > 1.0:
-        a /= 255.0 if mx <= 255 else (65535.0 if mx <= 65535 else mx)
-    return a
+
+    if a.dtype != np.uint8:
+        a = a.astype(np.float32)
+        mx = float(a.max()) if a.size else 1.0
+        if mx <= 1.0:
+            a *= 255.0
+        elif mx > 255.0:
+            a *= 255.0 / mx
+        a = np.clip(a, 0, 255).astype(np.uint8)
+
+    return np.ascontiguousarray(a)
 
 
-@st.cache_resource(show_spinner="Loading SAM2 weights…")
-def _load_sam2():
-    """Load SAM2 model and return predictor and device."""
+@st.cache_resource(show_spinner="Loading MobileSAM weights…")
+def _load_box_segmenter():
+    """Load MobileSAM once and reuse it across reruns"""
+    from mobile_sam import SamPredictor, sam_model_registry
 
-    # determine device
     device = (
         "cuda"
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
+    ckpt = hf_hub_download("dhkim2810/MobileSAM", "mobile_sam.pt")
+    sam = sam_model_registry["vit_t"](checkpoint=ckpt).to(device).eval()
 
-    # load model and build the mode
-    CFG_PATH = "configs/sam2.1/sam2.1_hiera_l.yaml"
-    CKPT_PATH = hf_hub_download(
-        repo_id="facebook/sam2.1-hiera-large",
-        filename="sam2.1_hiera_large.pt",
-    )
-
-    sam = build_sam2(
-        CFG_PATH,
-        CKPT_PATH,
-        device=device,
-        apply_postprocessing=False,  # post-processing not supported with MPS :(
-    )
-
-    predictor = SAM2ImagePredictor(sam)
-
-    return predictor, device
+    return SamPredictor(sam), device
 
 
-def segment_with_sam2(rec: dict):
-    """Segment the cells in rec['boxes'] with SAM2, merging each into rec['masks'].
+def segment_boxes(rec: dict):
+    """Segment the cells in rec['boxes'] with MobileSAM, merging each into rec['masks'].
 
     The record's boxes are cleared once their masks have been integrated."""
 
-    # get boxes
     boxes = np.asarray(rec.get("boxes", []), dtype=np.float32)
-    # nothing to do if there are no boxes
     if boxes.size == 0:
         st.info("No boxes drawn yet.")
-        return []
+        return
 
-    # snapshot before generating so this whole action (incl. the box clear below) can be undone
+    # covers the box clear below as well as the mask edits
     snapshot_for_undo(rec)
 
-    # load the model
-    predictor, device = _load_sam2()
-
-    # preprocess image
-    img_float = prep_image_for_sam2(rec["image"])
-
-    # setup autocast for faster inference on CUDA
+    predictor, device = _load_box_segmenter()
+    img = prep_image_for_sam(rec["image"])
     amp = (
         torch.autocast("cuda", dtype=torch.bfloat16)
         if device == "cuda"
         else nullcontext()
     )
 
-    # embed the image
     with torch.inference_mode(), amp:
-        predictor.set_image(img_float)
+        predictor.set_image(img)
 
-    # batched predictions to prevent online crashes
-    box_batches = [boxes[i : i + 8] for i in range(0, len(boxes), 8)]
-    for batch in box_batches:
-        with torch.inference_mode(), amp:
-            masks, scores, _ = predictor.predict(
-                point_coords=None, point_labels=None, box=batch, multimask_output=True
+        # batched so a large set of boxes cannot exhaust memory
+        for start in range(0, len(boxes), 8):
+            batch = torch.as_tensor(boxes[start : start + 8], device=device)
+            batch = predictor.transform.apply_boxes_torch(batch, img.shape[:2])
+            masks, scores, _ = predictor.predict_torch(
+                point_coords=None,
+                point_labels=None,
+                boxes=batch,
+                multimask_output=True,
             )
 
-        # to numpy
-        if isinstance(masks, torch.Tensor):
-            masks = masks.detach().cpu().numpy()
-        if isinstance(scores, torch.Tensor):
-            scores = scores.detach().cpu().numpy()
+            # pick the best of each box's three masks before leaving the device
+            rows = torch.arange(len(masks), device=masks.device)
+            best = masks[rows, scores.argmax(-1)].cpu().numpy()
 
-        # normalize shapes:
-        if masks.ndim == 3:
-            masks = masks[None, ...]
-        if scores.ndim == 1:
-            scores = scores[None, ...]
+            for mask in best:
+                inst, new_id = integrate_new_mask(rec["masks"], mask)
+                if new_id is not None:
+                    rec["masks"] = inst
+                    rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(
+                        int(new_id), None
+                    )
 
-        # select best mask per box
-        B = scores.shape[0]
-        best = scores.argmax(-1)  # (B,)
-        masks_best = masks[np.arange(B), best]  # (B,H,W)
-
-        # integrate each mask into record
-        H, W = int(rec["H"]), int(rec["W"])
-        new_masks = []
-
-        # resize masks if needed and collect
-        for mi in masks_best:
-            mi = mi > 0
-            if mi.shape != (H, W):
-                mi = np.array(
-                    Image.fromarray(mi.astype(np.uint8)).resize((W, H), Image.NEAREST),
-                    dtype=bool,
-                )
-            new_masks.append(mi)
-
-        # integrate new masks
-        for mask in new_masks:
-            inst, new_id = integrate_new_mask(rec["masks"], mask)
-            if new_id is not None:
-                rec["masks"] = inst
-                rec.setdefault("labels", {})[int(new_id)] = rec["labels"].get(
-                    int(new_id), None
-                )
-
-    # clear boxes from the record
     _clear_boxes(rec)

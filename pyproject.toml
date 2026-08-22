@@ -22,7 +22,9 @@ dependencies = [
     "plotly==6.3.1",
     "streamlit-image-coordinates==0.4.0",
     "tifffile==2024.9.20",
-    "sam2==1.1.0",
+    # not published on PyPI, so pinned to a commit
+    "mobile_sam @ git+https://github.com/ChaoningZhang/MobileSAM.git@f706ad9c4eb7f219c00d9050e46328518ffb65d2",
+    "timm>=1.0.0",  # MobileSAM's TinyViT encoder
     "huggingface_hub==1.1.2",
     "kaleido",
     "pywebview>=6.1",

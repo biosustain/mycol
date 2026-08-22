@@ -7,7 +7,7 @@ def eager_load_heavy_libs():
     --> moves the loading time to the inital app startup
     """
 
-    with st.spinner("Loading AI libraries (Torch, Cellpose, SAM2)..."):
+    with st.spinner("Loading AI libraries (Torch, Cellpose, MobileSAM)..."):
 
 
 
@@ -20,8 +20,7 @@ def eager_load_heavy_libs():
 
 
         try:
-            from sam2.build_sam import build_sam2
-            from sam2.sam2_image_predictor import SAM2ImagePredictor
+            from mobile_sam import SamPredictor, sam_model_registry
         except ImportError:
             pass
 

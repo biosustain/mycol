@@ -53,6 +53,6 @@
 - upload no masks
 - upload no models
 - draw boxes around cellpose
-- predict masks with sam2
+- predict masks with MobileSAM
 - manually classify masks into two groups
 - download annotated images dataset

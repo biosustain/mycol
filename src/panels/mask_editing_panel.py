@@ -104,11 +104,11 @@ def render_segment_sidebar(*, key_ns: str = "side"):
             ):
                 render_cellpose_hyperparameters_fragment()
 
-        # render SAM2 controls
+        # render MobileSAM controls
         with st.popover(
             "Predict masks with boxes",
             width="stretch",
-            help="Draw boxes and click segment to use SAM2 to segment individual cells.",
+            help="Draw boxes and click segment to use MobileSAM to segment individual cells.",
             type="primary",
         ):
             render_box_tools_fragment(key_ns)

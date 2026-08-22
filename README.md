@@ -28,7 +28,7 @@ Mycol is a Streamlit-based application that makes machine-learning-assisted micr
 
 Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
 
-Start by **uploading** your images and any existing masks or models. Move to the **annotation** page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the **training** page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the **analysis** page lets you visualize and export cell population statistics across classes and experiments. At any point you can **download** your annotated data, trained models, or a full session restore file for reuse and publication.
+Start by **uploading** your images and any existing masks or models. Move to the **annotation** page to segment cells automatically with Cellpose or MobileSAM, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the **training** page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the **analysis** page lets you visualize and export cell population statistics across classes and experiments. At any point you can **download** your annotated data, trained models, or a full session restore file for reuse and publication.
 
 <p align="center">
   <img src="docs/pipeline_overview_correct.svg" alt="Mycol pipeline overview" width="100%" />
@@ -79,7 +79,7 @@ Once uploaded, a **summary table** shows which images have masks linked, how man
 Here you can:
 
 - **View images** overlaid with their associated cell masks.
-- **Generate new masks** automatically with [Cellpose](https://www.nature.com/articles/s41592-022-01663-4) or [SAM2](https://ai.meta.com/sam2/).
+- **Generate new masks** automatically with [Cellpose](https://www.nature.com/articles/s41592-022-01663-4) or [MobileSAM](https://github.com/ChaoningZhang/MobileSAM).
 - **Manually edit or correct masks** - add, remove, or adjust individual cells.
 - **Classify cells** using an uploaded DenseNet model for automated classification, or by clicking directly on cells in the image for manual labeling.
 
@@ -109,7 +109,7 @@ Once ready, download your dataset (including images, masks and tabulated cell co
 <tr>
 <td width="38%" valign="middle">
 
-**Generate** accurate cell masks using Cellpose and SAM2 models.
+**Generate** accurate cell masks using Cellpose and MobileSAM models.
 
 </td>
 <td width="62%">
@@ -236,7 +236,7 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 
 - Upload images and optional masks
 - Manual mask drawing and editing
-- SAM2-guided segmentation
+- MobileSAM-guided segmentation
 - Automated Cellpose segmentation (single or batch mode)
 - Interactive classification (manual or DenseNet-based)
 

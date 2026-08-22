@@ -5,7 +5,7 @@ This page is where you can **explore, edit, and analyze your images** using Myco
 Here you can:
 
 - **View your uploaded images** overlaid with their associated **cell masks**.
-- **Generate new masks** automatically using AI models such as **Cellpose** or **SAM2**.
+- **Generate new masks** automatically using AI models such as **Cellpose** or **MobileSAM**.
 - **Manually edit or correct masks** with interactive tools - add, remove, or adjust individual cells as needed.
 - **Classify cells** using:
   - an uploaded **DenseNet model** for automated classification, or

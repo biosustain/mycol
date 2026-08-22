@@ -163,10 +163,10 @@
           Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
         </p>
         <p class="overview-p">
-          Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or SAM2, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
+          Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or MobileSAM, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
         </p>
 
-        <img src="pipeline_overview_correct.svg" alt="The Mycol workflow: mask a few cells by hand or with SAM2, train a Cellpose model and improve it by correcting and retraining; then label some cells, train a DenseNet121 classifier and improve it the same way; finally compare cell descriptors between classes and download the results." class="overview-img" />
+        <img src="pipeline_overview_correct.svg" alt="The Mycol workflow: mask a few cells by hand or with MobileSAM, train a Cellpose model and improve it by correcting and retraining; then label some cells, train a DenseNet121 classifier and improve it the same way; finally compare cell descriptors between classes and download the results." class="overview-img" />
       </div>
 
     </div>
@@ -252,7 +252,7 @@
               <li>
                 <strong>Generate new masks</strong> automatically with
                 <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Cellpose</a>
-                or <a href="https://ai.meta.com/sam2/" target="_blank" rel="noopener">SAM2</a>.
+                or <a href="https://github.com/ChaoningZhang/MobileSAM" target="_blank" rel="noopener">MobileSAM</a>.
               </li>
               <li><strong>Manually edit or correct masks</strong> - add, remove, split, join, or adjust individual cells.</li>
               <li>

@@ -9,7 +9,7 @@ Below is an overview of the full process:
    This page establishes all inputs that downstream steps will use.
 
 2. **Segmentation & Classification Page - Create and refine annotations**  
-   View each image with its masks, generate new masks with [Cellpose](https://www.nature.com/articles/s41592-022-01663-4)/[SAM2](https://ai.meta.com/sam2/), edit any segmentation errors, and classify cells manually or with an uploaded classifier.  
+   View each image with its masks, generate new masks with [Cellpose](https://www.nature.com/articles/s41592-022-01663-4)/[MobileSAM](https://github.com/ChaoningZhang/MobileSAM), edit any segmentation errors, and classify cells manually or with an uploaded classifier.  
    This page is the central workspace where annotated datasets are produced.
 
 3. **Training Page - Build better models**  

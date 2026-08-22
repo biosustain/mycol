@@ -5,7 +5,7 @@
 With Mycol, you can:
 
 - **Upload microscopy images** of cells or tissues.
-- **Add or generate segmentation masks** using built-in AI tools such as **Cellpose** or **SAM2**.
+- **Add or generate segmentation masks** using built-in AI tools such as **Cellpose** or **MobileSAM**.
 - **Classify cells** automatically with trained **DenseNet** models or manually by selecting cells in the image.
 - **Review and refine your results** interactively - correct masks, relabel cells, or adjust classifications in real time.
 - **Download your processed datasets** for external analysis, or
