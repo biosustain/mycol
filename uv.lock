@@ -969,7 +969,7 @@ requires-dist = [
     { name = "streamlit", specifier = "==1.58.0" },
     { name = "streamlit-image-coordinates", specifier = "==0.4.0" },
     { name = "tifffile", specifier = "==2024.9.20" },
-    { name = "timm", specifier = ">=1.0.0" },
+    { name = "timm", specifier = ">=1.0,<2" },
     { name = "torch", marker = "sys_platform != 'darwin'", specifier = ">=2.5.1", index = "https://download.pytorch.org/whl/cu124" },
     { name = "torch", marker = "sys_platform == 'darwin'", specifier = ">=2.5.1" },
     { name = "torchvision", marker = "sys_platform != 'darwin'", specifier = ">=0.20.1", index = "https://download.pytorch.org/whl/cu124" },
