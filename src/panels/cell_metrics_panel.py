@@ -80,18 +80,17 @@ def render_plotting_options():
 
         # overlay + unit-conversion options as pills in one row
         OVERLAY, CONVERT = "Overlay datapoints", "Convert to distance"
-        default_opts = []
-        if ss.get("overlay_datapoints", False):
-            default_opts.append(OVERLAY)
-        if ss.get("convert_to_distance", False):
-            default_opts.append(CONVERT)
+        # Keyed so the widget id stays stable. A keyless widget derives its id
+        # from its arguments, so the old `default=` -- built from the session
+        # values this widget itself writes -- gave it a new id on every toggle,
+        # resetting the selection and swallowing every other click.
         opts = (
             col_opts.pills(
                 "Options",
                 [OVERLAY, CONVERT],
-                default=default_opts,
                 selection_mode="multi",
                 width="stretch",
+                key="analysis_options",
             )
             or []
         )

@@ -121,7 +121,7 @@ with st.spinner("Loading Annotator..."):
             # editing tools available in both tabs
             mask_editing_panel.render_common_tools(key_ns="tools")
 
-    # Zoom/pan panel — sits to the right of the image (col3), but its code runs before
+    # Zoom/pan panel - sits to the right of the image (col3), but its code runs before
     # the image column so the crop reads the updated zoom on the same run (columns are
     # positioned by creation order, executed in the order the `with` blocks appear).
     with col3:

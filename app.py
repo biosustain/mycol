@@ -32,58 +32,12 @@ from src.helpers.state_ops import reset_global_state_defaults
 reset_global_state_defaults()
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
-# restyle top navbar
-st.html("""
-<style>
+# ------------------ Navigation ------------------ #
+# Tab styling lives in src/helpers/nav_styles.py.
+# Switch looks with: MYCOL_NAV_STYLE=<name> streamlit run app.py
+from src.helpers.nav_styles import build_navigation
 
-.stAppHeader { background-color: #E9F2FF; !important; }
-
-.stAppHeader span, .stAppHeader div {
-    font-weight: 600 !important;
-}
-
-.stAppHeader {
-    padding: 12px 20px !important;
-}
-
-.stAppHeader {
-    box-shadow: 0 2px 20px rgba(0,0,0,0.2) !important;
-}
-
-/* Increase text size inside the navbar/header */
-.stAppHeader span, .stAppHeader h1, .stAppHeader div {
-    font-size: 20px !important;
-}
-</style>
-""")
-
-# ------------------ Define pages ------------------ #
-pages = [
-    st.Page(
-        "src/views/2-upload-data.py",
-        title="Upload Models and Data",
-        default=True,
-    ),
-    st.Page(
-        "src/views/3-create-and-edit-masks.py",
-        title="Annotate Images",
-    ),
-    st.Page(
-        "src/views/4-fine-tune-models.py",
-        title="Train Models",
-    ),
-    st.Page(
-        "src/views/5-cell-metrics.py",
-        title="Compare Phenotypes",
-    ),
-    st.Page(
-        "src/views/6-downloads.py",
-        title="Downloads",
-    ),
-]
-
-# ------------------ TOP navigation ------------------ #
-nav = st.navigation(pages, position="top", expanded=False)
+nav = build_navigation()
 
 # ------------------ Run selected page ------------------ #
 nav.run()

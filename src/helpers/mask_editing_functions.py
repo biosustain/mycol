@@ -113,7 +113,7 @@ def cached_image_mask_overlay(
     rather than two also halves what a session pins for a 5 MP image.
 
     Replaces an @st.cache_data memo, which kept two entries in a process-wide cache
-    and hashed megabytes of pixels on every hit — and, for masks above 500k
+    and hashed megabytes of pixels on every hit - and, for masks above 500k
     elements, hashed only a 100k sample of them."""
     slot = ss.get("_overlay_slot")
     if slot is not None and slot[0] == token:
@@ -943,9 +943,12 @@ def _render_minimap(rec: Record) -> None:
 
     thumb_w = 200
     thumb_h = max(1, round(H * thumb_w / W))
-    thumb = (
-        Image.fromarray(rec["image"]).resize((thumb_w, thumb_h), Image.BILINEAR).convert("RGB")
-    )
+    # follow the same Normalize toggle as the main display, and off the same memo
+    # slot, so the thumbnail matches what is on the canvas without a second pass
+    src = rec["image"]
+    if ss.get("show_normalized"):
+        src = _normalized_display_image(src)
+    thumb = Image.fromarray(src).resize((thumb_w, thumb_h), Image.BILINEAR).convert("RGB")
 
     # current crop rectangle, in thumbnail coordinates
     cw, ch = W / zoom, H / zoom
@@ -1031,7 +1034,7 @@ def render_undo_button(container=st, key_ns="side"):
         width="stretch",
         key=f"{key_ns}_undo",
         shortcut="ctrl+z",
-        help="Undo the last action — only the most recent action can be undone (shortcut: Ctrl+Z)",
+        help="Undo the last action - only the most recent action can be undone (shortcut: Ctrl+Z)",
         on_click=_undo_clicked,
     )
 

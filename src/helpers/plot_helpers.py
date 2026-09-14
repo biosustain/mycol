@@ -1,7 +1,7 @@
 """Dependency-light Plotly helpers shared across the app's charts.
 
 Kept as a leaf module (plotly only, no other app imports) so any module can use
-it without creating an import cycle — e.g. ``mask_editing_functions`` already
+it without creating an import cycle - e.g. ``mask_editing_functions`` already
 imports ``box_segment_functions``. Also the single source of truth for the plot palette.
 """
 
@@ -53,7 +53,7 @@ def make_base_figure(bg_img, disp_w: int, disp_h: int, dragmode: str) -> go.Figu
 
 
 def point_hover_texts(numbers, names, patches=None):
-    """Per-point hover labels — image number, image name and (optionally) patch
+    """Per-point hover labels - image number, image name and (optionally) patch
     number, each on its own line. Shared by the cell-metrics and fine-tuning plots."""
     if patches is None:
         patches = [None] * len(names)

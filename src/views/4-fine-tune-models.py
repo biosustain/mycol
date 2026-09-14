@@ -20,6 +20,15 @@ with st.spinner("Loading Training Panel..."):
     # ---- Step 1: choose what to fine-tune ----
     with st.container(border=True):
         st.subheader("Step 1: Choose which model to fine-tune")
+        # width="stretch" stretches the group, but each option keeps Streamlit's
+        # 736px cap, so on a wide screen the row stops short of the container.
+        st.html("""
+        <style>
+        .st-key-training_options [data-testid="stButtonGroup"] button {
+            max-width: none !important;
+        }
+        </style>
+        """)
         training_tab = st.pills(
             "Model type",
             options=[CELLPOSE, DENSENET],

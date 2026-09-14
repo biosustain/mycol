@@ -191,13 +191,13 @@ def get_current_rec():
 def view_token() -> str:
     """Short fingerprint of everything the annotate display is drawn from.
 
-    Changes whenever the pixels on screen would change — the image, its masks or
-    labels, the zoom/pan crop, the view toggles — and stays put otherwise, so it can
+    Changes whenever the pixels on screen would change - the image, its masks or
+    labels, the zoom/pan crop, the view toggles - and stays put otherwise, so it can
     key both the chart widget and the encoded background image.
 
     Derived from the data rather than bumped by callers: a missed call site would
     leave a stale image on screen, whereas a missed *input* here costs only a
-    redundant re-render. Boxes are deliberately excluded — they are drawn as figure
+    redundant re-render. Boxes are deliberately excluded - they are drawn as figure
     shapes, not into the background, so including them would remount the chart on
     every box drawn.
     """
@@ -220,7 +220,7 @@ def view_token() -> str:
 
 def _mask_crc(masks) -> int | None:
     """CRC32 of the label image. Exact, and faster than max()+count_nonzero() on the
-    same array — zlib's crc32 is hardware-accelerated, so even a 10 MB mask costs
+    same array - zlib's crc32 is hardware-accelerated, so even a 10 MB mask costs
     ~0.4 ms. Being exact matters: summary statistics miss an edit that renumbers
     instances without changing how many pixels are covered."""
     if masks is None:

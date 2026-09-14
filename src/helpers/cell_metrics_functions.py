@@ -31,7 +31,7 @@ def _physical_units() -> bool:
 
 
 def _axis_label(col: str) -> str:
-    """Metric name with its unit — the user's unit when converting, pixels otherwise.
+    """Metric name with its unit - the user's unit when converting, pixels otherwise.
 
     Dimensionless metrics (circularity, solidity, ...) carry no unit."""
     name = col.replace("_", " ").title()
@@ -388,15 +388,19 @@ METRIC_COLS = list(mask_shape_metrics(_DUMMY).keys()) + list(
 
 
 def available_labels(keys):
-    """Distinct class labels across the given images, read cheaply from per-image label dicts."""
+    """Distinct class labels across the given images, read cheaply from per-image label dicts.
+
+    'Unlabelled' is offered only when some mask actually carries no class. Reading
+    the dict values is exact here: every mask-creating path seeds `labels` with an
+    entry per instance id, so an unlabelled mask shows up as a None value rather
+    than a missing key."""
     if not keys:
         return []
     classes = set()
     for k in keys:
         for cls in (ss["images"][k].get("labels") or {}).values():
-            if cls not in (None, "No label"):
-                classes.add(cls)
-    return sorted(classes | {"Unlabelled"}, key=lambda x: (x != "Unlabelled", str(x)))
+            classes.add("Unlabelled" if cls in (None, "No label") else cls)
+    return sorted(classes, key=lambda x: (x != "Unlabelled", str(x)))
 
 
 def _record_key(key, rec):
