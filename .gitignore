@@ -8,11 +8,11 @@ case_study_3/
 cp3_vs_cp4/
 box_prompt_benchmark/
 
-# ── Manuscript ──────────────────────────────────────────────────────────────
-# The paper drafts, and everything that builds their figures. Both are anchored
-# with a leading slash so they only match at the repo root.
-/manuscript/
-/manuscript_figures/
+# manuscript_figures/ is published, so a figure can be rerun: the notebooks, the
+# README, and assets/ - the screenshots, plate photographs and Inkscape master
+# that nothing here can regenerate. What a notebook writes is not published, so
+# every output/ under it is ignored, analyses/output/ included.
+manuscript_figures/**/output/
 
 # ── Figures ─────────────────────────────────────────────────────────────────
 # Working files for the docs pipeline figure: the per-step SVGs, the build script
