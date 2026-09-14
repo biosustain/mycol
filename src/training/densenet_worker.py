@@ -78,6 +78,8 @@ def build_densenet(num_classes=2):
 
 def train_densenet(X, y, classes, batch_size, epochs, val_split):
     """Train DenseNet model and return history and best model state"""
+    torch.manual_seed(42)
+
     device = get_device()
 
     # Stratifying needs every class present on both sides, so the held-out count is

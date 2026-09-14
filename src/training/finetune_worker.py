@@ -10,6 +10,9 @@ import traceback
 
 def main():
     try:
+        np.random.seed(42)
+        torch.manual_seed(42)
+
         if len(sys.argv) < 3:
             print("Usage: uv run finetune_worker.py input.npz output.npz")
             sys.exit(1)
