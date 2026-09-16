@@ -18,18 +18,27 @@ STARTUP_TIMEOUT_S = 120
 
 
 def _log_path() -> Path:
-    """A writable location for the session log.
+    """A writable, conventional location for the session log.
 
-    Prefers %LOCALAPPDATA%\\Mycol so the bundle still works when it has been
-    unpacked somewhere read-only, e.g. under Program Files.
+    Never inside the bundle: an app in /Applications, or a folder unpacked under
+    Program Files, is not writable by the user running it.
     """
-    base = os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_STATE_HOME")
-    root = Path(base) / "Mycol" if base else Path(tempfile.gettempdir())
-    try:
-        root.mkdir(parents=True, exist_ok=True)
-        return root / "mycol.log"
-    except OSError:
-        return Path(tempfile.gettempdir()) / "mycol.log"
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA")
+        root = Path(base) / "Mycol" if base else None
+    elif sys.platform == "darwin":
+        root = Path.home() / "Library" / "Logs" / "Mycol"
+    else:
+        base = os.environ.get("XDG_STATE_HOME")
+        root = Path(base) / "Mycol" if base else Path.home() / ".local" / "state" / "Mycol"
+
+    if root is not None:
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+            return root / "mycol.log"
+        except OSError:
+            pass
+    return Path(tempfile.gettempdir()) / "mycol.log"
 
 
 class _Tee:

@@ -1,0 +1,140 @@
+name: Build macOS release
+
+# Mirrors the Windows workflow:
+#   - push to a work branch -> Apple Silicon build only, artifact, no release
+#   - push a v* tag         -> both architectures, attached to a draft release
+#   - manual dispatch       -> pick the architecture (needs this file on the
+#                              default branch before the button appears)
+on:
+  push:
+    branches:
+      - main
+      - macos_local
+      - "release/**"
+    paths-ignore:
+      - "manuscript/**"
+      - "manuscript_figures/**"
+      - "case_study_*/**"
+      - "notebooks/**"
+      - "docs/**"
+      - "**/*.md"
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Which architecture(s) to build"
+        type: choice
+        options: [arm64, x86_64, both]
+        default: arm64
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-macos-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runners: ${{ steps.pick.outputs.runners }}
+      version: ${{ steps.pick.outputs.version }}
+      prerelease: ${{ steps.pick.outputs.prerelease }}
+    steps:
+      - name: Decide what to build
+        id: pick
+        run: |
+          set -euo pipefail
+          # macos-14 is Apple Silicon, macos-13 is the last Intel image.
+          arm='{"arch":"arm64","runner":"macos-14"}'
+          intel='{"arch":"x86_64","runner":"macos-13"}'
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            runners="[$arm,$intel]"
+            version="${GITHUB_REF_NAME#v}"
+            if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            case "${{ inputs.arch }}" in
+              both)   runners="[$arm,$intel]" ;;
+              x86_64) runners="[$intel]" ;;
+              *)      runners="[$arm]" ;;
+            esac
+            version="0.0.0-dev"; prerelease=true
+          else
+            # Branch push: Apple Silicon only. It exercises every build step.
+            runners="[$arm]"
+            version="0.0.0-${GITHUB_SHA::7}"; prerelease=true
+          fi
+          {
+            echo "runners=$runners"
+            echo "version=$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $runners at $version"
+
+  build:
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.setup.outputs.runners) }}
+    runs-on: ${{ matrix.target.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Confirm runner architecture
+        run: |
+          got="$(uname -m)"
+          echo "runner arch: $got (expected ${{ matrix.target.arch }})"
+          [[ "$got" == "${{ matrix.target.arch }}" ]] || {
+            echo "::error::runner is $got, expected ${{ matrix.target.arch }}"; exit 1; }
+
+      # Present on GitHub macOS images; make the failure explicit if that changes.
+      - name: Confirm Rust toolchain
+        run: cargo --version || { echo "::error::cargo missing on runner"; exit 1; }
+
+      - name: Import signing certificate
+        # Skipped unless the repository has Apple credentials configured. Without
+        # it the app is ad-hoc signed and Gatekeeper blocks it on other Macs.
+        if: ${{ env.MACOS_CERT_P12 != '' }}
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERT_P12 }}
+          p12-password: ${{ secrets.MACOS_CERT_PASSWORD }}
+
+      - name: Build app bundle
+        env:
+          MYCOL_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          MYCOL_NOTARY_PROFILE: ${{ secrets.MACOS_NOTARY_PROFILE }}
+        run: ./scripts/make_dist.sh --version "${{ needs.setup.outputs.version }}"
+
+      - name: Verify app bundle
+        run: ./scripts/verify_dist.sh dist/Mycol.app
+
+      - name: Show artifact size
+        run: ls -lh dist/*.dmg
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mycol-macos-${{ matrix.target.arch }}
+          path: dist/*.dmg
+          retention-days: 14
+          compression-level: 0  # dmg is already compressed
+
+      - name: Attach to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg
+          draft: true
+          prerelease: ${{ needs.setup.outputs.prerelease }}
+          generate_release_notes: true
