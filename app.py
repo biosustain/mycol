@@ -20,7 +20,7 @@ if not getattr(st.plotly_chart, "_svg_default", False):
 
 st.set_page_config(page_title="Mycol", page_icon="👨🏼‍🔬", layout="wide")
 
-st.logo("logo.png", link="https://biosustain.github.io/mycol/index.html")
+st.logo("logo.png", size="large", link="https://biosustain.github.io/mycol/index.html")
 
 # Eager load heavy libraries to prevent lag on tab switching
 eager_load_heavy_libs()
