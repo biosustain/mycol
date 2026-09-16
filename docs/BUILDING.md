@@ -43,17 +43,55 @@ heavy imports work in both embedded interpreters, and that the app actually
 serves a page. CI runs it after every build; run it locally before publishing a
 bundle by hand.
 
+## Testing a branch before merging
+
+The PowerShell build can only run on Windows, so CI is the place to exercise it.
+
+**Every push to `main`, `windows_local` or `release/**` builds the CPU bundle**,
+runs `verify_dist.ps1` against it, and uploads the zip as a run artifact. Nothing
+is published. Open the run from the **Actions** tab and download the artifact to
+try the bundle on a real Windows machine.
+
+Doc-only changes (`docs/`, `manuscript/`, `*.md`, the case studies and notebooks)
+are excluded, so they do not spend half an hour of Windows runner time.
+
+To exercise the full release path — both variants, plus the release upload —
+without touching `main`, push a pre-release tag from the branch:
+
+```bash
+git tag v0.2.0-rc1 && git push origin v0.2.0-rc1
+```
+
+Tag triggers are not branch-scoped, so this works from any branch. The tag's
+hyphen marks the GitHub release as a pre-release. It is still created as a draft,
+so nothing is public until you publish it. Delete the tag and the draft when done:
+
+```bash
+git push --delete origin v0.2.0-rc1 && git tag -d v0.2.0-rc1
+```
+
+> [!NOTE]
+> The **Run workflow** button (`workflow_dispatch`) only appears once this
+> workflow file is on the repository's *default* branch. Until then, use a branch
+> push or a pre-release tag.
+
 ## Release
 
-Pushing a `v*` tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml),
-which builds both variants on separate runners, verifies them, and attaches the
-zips to a **draft** release. Review the draft, then publish.
+Once the branch is merged, pushing a `v*` tag runs
+[`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds
+both variants on separate runners, verifies them, and attaches the zips to a
+**draft** release.
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
 ```
 
-`workflow_dispatch` builds without publishing, for testing the pipeline.
+Then review the draft on the Releases page and click **Publish release**. Until
+you do, `releases/latest` shows nothing — drafts are invisible to everyone else.
+
+> [!IMPORTANT]
+> The build needs **Settings → Actions → General → Workflow permissions** set to
+> *Read and write*, or the release cannot be created.
 
 > [!WARNING]
 > GitHub caps a single release asset at 2 GiB. The CUDA bundle can approach that;
