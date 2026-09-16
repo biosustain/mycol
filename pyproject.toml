@@ -33,6 +33,18 @@ dependencies = [
     "pywebview>=6.1",
 ]
 
+# torchvision publishes a `+d801a34` local build that exists ONLY as a win_arm64
+# wheel, and local versions sort alphabetically, so `d801a34` outranks `cpu`.
+# Without pinning down the platforms we actually ship to, uv picks that build for
+# all of Windows and the install then fails on win_amd64 with "no wheels with a
+# matching platform tag". Naming the real targets forces a wheel to exist for each.
+[tool.uv]
+required-environments = [
+  "sys_platform == 'win32' and platform_machine == 'AMD64'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+
 # Windows and Linux default to the CPU wheels. The CUDA wheels drag in ~2.5 GB of
 # nvidia-* runtime packages that most laptops cannot use, and that download is the
 # most common way `uv sync` dies halfway through. macOS stays on PyPI, whose wheels
