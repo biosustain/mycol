@@ -199,7 +199,9 @@ fi
 codesign --verify --deep "$APP" && detail "signature verifies"
 
 if [[ "$MAKE_DMG" == "1" ]]; then
-    DMG="$DIST_DIR/mycol-macos-$ARCH-v$VERSION.dmg"
+    # No version in the name: the README links to
+    # releases/latest/download/<name>, which needs a stable filename.
+    DMG="$DIST_DIR/mycol-macos-$ARCH.dmg"
     rm -f "$DMG"
     detail "building $(basename "$DMG")"
     STAGE="$BUILD_DIR/dmg"

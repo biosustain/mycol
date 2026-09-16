@@ -134,7 +134,7 @@ jobs:
           body: |
             ## Download
 
-            **Most users want `mycol-windows-cpu-v${{ needs.setup.outputs.version }}.zip`.**
+            **Most users want `mycol-windows-cpu.zip`.**
             Unzip it anywhere and double-click `mycol.exe`. No Python, pip, uv or
             git needed.
 

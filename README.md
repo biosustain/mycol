@@ -6,9 +6,12 @@ _A lightweight, human-in-the-loop microscopy image analysis app._
 
 **[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Preprint](https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1)
 
-### [⬇ Download Mycol](https://github.com/biosustain/mycol/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge)](https://github.com/biosustain/mycol/releases/latest/download/mycol-windows-cpu.zip)
+&nbsp;
+[![Download for macOS](https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge)](https://github.com/biosustain/mycol/releases/latest/download/mycol-macos-arm64.dmg)
 
-<sub>**Windows** and **macOS** &nbsp;&middot;&nbsp; no Python installation required &nbsp;&middot;&nbsp; [install options](#installation)</sub>
+<sub>No Python installation required &nbsp;&middot;&nbsp; unzip and run</sub>
+<sub>Intel Mac or NVIDIA GPU? &nbsp;[see all downloads](https://github.com/biosustain/mycol/releases/latest)</sub>
 
 </div>
 
@@ -16,7 +19,7 @@ Mycol is a Streamlit-based application that makes machine-learning-assisted micr
 
 <div align="center">
 
-[**◆** Overview](#overview) &nbsp;&middot;&nbsp; [**1** Upload](#upload) &nbsp;&middot;&nbsp; [**2** Annotate](#annotate) &nbsp;&middot;&nbsp; [**3** Train](#train) &nbsp;&middot;&nbsp; [**4** Visualize](#visualize) &nbsp;&middot;&nbsp; [**5** Downloads](#downloads) &nbsp;&middot;&nbsp; [Get Mycol](#installation)
+[**◆** Overview](#overview) &nbsp;&middot;&nbsp; [**1** Upload](#upload) &nbsp;&middot;&nbsp; [**2** Annotate](#annotate) &nbsp;&middot;&nbsp; [**3** Train](#train) &nbsp;&middot;&nbsp; [**4** Visualize](#visualize) &nbsp;&middot;&nbsp; [**5** Downloads](#downloads)
 
 </div>
 
@@ -267,89 +270,6 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 - Runs locally on standard hardware
 - Minimal dependencies
 - Designed for small-scale workflows
-
----
-
-<a id="installation"></a>
-
-## Download for Windows
-
-> **No Python, pip, uv or git required.** The download contains everything the app needs, including the Cellpose and MobileSAM model weights.
-
-**1.** Download **[mycol-windows-cpu.zip](https://github.com/biosustain/mycol/releases/latest)** from the latest release.
-
-**2.** Right-click the zip and choose **Extract All**. Keep the folder together — `mycol.exe` expects `bin\` and `src\` beside it.
-
-**3.** Double-click **`mycol.exe`**.
-
-> [!NOTE]
-> Windows will warn that it *"protected your PC"*, because the download is not code-signed. Click **More info**, then **Run anyway**. This is expected.
-
-<details>
-<summary><b>Which build should I pick?</b></summary>
-
-<br>
-
-| Build | Pick it when | Size |
-| --- | --- | --- |
-| **`mycol-windows-cpu.zip`** | Almost always. Works on any 64-bit Windows machine. | ~1 GB |
-| `mycol-windows-cuda.zip` | Only if the machine has an **NVIDIA** GPU and a driver supporting CUDA 12.6. Speeds up segmentation and training. | ~3 GB |
-
-Integrated Intel or AMD graphics are *not* NVIDIA GPUs — use the CPU build.
-
-</details>
-
-<details>
-<summary><b>The app didn't start</b></summary>
-
-<br>
-
-Run **`mycol_debug.exe`** instead: it is the same program with a console window, so startup errors stay on screen. A log of the last run is also written to:
-
-```
-%LOCALAPPDATA%\Mycol\mycol.log
-```
-
-Please include that log when [opening an issue](https://github.com/biosustain/mycol/issues).
-
-</details>
-
----
-
-## Download for macOS
-
-> **No Python, uv or git required.** The app contains everything it needs, including the Cellpose and MobileSAM model weights, and uses your Mac's GPU through Metal.
-
-**1.** Download the disk image for your Mac from the [latest release](https://github.com/biosustain/mycol/releases/latest):
-
-| Your Mac | File |
-| --- | --- |
-| Apple Silicon (M1 and later) | `mycol-macos-arm64.dmg` |
-| Intel | `mycol-macos-x86_64.dmg` |
-
-Not sure? Click  > **About This Mac**. "Chip" means Apple Silicon; "Processor" means Intel.
-
-**2.** Open the `.dmg` and drag **Mycol** into **Applications**.
-
-**3.** Open Mycol from Applications.
-
-> [!NOTE]
-> macOS may say Mycol *"cannot be opened because it is from an unidentified developer"*. Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Mycol message. You only do this once.
-
-<details>
-<summary><b>The app didn't start</b></summary>
-
-<br>
-
-A log of the last run is written to:
-
-```
-~/Library/Logs/Mycol/mycol.log
-```
-
-Open it with Console.app, or run `open ~/Library/Logs/Mycol/mycol.log`. Please include it when [opening an issue](https://github.com/biosustain/mycol/issues).
-
-</details>
 
 ---
 

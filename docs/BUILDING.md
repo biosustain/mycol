@@ -31,7 +31,7 @@ Output lands in `dist\`:
 
 ```
 dist\mycol-windows-cpu\              the bundle folder
-dist\mycol-windows-cpu-v0.2.0.zip    the release asset
+dist\mycol-windows-cpu.zip          the release asset
 ```
 
 Pass `-SkipModels` to skip pre-baking the weights. That makes local test builds
@@ -176,7 +176,7 @@ Output:
 
 ```
 dist/Mycol.app
-dist/mycol-macos-arm64-v0.2.0.dmg     (~1 GB; the .app is ~2.2 GB unpacked)
+dist/mycol-macos-arm64.dmg            (~1 GB; the .app is ~2.2 GB unpacked)
 ```
 
 ### Fast iteration: the dev app

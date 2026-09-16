@@ -196,7 +196,9 @@ Docs: https://biosustain.github.io/mycol/
 
     if (Test-Path "$DistDir\pwa.py") { Remove-Item "$DistDir\pwa.py" }
 
-    $Zip = "$ProjectRoot\dist\mycol-windows-$BuildVariant-v$Version.zip"
+    # No version in the name: the README links to
+    # releases/latest/download/<name>, which needs a stable filename.
+    $Zip = "$ProjectRoot\dist\mycol-windows-$BuildVariant.zip"
     if (Test-Path $Zip) { Remove-Item $Zip -Force }
     Write-Detail "compressing to $(Split-Path $Zip -Leaf)..."
     Compress-Archive -Path "$DistDir\*" -DestinationPath $Zip -CompressionLevel Optimal
