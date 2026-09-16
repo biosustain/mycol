@@ -120,6 +120,8 @@ cp src/bootstrap.py "$RESOURCES/bootstrap.py"
 cp app.py "$RESOURCES/app.py"
 # app.py calls st.logo("logo.png") during startup.
 cp logo.png "$RESOURCES/logo.png"
+# load_demo_data() expects this beside app.py.
+[[ -f example_session.zip ]] && cp example_session.zip "$RESOURCES/example_session.zip"
 cp LICENSE "$RESOURCES/LICENSE"
 
 if [[ -d .streamlit ]]; then

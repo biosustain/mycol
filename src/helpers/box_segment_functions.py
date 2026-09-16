@@ -194,12 +194,9 @@ def prep_image_for_sam(img: np.ndarray) -> np.ndarray:
 
 
 def _mobile_sam_checkpoint() -> str:
-    """Path to the MobileSAM weights, preferring a copy baked into the bundle.
+    """MobileSAM weights, preferring the copy baked into a bundle by make_dist.
 
-    scripts/fetch_models.py writes mobile_sam.pt into MYCOL_MODELS_DIR at build
-    time so a packaged install never needs the network — or an unblocked
-    huggingface.co — the first time someone segments. Source checkouts have no
-    such directory and fall back to the Hub exactly as before.
+    Source checkouts have no MYCOL_MODELS_DIR and fall back to the Hub.
     """
     bundled = os.environ.get("MYCOL_MODELS_DIR")
     if bundled:

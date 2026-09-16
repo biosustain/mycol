@@ -121,6 +121,8 @@ ln -s "$ROOT/src"          "$RES/src"
 ln -s "$ROOT/app.py"       "$RES/app.py"
 ln -s "$ROOT/src/bootstrap.py" "$RES/bootstrap.py"
 ln -s "$ROOT/logo.png"     "$RES/logo.png"
+# load_demo_data() expects this at the bundle root.
+[[ -f "$ROOT/example_session.zip" ]] && ln -s "$ROOT/example_session.zip" "$RES/example_session.zip"
 ln -s "$ROOT/.streamlit"   "$RES/.streamlit"
 ln -s "$CACHE/python_main"   "$RES/bin/python_main"
 ln -s "$CACHE/python_worker" "$RES/bin/python_worker"
