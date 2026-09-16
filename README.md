@@ -6,13 +6,17 @@ _A lightweight, human-in-the-loop microscopy image analysis app._
 
 **[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Preprint](https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1)
 
+### [⬇ Download Mycol for Windows](https://github.com/biosustain/mycol/releases/latest)
+
+<sub>No Python installation required &nbsp;&middot;&nbsp; unzip and double-click &nbsp;&middot;&nbsp; [other install options](#installation)</sub>
+
 </div>
 
 Mycol is a Streamlit-based application that makes machine-learning-assisted microscopy analysis accessible to non-specialists. It enables fast annotation, automated segmentation and classification, model fine-tuning, and quantitative phenotyping, all on a standard laptop and without coding.
 
 <div align="center">
 
-[**◆** Overview](#overview) &nbsp;&middot;&nbsp; [**1** Upload](#upload) &nbsp;&middot;&nbsp; [**2** Annotate](#annotate) &nbsp;&middot;&nbsp; [**3** Train](#train) &nbsp;&middot;&nbsp; [**4** Visualize](#visualize) &nbsp;&middot;&nbsp; [**5** Downloads](#downloads) &nbsp;&middot;&nbsp; [Install](#installation)
+[**◆** Overview](#overview) &nbsp;&middot;&nbsp; [**1** Upload](#upload) &nbsp;&middot;&nbsp; [**2** Annotate](#annotate) &nbsp;&middot;&nbsp; [**3** Train](#train) &nbsp;&middot;&nbsp; [**4** Visualize](#visualize) &nbsp;&middot;&nbsp; [**5** Downloads](#downloads) &nbsp;&middot;&nbsp; [Get Mycol](#installation)
 
 </div>
 
@@ -268,10 +272,54 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 
 <a id="installation"></a>
 
-## Installation
+## Download for Windows
+
+> **No Python, pip, uv or git required.** The download contains everything the app needs, including the Cellpose and MobileSAM model weights.
+
+**1.** Download **[mycol-windows-cpu.zip](https://github.com/biosustain/mycol/releases/latest)** from the latest release.
+
+**2.** Right-click the zip and choose **Extract All**. Keep the folder together — `mycol.exe` expects `bin\` and `src\` beside it.
+
+**3.** Double-click **`mycol.exe`**.
 
 > [!NOTE]
-> This project uses [`uv`](https://docs.astral.sh/uv/) as its package manager. It is a drop-in replacement for `pip` and `conda` that handles the virtual environment and dependencies for you. To install it, run `pip install uv` or follow the [official instructions](https://docs.astral.sh/uv/getting-started/installation/).
+> Windows will warn that it *"protected your PC"*, because the download is not code-signed. Click **More info**, then **Run anyway**. This is expected.
+
+<details>
+<summary><b>Which build should I pick?</b></summary>
+
+<br>
+
+| Build | Pick it when | Size |
+| --- | --- | --- |
+| **`mycol-windows-cpu.zip`** | Almost always. Works on any 64-bit Windows machine. | ~1 GB |
+| `mycol-windows-cuda.zip` | Only if the machine has an **NVIDIA** GPU and a driver supporting CUDA 12.6. Speeds up segmentation and training. | ~3 GB |
+
+Integrated Intel or AMD graphics are *not* NVIDIA GPUs — use the CPU build.
+
+</details>
+
+<details>
+<summary><b>The app didn't start</b></summary>
+
+<br>
+
+Run **`mycol_debug.exe`** instead: it is the same program with a console window, so startup errors stay on screen. A log of the last run is also written to:
+
+```
+%LOCALAPPDATA%\Mycol\mycol.log
+```
+
+Please include that log when [opening an issue](https://github.com/biosustain/mycol/issues).
+
+</details>
+
+---
+
+## For Developers
+
+> [!NOTE]
+> This project uses [`uv`](https://docs.astral.sh/uv/) as its package manager. It handles the virtual environment and dependencies for you. Install it with the [official instructions](https://docs.astral.sh/uv/getting-started/installation/) — note that `pip install uv` only works if you already have Python.
 
 **1. Clone the repository**
 
@@ -293,9 +341,7 @@ This automatically creates a virtual environment and installs everything the app
 uv sync
 ```
 
----
-
-## Run the App Locally
+### Run the app
 
 From inside the repository, run:
 
@@ -303,7 +349,21 @@ From inside the repository, run:
 uv run streamlit run app.py
 ```
 
-`uv run` executes the command inside the project's virtual environment. Alternatively, you can activate the environment first (`source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows) and then run `streamlit run app.py`.
+`uv run` executes the command inside the project's virtual environment. Alternatively, activate the environment first (`source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows) and then run `streamlit run app.py`.
+
+### GPU support
+
+`uv sync` installs the **CPU** build of PyTorch on Windows and Linux, because the CUDA build pulls in roughly 2.5 GB of NVIDIA runtime packages that most machines cannot use. macOS uses the standard PyPI build, which already supports MPS.
+
+To opt into CUDA on a machine with an NVIDIA GPU:
+
+```bash
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+```
+
+### Building the Windows bundle
+
+See [docs/BUILDING.md](docs/BUILDING.md).
 
 ---
 

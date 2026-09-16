@@ -1,161 +1,211 @@
 #Requires -Version 7.0
+<#
+.SYNOPSIS
+    Build the portable Windows bundle(s) for Mycol.
+
+.DESCRIPTION
+    Produces a self-contained folder under dist\ that needs no Python, pip, uv or
+    git on the target machine, and zips it for upload to GitHub Releases.
+
+.PARAMETER Variant
+    cpu   - CPU-only torch. The default, and what most users want.
+    cuda  - NVIDIA CUDA 12.6 torch, roughly 2.5 GB larger.
+    both  - Build both, one after the other.
+
+.PARAMETER SkipModels
+    Skip pre-baking the model weights. The app then downloads them on first use,
+    which is the behaviour we ship bundles to avoid — for local test builds only.
+#>
 param(
-    [string]$Version = "0.1.0"
+    [string]$Version = "0.1.0",
+    [ValidateSet("cpu", "cuda", "both")]
+    [string]$Variant = "cpu",
+    [switch]$SkipModels
 )
 
 $ErrorActionPreference = "Stop"
 
-# URLs for Python Embeddable Distributions
+# Embeddable distributions: the main app runs on 3.13, the training worker on
+# 3.10 (cellpose 3.x pins numpy<2, which constrains what the worker can use).
 $PYTHON_MAIN_URL = "https://www.python.org/ftp/python/3.13.1/python-3.13.1-embed-amd64.zip"
 $PYTHON_WORKER_URL = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip"
 
-# Project Root
+$CPU_INDEX = "https://download.pytorch.org/whl/cpu"
+$CUDA_INDEX = "https://download.pytorch.org/whl/cu126"
+
 $ProjectRoot = Resolve-Path "$PSScriptRoot\.."
 Set-Location $ProjectRoot
 
-# Destination Directory: dist/MyCol/
-$DistDir = "$ProjectRoot\dist\MyCol"
-$BinDir = "$DistDir\bin"
+function Write-Step($msg) { Write-Host $msg -ForegroundColor Yellow }
+function Write-Detail($msg) { Write-Host "  - $msg" -ForegroundColor Gray }
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Building Portable MyCol v$Version" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+function Get-EmbeddedPython {
+    param($Url, $Zip, $Target, $PthName, $ZipName)
 
-# 1. Clean Dist
-Write-Host "`n[1/6] Cleaning dist directory..." -ForegroundColor Yellow
-if (Test-Path $DistDir) { Remove-Item $DistDir -Recurse -Force }
-New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+    if (-not (Test-Path $Zip)) {
+        Write-Detail "Downloading $(Split-Path $Zip -Leaf)..."
+        Invoke-WebRequest -Uri $Url -OutFile $Zip
+    }
+    Write-Detail "Extracting to $(Split-Path $Target -Leaf)..."
+    Expand-Archive $Zip -DestinationPath $Target -Force
 
-# 2. Download and Extract Python Main (3.13)
-Write-Host "[2/6] Setting up Main environment (Python 3.13)..." -ForegroundColor Yellow
-$MainDir = "$BinDir\python_main"
-New-Item -ItemType Directory -Path $MainDir | Out-Null
-
-if (-not (Test-Path "build\python-3.13.zip")) {
-    New-Item -ItemType Directory -Path "build" -Force | Out-Null
-    Write-Host "  - Downloading Python 3.13..." -ForegroundColor Gray
-    Invoke-WebRequest -Uri $PYTHON_MAIN_URL -OutFile "build\python-3.13.zip"
-}
-Write-Host "  - Extracting Python 3.13..." -ForegroundColor Gray
-Expand-Archive "build\python-3.13.zip" -DestinationPath $MainDir
-
-# Enable site-packages for Main
-Set-Content "$MainDir\python313._pth" "python313.zip`n.`n`nimport site`n"
-
-# 3. Download and Extract Python Worker (3.10)
-Write-Host "[3/6] Setting up Worker environment (Python 3.10)..." -ForegroundColor Yellow
-$WorkerDir = "$BinDir\python_worker"
-New-Item -ItemType Directory -Path $WorkerDir | Out-Null
-
-if (-not (Test-Path "build\python-3.10.zip")) {
-    Write-Host "  - Downloading Python 3.10..." -ForegroundColor Gray
-    Invoke-WebRequest -Uri $PYTHON_WORKER_URL -OutFile "build\python-3.10.zip"
-}
-Write-Host "  - Extracting Python 3.10..." -ForegroundColor Gray
-Expand-Archive "build\python-3.10.zip" -DestinationPath $WorkerDir
-
-# Enable site-packages for Worker
-Set-Content "$WorkerDir\python310._pth" "python310.zip`n.`n`nimport site`n"
-
-# 4. Install Dependencies with UV
-Write-Host "[4/6] Installing dependencies with uv..." -ForegroundColor Yellow
-
-# Generate requirements if they dont exist
-Write-Host "  - resolving main requirements..." -ForegroundColor Gray
-uv export --no-dev --python 3.13 -o build/req_main.txt
-
-Write-Host "  - resolving worker requirements..." -ForegroundColor Gray
-Push-Location src/training
-uv export --no-dev --python 3.10 -o ../../build/req_worker.txt
-Pop-Location
-
-# Install Main
-Write-Host "  - Installing Py3.13 deps..." -ForegroundColor Gray
-uv pip install --python "$MainDir\python.exe" -r build/req_main.txt --extra-index-url https://download.pytorch.org/whl/cu124 --index-strategy unsafe-best-match
-
-# Install Worker
-Write-Host "  - Installing Py3.10 deps..." -ForegroundColor Gray
-uv pip install --python "$WorkerDir\python.exe" -r build/req_worker.txt --extra-index-url https://download.pytorch.org/whl/cu124 --index-strategy unsafe-best-match
-
-# 5. Copy Source Code
-Write-Host "[5/6] Copying source code..." -ForegroundColor Yellow
-$SrcDest = "$DistDir\src"
-
-$RoboArgs = @(
-    "src", 
-    "$SrcDest", 
-    "/E", 
-    "/XD", ".venv", "__pycache__", ".git", ".pytest_cache", "dist", "build", "*.egg-info", ".mypy_cache", 
-    "/nfl", "/ndl", "/njh", "/njs", "/nc", "/ns", "/np" # Silent mode
-)
-
-Invoke-Expression "robocopy $RoboArgs" | Out-Null
-if ($LASTEXITCODE -gt 7) { 
-    Write-Error "Robocopy failed with exit code $LASTEXITCODE" 
-} else {
-    $global:LASTEXITCODE = 0
+    # The embeddable build ships with site-packages disabled; re-enable it so uv
+    # can install into Lib\site-packages.
+    Set-Content "$Target\$PthName" "$ZipName`n.`nLib\site-packages`n`nimport site`n"
 }
 
-# Copy bootstrap.py
-Copy-Item -Path "src\bootstrap.py" -Destination "$DistDir\bootstrap.py"
+function Build-Bundle {
+    param([string]$BuildVariant)
 
-# Copy app.py (Main Streamlit App)
-Copy-Item -Path "app.py" -Destination "$DistDir\app.py"
+    $DistDir = "$ProjectRoot\dist\mycol-windows-$BuildVariant"
+    $BinDir = "$DistDir\bin"
+    $BuildDir = "$ProjectRoot\build"
 
-# Copy .streamlit folder
-if (Test-Path ".streamlit") {
-    Copy-Item -Recurse -Path ".streamlit" -Destination "$DistDir\.streamlit"
-    # Ensure toolbarMode is viewer
-    Add-Content -Path "$DistDir\.streamlit\config.toml" -Value "`n[client]`ntoolbarMode = `"viewer`""
-}
+    Write-Host "`n========================================" -ForegroundColor Cyan
+    Write-Host "Building Mycol v$Version ($BuildVariant)" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
 
-# Copy demo_data folder
-if (Test-Path "demo_data") {
-    Copy-Item -Recurse -Path "demo_data" -Destination "$DistDir\demo_data"
-}
+    Write-Step "`n[1/8] Cleaning..."
+    if (Test-Path $DistDir) { Remove-Item $DistDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null
 
-# 6. Build Native Launcher
-Write-Host "[6/6] Building Native Launcher (Rust)..." -ForegroundColor Yellow
+    Write-Step "[2/8] Main environment (Python 3.13)..."
+    $MainDir = "$BinDir\python_main"
+    Get-EmbeddedPython -Url $PYTHON_MAIN_URL -Zip "$BuildDir\python-3.13.zip" `
+        -Target $MainDir -PthName "python313._pth" -ZipName "python313.zip"
 
-# Ensure cargo is available
-if (Get-Command cargo -ErrorAction SilentlyContinue) {
-    Push-Location "tools\launcher"
-    Write-Host "  - Compiling launcher..." -ForegroundColor Gray
-    cargo build
-    cargo build --release
+    Write-Step "[3/8] Worker environment (Python 3.10)..."
+    $WorkerDir = "$BinDir\python_worker"
+    Get-EmbeddedPython -Url $PYTHON_WORKER_URL -Zip "$BuildDir\python-3.10.zip" `
+        -Target $WorkerDir -PthName "python310._pth" -ZipName "python310.zip"
+
+    Write-Step "[4/8] Resolving dependencies..."
+    Write-Detail "exporting main requirements..."
+    uv export --no-dev --python 3.13 -o "$BuildDir\req_main.txt"
+    if ($LASTEXITCODE -ne 0) { throw "uv export (main) failed" }
+
+    Write-Detail "exporting worker requirements..."
+    Push-Location src\training
+    uv export --no-dev --python 3.10 -o "$BuildDir\req_worker.txt"
+    $exportCode = $LASTEXITCODE
     Pop-Location
-    
-    $LauncherSrcRelease = "tools\launcher\target\release\launcher.exe"
-    if (Test-Path $LauncherSrcRelease) {
-        Copy-Item -Path $LauncherSrcRelease -Destination "$DistDir\mycol.exe"
-        Write-Host "  - Launcher copied to mycol.exe" -ForegroundColor Gray
-    } else {
-        Write-Error "Launcher compilation failed or output not found."
+    if ($exportCode -ne 0) { throw "uv export (worker) failed" }
+
+    Write-Step "[5/8] Installing dependencies..."
+    # The lock pins +cpu local versions, which only exist on the PyTorch index,
+    # so it has to be reachable even though the requirements carry no index
+    # directive of their own.
+    Write-Detail "installing main (py3.13)..."
+    uv pip install --python "$MainDir\python.exe" -r "$BuildDir\req_main.txt" `
+        --extra-index-url $CPU_INDEX --index-strategy unsafe-best-match
+    if ($LASTEXITCODE -ne 0) { throw "main dependency install failed" }
+
+    Write-Detail "installing worker (py3.10)..."
+    uv pip install --python "$WorkerDir\python.exe" -r "$BuildDir\req_worker.txt" `
+        --extra-index-url $CPU_INDEX --index-strategy unsafe-best-match
+    if ($LASTEXITCODE -ne 0) { throw "worker dependency install failed" }
+
+    if ($BuildVariant -eq "cuda") {
+        # Overlay the CUDA build over the CPU one. Keeping this out of the lock
+        # means the default `uv sync` stays small for everyone else.
+        Write-Detail "overlaying CUDA torch (cu126)..."
+        foreach ($py in @("$MainDir\python.exe", "$WorkerDir\python.exe")) {
+            uv pip install --python $py torch torchvision --index-url $CUDA_INDEX
+            if ($LASTEXITCODE -ne 0) { throw "CUDA overlay failed for $py" }
+        }
     }
 
-    $LauncherSrcDebug = "tools\launcher\target\debug\launcher.exe"
-    if (Test-Path $LauncherSrcDebug) {
-        Copy-Item -Path $LauncherSrcDebug -Destination "$DistDir\mycol_debug.exe"
-        Write-Host "  - Launcher copied to mycol_debug.exe" -ForegroundColor Gray
-    } else {
-        Write-Error "Launcher compilation failed or output not found."
+    Write-Step "[6/8] Copying application files..."
+    $RoboArgs = @(
+        "src", "$DistDir\src", "/E",
+        "/XD", ".venv", "__pycache__", ".git", ".pytest_cache", "dist", "build", "*.egg-info", ".mypy_cache",
+        "/nfl", "/ndl", "/njh", "/njs", "/nc", "/ns", "/np"
+    )
+    robocopy @RoboArgs | Out-Null
+    # Robocopy uses exit codes 0-7 for success; 8+ is a real failure.
+    if ($LASTEXITCODE -gt 7) { throw "robocopy failed with exit code $LASTEXITCODE" }
+    $global:LASTEXITCODE = 0
+
+    Copy-Item -Path "src\bootstrap.py" -Destination "$DistDir\bootstrap.py"
+    Copy-Item -Path "app.py" -Destination "$DistDir\app.py"
+    # app.py calls st.logo("logo.png") at import time, so the bundle is broken
+    # without it.
+    Copy-Item -Path "logo.png" -Destination "$DistDir\logo.png"
+    Copy-Item -Path "LICENSE" -Destination "$DistDir\LICENSE"
+
+    if (Test-Path ".streamlit") {
+        Copy-Item -Recurse -Path ".streamlit" -Destination "$DistDir\.streamlit"
+        Add-Content -Path "$DistDir\.streamlit\config.toml" -Value "`n[client]`ntoolbarMode = `"viewer`""
     }
-} else {
-    Write-Error "Cargo (Rust) not found. Cannot build native launcher."
-    Write-Host "Falling back to batch file..." -ForegroundColor Yellow
-    $LauncherContent = @"
-@echo off
-set "HERE=%~dp0"
-"%HERE%bin\python_main\python.exe" "%HERE%bootstrap.py" %*
+    if (Test-Path "demo_data") {
+        Copy-Item -Recurse -Path "demo_data" -Destination "$DistDir\demo_data"
+    }
+
+    $readme = @"
+Mycol $Version ($BuildVariant build)
+
+To start: double-click mycol.exe
+
+Windows may warn that it "protected your PC" because this download is not
+code-signed. Choose "More info", then "Run anyway".
+
+If nothing appears, run mycol_debug.exe to see the startup output, or read the
+log at %LOCALAPPDATA%\Mycol\mycol.log
+
+Keep this folder together - mycol.exe expects bin\ and src\ beside it.
+
+Docs: https://biosustain.github.io/mycol/
 "@
-    Set-Content "$DistDir\MyCol_fallback.bat" $LauncherContent
+    Set-Content -Path "$DistDir\README.txt" -Value $readme
+
+    Write-Step "[7/8] Pre-baking model weights..."
+    if ($SkipModels) {
+        Write-Detail "skipped (-SkipModels)"
+    } else {
+        & "$MainDir\python.exe" "$ProjectRoot\scripts\fetch_models.py" $DistDir
+        if ($LASTEXITCODE -ne 0) { throw "model pre-bake failed" }
+    }
+
+    Write-Step "[8/8] Building native launcher..."
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        throw "cargo (Rust) not found - install from https://rustup.rs to build the launcher."
+    }
+    Push-Location "tools\launcher"
+    cargo build --release
+    $relCode = $LASTEXITCODE
+    cargo build
+    $dbgCode = $LASTEXITCODE
+    Pop-Location
+    if ($relCode -ne 0 -or $dbgCode -ne 0) { throw "launcher build failed" }
+
+    Copy-Item -Path "tools\launcher\target\release\launcher.exe" -Destination "$DistDir\mycol.exe"
+    # Same binary without windows_subsystem="windows", so users can see errors.
+    Copy-Item -Path "tools\launcher\target\debug\launcher.exe" -Destination "$DistDir\mycol_debug.exe"
+    Write-Detail "mycol.exe + mycol_debug.exe"
+
+    if (Test-Path "$DistDir\pwa.py") { Remove-Item "$DistDir\pwa.py" }
+
+    $Zip = "$ProjectRoot\dist\mycol-windows-$BuildVariant-v$Version.zip"
+    if (Test-Path $Zip) { Remove-Item $Zip -Force }
+    Write-Detail "compressing to $(Split-Path $Zip -Leaf)..."
+    Compress-Archive -Path "$DistDir\*" -DestinationPath $Zip -CompressionLevel Optimal
+
+    $bytes = (Get-Item $Zip).Length
+    $sizeMb = [math]::Round($bytes / 1MB, 0)
+    Write-Host "`nBuilt: $Zip ($sizeMb MB)" -ForegroundColor Green
+
+    # GitHub caps a single release asset at 2 GiB. The CUDA bundle can approach
+    # that, and the upload fails late and unhelpfully when it does.
+    if ($bytes -gt 2GB) {
+        Write-Warning ("$(Split-Path $Zip -Leaf) is $sizeMb MB, over GitHub's 2 GiB " +
+            "release asset limit. Host it elsewhere or split it before publishing.")
+    }
 }
 
-# Cleanup unnecessary files from dist if exist
-if (Test-Path "$DistDir\pwa.py") { Remove-Item "$DistDir\pwa.py" }
+$targets = if ($Variant -eq "both") { @("cpu", "cuda") } else { @($Variant) }
+foreach ($t in $targets) { Build-Bundle -BuildVariant $t }
 
 Write-Host "`n========================================" -ForegroundColor Green
-Write-Host "Build Complete!" -ForegroundColor Green
-Write-Host "Portable App: dist\MyCol" -ForegroundColor Cyan
-Write-Host "Run: dist\MyCol\MyCol.exe" -ForegroundColor Cyan
+Write-Host "Build complete. Artifacts in dist\" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green

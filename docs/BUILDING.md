@@ -1,49 +1,104 @@
-## Building
+# Building the Windows bundle
 
-> [!NOTE]
-> Building requires the rust toolchain to be installed. 
+The bundle is a self-contained folder: it carries its own Python interpreters,
+all dependencies, and the model weights, so the target machine needs no Python,
+pip, uv or git.
 
-To "build" run
+## Prerequisites
+
+Building (not running) needs three things on the build machine:
+
+- **Windows** — the bundle embeds Windows Python builds, so it must be built on Windows.
+- **PowerShell 7+** — `winget install Microsoft.PowerShell`
+- **uv** — see the [install instructions](https://docs.astral.sh/uv/getting-started/installation/)
+- **Rust** — the native launcher is compiled with cargo, via [rustup](https://rustup.rs)
+
+## Build
+
+```powershell
+./scripts/make_dist.ps1 -Version 0.2.0                  # CPU bundle (default)
+./scripts/make_dist.ps1 -Version 0.2.0 -Variant cuda    # NVIDIA CUDA 12.6 bundle
+./scripts/make_dist.ps1 -Version 0.2.0 -Variant both    # both, sequentially
+```
+
+Output lands in `dist\`:
+
+```
+dist\mycol-windows-cpu\              the bundle folder
+dist\mycol-windows-cpu-v0.2.0.zip    the release asset
+```
+
+Pass `-SkipModels` to skip pre-baking the weights. That makes local test builds
+much faster, but the resulting bundle downloads models on first use — which is
+the behaviour releases exist to avoid. Never ship a `-SkipModels` build.
+
+## Verify
+
+```powershell
+./scripts/verify_dist.ps1 -DistDir dist/mycol-windows-cpu
+```
+
+This checks the required files are present, that `config.toml` parses, that the
+heavy imports work in both embedded interpreters, and that the app actually
+serves a page. CI runs it after every build; run it locally before publishing a
+bundle by hand.
+
+## Release
+
+Pushing a `v*` tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml),
+which builds both variants on separate runners, verifies them, and attaches the
+zips to a **draft** release. Review the draft, then publish.
 
 ```bash
-./scripts/make_dist.sh
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
-or on windows
+`workflow_dispatch` builds without publishing, for testing the pipeline.
 
-```ps1
-./scripts/make_dist.ps1
-```
+> [!WARNING]
+> GitHub caps a single release asset at 2 GiB. The CUDA bundle can approach that;
+> `make_dist.ps1` warns when a zip exceeds it. If that happens, host the CUDA
+> build elsewhere rather than letting the upload fail during the release.
 
-note that you can only distribute the app on the same os it was built on
+## What the script does
 
+1. Downloads the Python **embeddable** distributions — 3.13 for the app, 3.10 for
+   the training worker — into `bin\python_main` and `bin\python_worker`, and
+   re-enables `site-packages` in each `._pth`.
+2. Exports pinned requirements from `uv.lock` and `src/training/uv.lock`, then
+   installs them into each interpreter with `uv pip install --python`.
+   For `-Variant cuda`, CUDA torch is then installed over the top.
+3. Copies `src\`, `app.py`, `bootstrap.py`, `logo.png`, `LICENSE` and
+   `.streamlit\` into the bundle, and writes a short `README.txt` for users.
+4. Pre-bakes the model weights via
+   [`scripts/fetch_models.py`](../scripts/fetch_models.py) so first use needs no
+   network. `bootstrap.py` points `CELLPOSE_LOCAL_MODELS_PATH` and
+   `MYCOL_MODELS_DIR` at them.
+5. Compiles the Rust launcher into `mycol.exe` (windowed) and `mycol_debug.exe`
+   (keeps a console, for diagnosing failures).
+6. Zips the folder.
 
+## Why is it so large?
 
-### How does this work and what does it do?
-This script does a few things:
+Each bundle carries two complete Python interpreters, PyTorch, and ~150 MB of
+model weights. The CUDA variant adds the NVIDIA runtime libraries on top, which
+is most of the difference between the ~1 GB and ~3 GB downloads.
 
-1. It downloads the corresponding python binaries (3.13.1 and 3.10.12) for the current OS (Windows for powershell and Linux for bash) and puts it in the `dist/app/bin` folder.
-2. It installs the dependencies for both python versions using uv. This means that the two binaries are (in theory)self-contained and do not require any additional dependencies.
-3. It copies the source code to the `dist/app/src` folder.
-4. It compiles the rust launcher from the `tools/launcher` folder and puts it in the `dist/app` folder. -> this is literally just a wrapper around the python binary that calls the `bootstrap` script, so that we can have an actual executable on the target system.
+## Torch: CPU by default
 
+`pyproject.toml` points torch at the **CPU** index for Windows and Linux. The
+CUDA wheels pull in roughly 2.5 GB of `nvidia-*` packages that most laptops
+cannot use, and that download was the most common way `uv sync` failed partway
+through. macOS resolves from PyPI, whose wheels already carry MPS support.
 
-### Why is it so big? 
-We are bundeling two complete versions of python (3.13 and 3.10) + cuda support on windows.
-
-### How do I install and build the launcher?
-
-
-Install rust using [rustup](https://rust-lang.org/tools/install/)
+CUDA is opt-in, either through `-Variant cuda` here or, in a source checkout:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 ```
 
-then using rustup install the toolchain
+## macOS and Linux
 
-```bash
-rustup install stable
-```
-
-the launcher will be build as part of the `make_dist` script and copied to the correct version
+`scripts/make_dist.sh` is **not** release-ready — see the warning at the top of
+that file. Building distributable macOS artifacts needs a relocatable interpreter,
+a real `.app` bundle, and Apple notarization, none of which that script does yet.
