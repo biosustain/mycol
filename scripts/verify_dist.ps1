@@ -38,6 +38,7 @@ Assert-BundleFile "app.py"                         "app entry point"
 # before, and nothing else would have caught it.
 Assert-BundleFile "logo.png"                       "logo asset"
 Assert-BundleFile "README.txt"                     "user readme"
+Assert-BundleFile "example_session.zip"            "demo session"
 Assert-BundleFile ".streamlit/config.toml"         "streamlit config"
 Assert-BundleFile "src/helpers"                    "src tree"
 Assert-BundleFile "bin/python_main/python.exe"     "main interpreter"

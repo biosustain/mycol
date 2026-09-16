@@ -1,7 +1,4 @@
-import os
 from contextlib import nullcontext
-from pathlib import Path
-
 import numpy as np
 import streamlit as st
 import torch
@@ -193,22 +190,6 @@ def prep_image_for_sam(img: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(a)
 
 
-def _mobile_sam_checkpoint() -> str:
-    """Path to the MobileSAM weights, preferring a copy baked into the bundle.
-
-    scripts/fetch_models.py writes mobile_sam.pt into MYCOL_MODELS_DIR at build
-    time so a packaged install never needs the network — or an unblocked
-    huggingface.co — the first time someone segments. Source checkouts have no
-    such directory and fall back to the Hub exactly as before.
-    """
-    bundled = os.environ.get("MYCOL_MODELS_DIR")
-    if bundled:
-        path = Path(bundled) / "mobile_sam.pt"
-        if path.is_file():
-            return str(path)
-    return hf_hub_download("dhkim2810/MobileSAM", "mobile_sam.pt")
-
-
 @st.cache_resource(show_spinner="Loading MobileSAM weights…")
 def _load_box_segmenter():
     """Load MobileSAM once and reuse it across reruns"""
@@ -219,7 +200,7 @@ def _load_box_segmenter():
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
-    ckpt = _mobile_sam_checkpoint()
+    ckpt = hf_hub_download("dhkim2810/MobileSAM", "mobile_sam.pt")
     sam = sam_model_registry["vit_t"](checkpoint=ckpt).to(device).eval()
 
     return SamPredictor(sam), device
