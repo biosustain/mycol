@@ -16,9 +16,9 @@ Building (not running) needs three things on the build machine:
 ## Build
 
 ```powershell
-./scripts/make_dist.ps1 -Version 0.2.0                  # CPU bundle (default)
-./scripts/make_dist.ps1 -Version 0.2.0 -Variant cuda    # NVIDIA CUDA 12.6 bundle
-./scripts/make_dist.ps1 -Version 0.2.0 -Variant both    # both, sequentially
+./scripts/windows/make_dist.ps1 -Version 0.2.0                  # CPU bundle (default)
+./scripts/windows/make_dist.ps1 -Version 0.2.0 -Variant cuda    # NVIDIA CUDA 12.6 bundle
+./scripts/windows/make_dist.ps1 -Version 0.2.0 -Variant both    # both, sequentially
 ```
 
 Output lands in `dist\`:
@@ -35,7 +35,7 @@ the behaviour releases exist to avoid. Never ship a `-SkipModels` build.
 ## Check before you build
 
 ```bash
-python scripts/check_wheels.py
+python scripts/windows/check_wheels.py
 ```
 
 Runs in seconds on any platform and needs no Windows machine. It evaluates the
@@ -157,6 +157,6 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 
 ## macOS and Linux
 
-`scripts/make_dist.sh` is **not** release-ready — see the warning at the top of
+`scripts/macos/make_dist.sh` is **not** release-ready — see the warning at the top of
 that file. Building distributable macOS artifacts needs a relocatable interpreter,
 a real `.app` bundle, and Apple notarization, none of which that script does yet.

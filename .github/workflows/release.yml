@@ -52,7 +52,7 @@ jobs:
       # Seconds on Linux, and it catches the resolution failures that otherwise
       # only surface 20 minutes into a Windows build.
       - name: Check Windows wheel coverage
-        run: uv run --no-project --with packaging python scripts/check_wheels.py
+        run: uv run --no-project --with packaging python scripts/windows/check_wheels.py
 
       - name: Decide what to build
         id: pick
@@ -105,11 +105,11 @@ jobs:
       - name: Build bundle
         shell: pwsh
         run: |
-          ./scripts/make_dist.ps1 -Version "${{ needs.setup.outputs.version }}" -Variant "${{ matrix.variant }}"
+          ./scripts/windows/make_dist.ps1 -Version "${{ needs.setup.outputs.version }}" -Variant "${{ matrix.variant }}"
 
       - name: Verify bundle
         shell: pwsh
-        run: ./scripts/verify_dist.ps1 -DistDir "dist/mycol-windows-${{ matrix.variant }}"
+        run: ./scripts/windows/verify_dist.ps1 -DistDir "dist/mycol-windows-${{ matrix.variant }}"
 
       - name: Show bundle size
         shell: pwsh
