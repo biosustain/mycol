@@ -160,9 +160,19 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
             "--server.runOnSave", "true",
         ]
         # bin/ holds the interpreters; watching it makes Streamlit reload the
-        # stdlib, which breaks importlib and every later import.
+        # stdlib, which breaks importlib and every later import. Both the
+        # symlink and its target are listed: a dev bundle symlinks bin/ to a
+        # cache outside the app, and Streamlit matches on the resolved path.
+        excluded = []
         for folder in ("bin", "models"):
-            cmd += ["--server.folderWatchBlacklist", str(root_dir / folder)]
+            path = root_dir / folder
+            excluded += [path, path.resolve()]
+            if path.is_dir():
+                # A dev bundle symlinks bin/python_main to a cache outside the
+                # app, and Streamlit matches on the resolved path.
+                excluded += [child.resolve() for child in path.iterdir()]
+        for candidate in dict.fromkeys(str(p) for p in excluded):
+            cmd += ["--server.folderWatchBlacklist", candidate]
         print("[Bootstrap] DEV MODE: watching source, edits reload automatically")
     else:
         # A packaged app never edits its own source.
