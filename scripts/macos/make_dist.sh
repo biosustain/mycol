@@ -185,6 +185,7 @@ echo "APPL????" > "$CONTENTS/PkgInfo"
 
 # --------------------------------------------------------- 9. sign + package
 step "[9/9] Signing and packaging..."
+detail "free disk: $(df -h "$DIST_DIR" | awk 'NR==2 {print $4}')"
 if [[ -n "${MYCOL_SIGN_IDENTITY:-}" ]]; then
     detail "signing with Developer ID"
     # --options runtime is required for notarization.
@@ -203,9 +204,12 @@ if [[ "$MAKE_DMG" == "1" ]]; then
     detail "building $(basename "$DMG")"
     STAGE="$BUILD_DIR/dmg"
     rm -rf "$STAGE"; mkdir -p "$STAGE"
-    cp -R "$APP" "$STAGE/"
+    # -c clones on APFS, so staging a 2 GB app costs no extra disk. CI runners
+    # have little headroom and the plain copy pushed them over.
+    cp -Rc "$APP" "$STAGE/" 2>/dev/null || cp -R "$APP" "$STAGE/"
     ln -s /Applications "$STAGE/Applications"      # drag-to-install target
-    hdiutil create -volname "Mycol" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
+    # Not -quiet: it hides the reason when this fails.
+    hdiutil create -volname "Mycol" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
     rm -rf "$STAGE"
 
     if [[ -n "${MYCOL_NOTARY_PROFILE:-}" ]]; then

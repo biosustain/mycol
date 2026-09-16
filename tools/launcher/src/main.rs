@@ -61,6 +61,8 @@ fn show_error(message: &str) {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
 
+    // MessageBoxW lives in user32; without this the link fails.
+    #[link(name = "user32")]
     extern "system" {
         fn MessageBoxW(hwnd: *mut u8, text: *const u16, caption: *const u16, utype: u32) -> i32;
     }
