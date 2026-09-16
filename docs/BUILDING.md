@@ -179,6 +179,35 @@ dist/Mycol.app
 dist/mycol-macos-arm64-v0.2.0.dmg     (~1 GB; the .app is ~2.2 GB unpacked)
 ```
 
+### Fast iteration: the dev app
+
+A full `make_dist.sh` run takes minutes, which is far too slow to sit in an
+edit-test loop. `scripts/dev_app.sh` builds a bundle that **symlinks** `src/`,
+`app.py` and `bootstrap.py` back to the working tree, and keeps the interpreters
+and model weights in a cache under `build/dev/`:
+
+```bash
+./scripts/dev_app.sh              # build (or refresh) and launch
+./scripts/dev_app.sh --no-open    # build only
+./scripts/dev_app.sh --reset      # discard the cached environment and rebuild
+```
+
+- **First run** adopts the environment from an existing `dist/Mycol.app` if there
+  is one. The copy uses `cp -c`, which clones on APFS — measured at 0 MB of real
+  disk for a 140 MB tree, so the cache is effectively free.
+- **Later runs** take about 0.1 s.
+- **Code edits need no rebuild at all.** The dev bundle carries a `.devmode`
+  marker that makes `bootstrap.py` start Streamlit with `--server.runOnSave` and
+  the polling file watcher, so saving a file reloads the running app in ~2 s.
+
+Rerun the script only after changing the Rust launcher or the dependency list.
+The dev app has its own bundle identifier (`…mycol.dev`) and shows as
+**Mycol (dev)**, so macOS never confuses it with a release build.
+
+> [!NOTE]
+> `poll` rather than the default watcher is deliberate: watchdog does not
+> reliably see changes through the symlinked source tree.
+
 ### Why not `uv venv`
 
 The interpreters are copied from uv's **managed** (python-build-standalone)

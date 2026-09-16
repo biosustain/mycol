@@ -148,6 +148,10 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
     env["PYTHONUNBUFFERED"] = "1"
     _bundled_model_env(root_dir, env)
 
+    # scripts/dev_app.sh drops this marker into a bundle whose src/ is symlinked
+    # back to the working tree, so edits should reload rather than need a rebuild.
+    dev_mode = (root_dir / ".devmode").exists()
+
     port = _free_port()
     cmd = [
         sys.executable,
@@ -158,12 +162,21 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
         "--server.headless", "true",
         "--server.port", str(port),
         "--server.address", "127.0.0.1",
-        # A packaged app never edits its own source, and the watcher is a
-        # startup cost (and a source of spurious reloads) on Windows.
-        "--server.fileWatcherType", "none",
         # Keeps first launch off the network on locked-down machines.
         "--browser.gatherUsageStats", "false",
     ]
+    if dev_mode:
+        # "poll" rather than "auto": watchdog does not reliably see through the
+        # symlinked source tree a dev bundle uses.
+        cmd += [
+            "--server.fileWatcherType", "poll",
+            "--server.runOnSave", "true",
+        ]
+        print("[Bootstrap] DEV MODE: watching source, edits reload automatically")
+    else:
+        # A packaged app never edits its own source, and the watcher is a startup
+        # cost (and a source of spurious reloads) on Windows.
+        cmd += ["--server.fileWatcherType", "none"]
 
     print(f"[Bootstrap] Starting Streamlit on port {port}...")
     # The child gets the real file handle, not the tee: subprocess needs a
