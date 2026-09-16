@@ -115,11 +115,20 @@ function Build-Bundle {
     if ($BuildVariant -eq "cuda") {
         # Overlay the CUDA build over the CPU one. Keeping this out of the lock
         # means the default `uv sync` stays small for everyone else.
+        # --reinstall is load-bearing: the CPU wheels already satisfy a bare
+        # "torch" requirement, so without it uv reports "Checked 2 packages",
+        # installs nothing, and the cuda bundle ships as CPU-only.
         Write-Detail "overlaying CUDA torch (cu126)..."
         foreach ($py in @("$MainDir\python.exe", "$WorkerDir\python.exe")) {
-            uv pip install --python $py torch torchvision --index-url $CUDA_INDEX
+            uv pip install --python $py --reinstall torch torchvision --index-url $CUDA_INDEX
             if ($LASTEXITCODE -ne 0) { throw "CUDA overlay failed for $py" }
         }
+        # Fail the build rather than ship a mislabelled bundle.
+        $torchBuild = & "$MainDir\python.exe" -c "import torch; print(torch.version.cuda)"
+        if (-not $torchBuild -or $torchBuild -eq "None") {
+            throw "cuda variant still has a CPU torch (torch.version.cuda = '$torchBuild')"
+        }
+        Write-Detail "torch CUDA runtime: $torchBuild"
     }
 
     Write-Step "[6/8] Copying application files..."
