@@ -8,7 +8,7 @@
 # builds need a runner of that architecture.
 #
 # Usage:
-#   ./scripts/make_dist.sh [--version 0.2.0] [--skip-models] [--no-dmg]
+#   ./scripts/macos/make_dist.sh [--version 0.2.0] [--skip-models] [--no-dmg]
 #
 # Signing (optional, both must be set):
 #   MYCOL_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)"
@@ -36,7 +36,7 @@ done
 PY_MAIN=3.12      # cellpose pins numpy<2.1, which has no cp313 wheels
 PY_WORKER=3.10
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 ARCH="$(uname -m)"                                   # arm64 or x86_64

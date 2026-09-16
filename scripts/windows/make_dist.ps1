@@ -39,7 +39,7 @@ $PYTHON_WORKER_URL = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-e
 $CPU_INDEX = "https://download.pytorch.org/whl/cpu"
 $CUDA_INDEX = "https://download.pytorch.org/whl/cu126"
 
-$ProjectRoot = Resolve-Path "$PSScriptRoot\.."
+$ProjectRoot = Resolve-Path "$PSScriptRoot\..\.."
 Set-Location $ProjectRoot
 
 function Write-Step($msg) { Write-Host $msg -ForegroundColor Yellow }

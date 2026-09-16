@@ -137,7 +137,7 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
     env["PYTHONUNBUFFERED"] = "1"
     _bundled_model_env(root_dir, env)
 
-    # Marker written by scripts/dev_app.sh, whose src/ is symlinked to the repo.
+    # Marker written by scripts/macos/dev_app.sh, whose src/ is symlinked to the repo.
     dev_mode = (root_dir / ".devmode").exists()
 
     port = _free_port()

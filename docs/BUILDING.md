@@ -22,9 +22,9 @@ Building (not running) needs four things on the build machine:
 ## Build
 
 ```powershell
-./scripts/make_dist.ps1 -Version 0.2.0                  # CPU bundle (default)
-./scripts/make_dist.ps1 -Version 0.2.0 -Variant cuda    # NVIDIA CUDA 12.6 bundle
-./scripts/make_dist.ps1 -Version 0.2.0 -Variant both    # both, sequentially
+./scripts/windows/make_dist.ps1 -Version 0.2.0                  # CPU bundle (default)
+./scripts/windows/make_dist.ps1 -Version 0.2.0 -Variant cuda    # NVIDIA CUDA 12.6 bundle
+./scripts/windows/make_dist.ps1 -Version 0.2.0 -Variant both    # both, sequentially
 ```
 
 Output lands in `dist\`:
@@ -41,7 +41,7 @@ the behaviour releases exist to avoid. Never ship a `-SkipModels` build.
 ## Check before you build
 
 ```bash
-python scripts/check_wheels.py
+python scripts/windows/check_wheels.py
 ```
 
 Runs in seconds on any platform and needs no Windows machine. It evaluates the
@@ -163,13 +163,13 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 
 # macOS
 
-`scripts/make_dist.sh` builds `Mycol.app` and a `.dmg`. It needs **uv** and
+`scripts/macos/make_dist.sh` builds `Mycol.app` and a `.dmg`. It needs **uv** and
 **Rust** on the build machine, and must run on the architecture it targets —
 there is no cross-compiling, because the Python wheels are architecture-specific.
 
 ```bash
-./scripts/make_dist.sh --version 0.2.0        # builds for this Mac's architecture
-./scripts/verify_dist.sh dist/Mycol.app
+./scripts/macos/make_dist.sh --version 0.2.0        # builds for this Mac's architecture
+./scripts/macos/verify_dist.sh dist/Mycol.app
 ```
 
 Output:
@@ -182,14 +182,14 @@ dist/mycol-macos-arm64-v0.2.0.dmg     (~1 GB; the .app is ~2.2 GB unpacked)
 ### Fast iteration: the dev app
 
 A full `make_dist.sh` run takes minutes, which is far too slow to sit in an
-edit-test loop. `scripts/dev_app.sh` builds a bundle that **symlinks** `src/`,
+edit-test loop. `scripts/macos/dev_app.sh` builds a bundle that **symlinks** `src/`,
 `app.py` and `bootstrap.py` back to the working tree, and keeps the interpreters
 and model weights in a cache under `build/dev/`:
 
 ```bash
-./scripts/dev_app.sh              # build (or refresh) and launch
-./scripts/dev_app.sh --no-open    # build only
-./scripts/dev_app.sh --reset      # discard the cached environment and rebuild
+./scripts/macos/dev_app.sh              # build (or refresh) and launch
+./scripts/macos/dev_app.sh --no-open    # build only
+./scripts/macos/dev_app.sh --reset      # discard the cached environment and rebuild
 ```
 
 - **First run** adopts the environment from an existing `dist/Mycol.app` if there
@@ -228,7 +228,7 @@ Gatekeeper blocks it anywhere else. For a distributable build, set both:
 ```bash
 export MYCOL_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)"
 export MYCOL_NOTARY_PROFILE="notarytool-profile"
-./scripts/make_dist.sh --version 0.2.0
+./scripts/macos/make_dist.sh --version 0.2.0
 ```
 
 This requires an Apple Developer Program membership. In CI the same values come

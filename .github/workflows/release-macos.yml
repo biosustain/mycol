@@ -114,10 +114,10 @@ jobs:
         env:
           MYCOL_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
           MYCOL_NOTARY_PROFILE: ${{ secrets.MACOS_NOTARY_PROFILE }}
-        run: ./scripts/make_dist.sh --version "${{ needs.setup.outputs.version }}"
+        run: ./scripts/macos/make_dist.sh --version "${{ needs.setup.outputs.version }}"
 
       - name: Verify app bundle
-        run: ./scripts/verify_dist.sh dist/Mycol.app
+        run: ./scripts/macos/verify_dist.sh dist/Mycol.app
 
       - name: Show artifact size
         run: ls -lh dist/*.dmg

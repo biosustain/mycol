@@ -7,7 +7,7 @@
 # genuinely relocatable, and that the app serves a page. Run in CI right after
 # make_dist.sh so a broken bundle never reaches a release.
 #
-# Usage: ./scripts/verify_dist.sh [path/to/Mycol.app]
+# Usage: ./scripts/macos/verify_dist.sh [path/to/Mycol.app]
 
 set -uo pipefail
 

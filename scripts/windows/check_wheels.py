@@ -11,7 +11,7 @@ It exists because two such failures shipped in a row:
   - numpy 2.0.2 (capped by cellpose's numpy<2.1) has no cp313 wheel
 
 Usage:
-    python scripts/check_wheels.py
+    python scripts/windows/check_wheels.py
 """
 
 import re
@@ -22,9 +22,9 @@ from pathlib import Path
 
 from packaging.markers import Marker
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Must match the interpreters scripts/make_dist.ps1 embeds.
+# Must match the interpreters scripts/windows/make_dist.ps1 embeds.
 TARGETS = [
     ("main", ROOT, "3.12", ROOT / "uv.lock"),
     ("worker", ROOT / "src" / "training", "3.10", ROOT / "src" / "training" / "uv.lock"),

@@ -12,9 +12,9 @@
 #   - code edits:     no rebuild at all; the app reloads them as you save
 #
 # Usage:
-#   ./scripts/dev_app.sh            build/refresh, then launch
-#   ./scripts/dev_app.sh --no-open  build/refresh only
-#   ./scripts/dev_app.sh --reset    discard the cached environment and rebuild it
+#   ./scripts/macos/dev_app.sh            build/refresh, then launch
+#   ./scripts/macos/dev_app.sh --no-open  build/refresh only
+#   ./scripts/macos/dev_app.sh --reset    discard the cached environment and rebuild it
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ done
 PY_MAIN=3.12
 PY_WORKER=3.10
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 case "$(uname -m)" in
