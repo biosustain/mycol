@@ -32,6 +32,26 @@ Pass `-SkipModels` to skip pre-baking the weights. That makes local test builds
 much faster, but the resulting bundle downloads models on first use — which is
 the behaviour releases exist to avoid. Never ship a `-SkipModels` build.
 
+## Check before you build
+
+```bash
+python scripts/check_wheels.py
+```
+
+Runs in seconds on any platform and needs no Windows machine. It evaluates the
+exported requirements against the bundle's target environment (Windows AMD64,
+CPython 3.12 and 3.10) and fails if any package would be built from source
+instead of installed from a wheel.
+
+Source builds are what break the Windows build, because the embeddable
+distribution ships no headers for a compiler to find. Two shipped in a row:
+
+- `torchvision` resolving to `+d801a34`, a local build with only `win_arm64` wheels
+- `numpy` 2.0.2 — capped by cellpose's `numpy<2.1` — having no cp313 wheel
+
+The second is why the app bundle pins **Python 3.12, not 3.13**. CI runs this
+check on Linux before it starts a Windows runner.
+
 ## Verify
 
 ```powershell
@@ -100,7 +120,7 @@ you do, `releases/latest` shows nothing — drafts are invisible to everyone els
 
 ## What the script does
 
-1. Downloads the Python **embeddable** distributions — 3.13 for the app, 3.10 for
+1. Downloads the Python **embeddable** distributions — 3.12 for the app, 3.10 for
    the training worker — into `bin\python_main` and `bin\python_worker`, and
    re-enables `site-packages` in each `._pth`.
 2. Exports pinned requirements from `uv.lock` and `src/training/uv.lock`, then

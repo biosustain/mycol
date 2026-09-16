@@ -44,6 +44,16 @@ jobs:
       version: ${{ steps.pick.outputs.version }}
       prerelease: ${{ steps.pick.outputs.prerelease }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # Seconds on Linux, and it catches the resolution failures that otherwise
+      # only surface 20 minutes into a Windows build.
+      - name: Check Windows wheel coverage
+        run: uv run --no-project --with packaging python scripts/check_wheels.py
+
       - name: Decide what to build
         id: pick
         run: |

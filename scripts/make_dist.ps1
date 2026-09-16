@@ -25,9 +25,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Embeddable distributions: the main app runs on 3.13, the training worker on
+# Embeddable distributions: the main app runs on 3.12, the training worker on
 # 3.10 (cellpose 3.x pins numpy<2, which constrains what the worker can use).
-$PYTHON_MAIN_URL = "https://www.python.org/ftp/python/3.13.1/python-3.13.1-embed-amd64.zip"
+#
+# 3.12 rather than 3.13 is deliberate and load-bearing: cellpose requires
+# numpy<2.1, and numpy only gained cp313 wheels in 2.1.0. On 3.13 there is no
+# numpy satisfying both, so uv falls back to building it from an sdist, which
+# fails in the embeddable environment (no Python headers for meson to find).
+# 3.12 is also what the project's own .venv uses.
+$PYTHON_MAIN_URL = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
 $PYTHON_WORKER_URL = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip"
 
 $CPU_INDEX = "https://download.pytorch.org/whl/cpu"
@@ -70,10 +76,10 @@ function Build-Bundle {
     New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
     New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null
 
-    Write-Step "[2/8] Main environment (Python 3.13)..."
+    Write-Step "[2/8] Main environment (Python 3.12)..."
     $MainDir = "$BinDir\python_main"
-    Get-EmbeddedPython -Url $PYTHON_MAIN_URL -Zip "$BuildDir\python-3.13.zip" `
-        -Target $MainDir -PthName "python313._pth" -ZipName "python313.zip"
+    Get-EmbeddedPython -Url $PYTHON_MAIN_URL -Zip "$BuildDir\python-3.12.zip" `
+        -Target $MainDir -PthName "python312._pth" -ZipName "python312.zip"
 
     Write-Step "[3/8] Worker environment (Python 3.10)..."
     $WorkerDir = "$BinDir\python_worker"
@@ -82,7 +88,7 @@ function Build-Bundle {
 
     Write-Step "[4/8] Resolving dependencies..."
     Write-Detail "exporting main requirements..."
-    uv export --no-dev --python 3.13 -o "$BuildDir\req_main.txt"
+    uv export --no-dev --python 3.12 -o "$BuildDir\req_main.txt"
     if ($LASTEXITCODE -ne 0) { throw "uv export (main) failed" }
 
     Write-Detail "exporting worker requirements..."
@@ -96,7 +102,7 @@ function Build-Bundle {
     # The lock pins +cpu local versions, which only exist on the PyTorch index,
     # so it has to be reachable even though the requirements carry no index
     # directive of their own.
-    Write-Detail "installing main (py3.13)..."
+    Write-Detail "installing main (py3.12)..."
     uv pip install --python "$MainDir\python.exe" -r "$BuildDir\req_main.txt" `
         --extra-index-url $CPU_INDEX --index-strategy unsafe-best-match
     if ($LASTEXITCODE -ne 0) { throw "main dependency install failed" }
