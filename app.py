@@ -20,6 +20,8 @@ if not getattr(st.plotly_chart, "_svg_default", False):
 
 st.set_page_config(page_title="Mycol", page_icon="👨🏼‍🔬", layout="wide")
 
+# No icon_image: navigation is position="top", so there is no expanded
+# sidebar and icon_image would win everywhere, hiding the wordmark.
 st.logo("logo.png", size="large", link="https://biosustain.github.io/mycol/index.html")
 
 # Eager load heavy libraries to prevent lag on tab switching

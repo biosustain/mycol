@@ -120,6 +120,7 @@ cp src/bootstrap.py "$RESOURCES/bootstrap.py"
 cp app.py "$RESOURCES/app.py"
 # app.py calls st.logo("logo.png") during startup.
 cp logo.png "$RESOURCES/logo.png"
+[[ -f logo_icon.png ]] && cp logo_icon.png "$RESOURCES/logo_icon.png"
 # load_demo_data() expects this beside app.py.
 [[ -f example_session.zip ]] && cp example_session.zip "$RESOURCES/example_session.zip"
 cp LICENSE "$RESOURCES/LICENSE"
@@ -150,12 +151,14 @@ chmod +x "$MACOS_DIR/Mycol"
 # ------------------------------------------------------- 8. bundle metadata
 step "[8/9] Writing bundle metadata..."
 
-# .icns from logo.png so the Dock and Finder do not show a generic icon.
+# .icns from the square mark: sips -z ignores aspect ratio, so the wide
+# sidebar lockup would come out stretched.
+ICON_SRC="logo_icon.png"; [[ -f "$ICON_SRC" ]] || ICON_SRC="logo.png"
 ICONSET="$BUILD_DIR/Mycol.iconset"
 rm -rf "$ICONSET"; mkdir -p "$ICONSET"
 for size in 16 32 64 128 256 512; do
-    sips -z $size $size logo.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null 2>&1
-    sips -z $((size*2)) $((size*2)) logo.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null 2>&1
+    sips -z $size $size "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null 2>&1
+    sips -z $((size*2)) $((size*2)) "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null 2>&1
 done
 iconutil -c icns "$ICONSET" -o "$RESOURCES/Mycol.icns" 2>/dev/null || detail "icon generation failed (continuing)"
 rm -rf "$ICONSET"

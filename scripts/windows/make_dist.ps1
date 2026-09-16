@@ -138,6 +138,9 @@ function Build-Bundle {
     # app.py calls st.logo("logo.png") at import time, so the bundle is broken
     # without it.
     Copy-Item -Path "logo.png" -Destination "$DistDir\logo.png"
+    if (Test-Path "logo_icon.png") {
+        Copy-Item -Path "logo_icon.png" -Destination "$DistDir\logo_icon.png"
+    }
     # load_demo_data() expects this beside app.py.
     if (Test-Path "example_session.zip") {
         Copy-Item -Path "example_session.zip" -Destination "$DistDir\example_session.zip"
