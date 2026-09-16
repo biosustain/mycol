@@ -273,57 +273,6 @@ Click **Prepare Download** to build the zip, then **Download Files** to save it 
 
 ---
 
-## For Developers
-
-> [!NOTE]
-> This project uses [`uv`](https://docs.astral.sh/uv/) as its package manager. It handles the virtual environment and dependencies for you. Install it with the [official instructions](https://docs.astral.sh/uv/getting-started/installation/) — note that `pip install uv` only works if you already have Python.
-
-**1. Clone the repository**
-
-```bash
-git clone https://github.com/biosustain/mycol.git
-```
-
-**2. Navigate into the repository in your terminal**
-
-```bash
-cd mycol
-```
-
-**3. Install dependencies**
-
-This automatically creates a virtual environment and installs everything the app needs.
-
-```bash
-uv sync
-```
-
-### Run the app
-
-From inside the repository, run:
-
-```bash
-uv run streamlit run app.py
-```
-
-`uv run` executes the command inside the project's virtual environment. Alternatively, activate the environment first (`source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\activate` on Windows) and then run `streamlit run app.py`.
-
-### GPU support
-
-`uv sync` installs the **CPU** build of PyTorch on Windows and Linux, because the CUDA build pulls in roughly 2.5 GB of NVIDIA runtime packages that most machines cannot use. macOS uses the standard PyPI build, which already supports MPS.
-
-To opt into CUDA on a machine with an NVIDIA GPU:
-
-```bash
-uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-```
-
-### Building the Windows bundle
-
-See [docs/BUILDING.md](docs/BUILDING.md).
-
----
-
 ## Example Use Cases
 
 - Rapid cell counting
@@ -371,6 +320,41 @@ Larvae segmented and classified as **normal** (blue) or **abnormal** (red), so s
 </td>
 </tr>
 </table>
+
+---
+
+## For Developers
+
+> [!NOTE]
+> This project uses [`uv`](https://docs.astral.sh/uv/) as its package manager. It handles the virtual environment and dependencies for you. Install it with the [official instructions](https://docs.astral.sh/uv/getting-started/installation/) — note that `pip install uv` only works if you already have Python.
+
+**1. Clone the repository**
+
+```bash
+git clone https://github.com/biosustain/mycol.git
+```
+
+**2. Navigate into the repository in your terminal**
+
+```bash
+cd mycol
+```
+
+**3. Install dependencies**
+
+This automatically creates a virtual environment and installs everything the app needs.
+
+```bash
+uv sync
+```
+
+### Run the app
+
+From inside the repository, run:
+
+```bash
+uv run streamlit run app.py
+```
 
 ---
 
