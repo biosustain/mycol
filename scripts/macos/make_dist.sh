@@ -1,134 +1,227 @@
-#!/bin/bash
-# WARNING: this script is NOT release-ready and is not parity with make_dist.ps1.
+#!/usr/bin/env bash
 #
-# It builds a *virtualenv*, not a self-contained runtime: bin/python_main/bin/python
-# is a symlink to whichever Python built it, so the output only runs on the build
-# machine. Shipping macOS artifacts additionally needs a relocatable interpreter,
-# a real .app bundle, and Apple notarization.
+# Build the portable macOS app bundle for Mycol.
 #
-# It also does not copy logo.png (app.py needs it) or pre-bake model weights, and
-# the .streamlit config append below writes a literal "\n" that makes the file
-# invalid TOML.
+# Produces Mycol.app, containing its own Python interpreters, all dependencies
+# and the model weights, so the target Mac needs no Python, uv or git. The app
+# is built for the architecture of the machine running this script; cross-arch
+# builds need a runner of that architecture.
 #
-# Use it for local experimentation only. See docs/BUILDING.md.
-set -e
+# Usage:
+#   ./scripts/macos/make_dist.sh [--version 0.2.0] [--skip-models] [--no-dmg]
+#
+# Signing (optional, both must be set):
+#   MYCOL_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)"
+#   MYCOL_NOTARY_PROFILE  notarytool keychain profile name
+# Without them the app is ad-hoc signed, which runs locally but triggers
+# Gatekeeper on any machine that downloaded it.
 
-VERSION="${1:-0.1.0}"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="$PROJECT_ROOT/dist/MyCol"
-BIN_DIR="$DIST_DIR/bin"
+set -euo pipefail
+
+VERSION="0.1.0"
+SKIP_MODELS=0
+MAKE_DMG=1
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --version) VERSION="$2"; shift 2 ;;
+        --version=*) VERSION="${1#*=}"; shift ;;
+        --skip-models) SKIP_MODELS=1; shift ;;
+        --no-dmg) MAKE_DMG=0; shift ;;
+        -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+
+PY_MAIN=3.12      # cellpose pins numpy<2.1, which has no cp313 wheels
+PY_WORKER=3.10
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
+ARCH="$(uname -m)"                                   # arm64 or x86_64
+case "$ARCH" in
+    arm64)  PY_ARCH="aarch64" ;;
+    x86_64) PY_ARCH="x86_64" ;;
+    *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
+esac
+
+DIST_DIR="$PROJECT_ROOT/dist"
+APP="$DIST_DIR/Mycol.app"
+CONTENTS="$APP/Contents"
+RESOURCES="$CONTENTS/Resources"
+MACOS_DIR="$CONTENTS/MacOS"
+BIN_DIR="$RESOURCES/bin"
 BUILD_DIR="$PROJECT_ROOT/build"
 
+step()   { echo ""; echo "==> $*"; }
+detail() { echo "    - $*"; }
+die()    { echo "ERROR: $*" >&2; exit 1; }
+
+command -v uv >/dev/null || die "uv not found. See https://docs.astral.sh/uv/getting-started/installation/"
+
 echo "========================================"
-echo "Building Portable MyCol v$VERSION (macOS/Linux)"
+echo "Building Mycol $VERSION for macOS ($ARCH)"
 echo "========================================"
 
-# 1. Clean
-echo "[1/6] Cleaning dist directory..."
-rm -rf "$DIST_DIR"
-mkdir -p "$BIN_DIR"
-mkdir -p "$BUILD_DIR"
+# ---------------------------------------------------------------- 1. skeleton
+step "[1/9] Creating app bundle skeleton..."
+rm -rf "$APP"
+mkdir -p "$MACOS_DIR" "$RESOURCES" "$BIN_DIR" "$BUILD_DIR"
 
-echo "[2/6] Creating Main environment (3.13)..."
-MAIN_ENV="$BIN_DIR/python_main"
-
-get_python_url() {
-    local version=$1
-    local os=$(uname -s)
-    local arch=$(uname -m)
-    
-    #TODO: this might NOT work on Linux/MacOS
-    echo "Creating venv in $2..."
-    uv venv --python $version "$2"
+# ------------------------------------------------------------- 2. interpreters
+# A uv-managed (python-build-standalone) interpreter is relocatable: its dylib
+# is referenced via @rpath and sys.prefix follows the directory. A `uv venv`
+# would NOT work here - it only symlinks back to the Python that built it, so
+# the bundle would break on any other machine.
+install_python() {
+    local version="$1" dest="$2"
+    uv python install "$version" >/dev/null 2>&1 || true
+    local src
+    src="$(ls -d "$(uv python dir)"/cpython-"$version".*-macos-"$PY_ARCH"-none 2>/dev/null | sort -V | tail -1)"
+    [[ -n "$src" && -d "$src" ]] || die "no uv-managed CPython $version for $PY_ARCH; run: uv python install $version"
+    detail "$(basename "$src")"
+    cp -R "$src" "$dest"
+    # Installing into the copy is the whole point of making one.
+    find "$dest" -name EXTERNALLY-MANAGED -delete
 }
 
-get_python_url 3.13 "$MAIN_ENV"
-MAIM_PY="$MAIN_ENV/bin/python"
+step "[2/9] Main interpreter (Python $PY_MAIN)..."
+install_python "$PY_MAIN" "$BIN_DIR/python_main"
+MAIN_PY="$BIN_DIR/python_main/bin/python3"
 
-# setup Worker Python (3.10)
-echo "[3/6] Creating Worker environment (3.10)..."
-WORKER_ENV="$BIN_DIR/python_worker"
-get_python_url 3.10 "$WORKER_ENV"
-WORKER_PY="$WORKER_ENV/bin/python"
+step "[3/9] Worker interpreter (Python $PY_WORKER)..."
+install_python "$PY_WORKER" "$BIN_DIR/python_worker"
+WORKER_PY="$BIN_DIR/python_worker/bin/python3"
 
-# install dependencies
-echo "[4/6] Installing dependencies with uv..."
+# ------------------------------------------------------------- 4. dependencies
+step "[4/9] Resolving and installing dependencies..."
+detail "exporting main requirements"
+uv export --no-dev --python "$PY_MAIN" -o "$BUILD_DIR/req_main.txt" >/dev/null
+detail "exporting worker requirements"
+( cd src/training && uv export --no-dev --python "$PY_WORKER" -o "$BUILD_DIR/req_worker.txt" >/dev/null )
 
-echo "  - resolving main requirements..."
-uv export --no-dev --python 3.13 -o "$BUILD_DIR/req_main.txt"
+detail "installing main (py$PY_MAIN)"
+uv pip install --python "$MAIN_PY" -r "$BUILD_DIR/req_main.txt" --quiet
+detail "installing worker (py$PY_WORKER)"
+uv pip install --python "$WORKER_PY" -r "$BUILD_DIR/req_worker.txt" --quiet
 
-echo "  - resolving worker requirements..."
-cd src/training
-uv export --no-dev --python 3.10 -o "../../$BUILD_DIR/req_worker.txt"
-cd ../..
-
-echo "  - Installing Main deps..."
-uv pip install --python "$MAIM_PY" -r "$BUILD_DIR/req_main.txt"
-
-echo "  - Installing Worker deps..."
-uv pip install --python "$WORKER_PY" -r "$BUILD_DIR/req_worker.txt"
-
-# copy source
-echo "[5/6] Copying source code..."
-# Use rsync for exclusion if available, else plain cp (and manual remove)
-if command -v rsync &> /dev/null; then
-    rsync -av \
-        --exclude='.venv' \
-        --exclude='__pycache__' \
-        --exclude='.git' \
-        --exclude='.pytest_cache' \
-        --exclude='*.egg-info' \
-        src "$DIST_DIR/"
+# ------------------------------------------------------------ 5. app source
+step "[5/9] Copying application files..."
+if command -v rsync >/dev/null; then
+    rsync -a --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' \
+        --exclude='*.egg-info' --exclude='.mypy_cache' src "$RESOURCES/"
 else
-    cp -r src "$DIST_DIR/src"
-    # Basic cleanup if rsync missing
-    find "$DIST_DIR/src" -name ".venv" -type d -exec rm -rf {} +
-    find "$DIST_DIR/src" -name "__pycache__" -type d -exec rm -rf {} +
+    cp -R src "$RESOURCES/src"
+    find "$RESOURCES/src" \( -name '__pycache__' -o -name '.venv' \) -type d -prune -exec rm -rf {} +
 fi
 
-cp src/bootstrap.py "$DIST_DIR/bootstrap.py"
-cp app.py "$DIST_DIR/app.py"
+cp src/bootstrap.py "$RESOURCES/bootstrap.py"
+cp app.py "$RESOURCES/app.py"
+# app.py calls st.logo("logo.png") during startup.
+cp logo.png "$RESOURCES/logo.png"
+# load_demo_data() expects this beside app.py.
+[[ -f example_session.zip ]] && cp example_session.zip "$RESOURCES/example_session.zip"
+cp LICENSE "$RESOURCES/LICENSE"
 
-# Copy .streamlit and demo_data if they exist
-if [ -d ".streamlit" ]; then
-    cp -r ".streamlit" "$DIST_DIR/.streamlit"
-    echo '[client]\ntoolbarMode = "viewer"' >> "$DIST_DIR/.streamlit/config.toml"
+if [[ -d .streamlit ]]; then
+    cp -R .streamlit "$RESOURCES/.streamlit"
+    # printf, not echo: bash's echo leaves a literal \n and the result is
+    # invalid TOML, which stops Streamlit from starting at all.
+    printf '\n[client]\ntoolbarMode = "viewer"\n' >> "$RESOURCES/.streamlit/config.toml"
 fi
-[ -d "demo_data" ] && cp -r "demo_data" "$DIST_DIR/demo_data"
+[[ -d demo_data ]] && cp -R demo_data "$RESOURCES/demo_data"
 
-# build launcher
-echo "[6/6] Building Native Launcher (Rust)..."
+# --------------------------------------------------------------- 6. weights
+step "[6/9] Pre-baking model weights..."
+if [[ "$SKIP_MODELS" == "1" ]]; then
+    detail "skipped (--skip-models)"
+else
+    "$MAIN_PY" "$PROJECT_ROOT/scripts/fetch_models.py" "$RESOURCES"
+fi
 
-if command -v cargo &> /dev/null; then
-    cd tools/launcher
-    echo "  - Compiling launcher..."
-    cargo build --release
-    cd ../..
-    
-    LAUNCHER_SRC="tools/launcher/target/release/launcher"
-    if [ -f "$LAUNCHER_SRC" ]; then
-        cp "$LAUNCHER_SRC" "$DIST_DIR/MyCol"
-        echo "  - Launcher copied to MyCol"
+# -------------------------------------------------------------- 7. launcher
+step "[7/9] Building native launcher..."
+command -v cargo >/dev/null || die "cargo not found. Install Rust from https://rustup.rs"
+( cd tools/launcher && cargo build --release --quiet )
+cp tools/launcher/target/release/launcher "$MACOS_DIR/Mycol"
+chmod +x "$MACOS_DIR/Mycol"
+
+# ------------------------------------------------------- 8. bundle metadata
+step "[8/9] Writing bundle metadata..."
+
+# .icns from logo.png so the Dock and Finder do not show a generic icon.
+ICONSET="$BUILD_DIR/Mycol.iconset"
+rm -rf "$ICONSET"; mkdir -p "$ICONSET"
+for size in 16 32 64 128 256 512; do
+    sips -z $size $size logo.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null 2>&1
+    sips -z $((size*2)) $((size*2)) logo.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null 2>&1
+done
+iconutil -c icns "$ICONSET" -o "$RESOURCES/Mycol.icns" 2>/dev/null || detail "icon generation failed (continuing)"
+rm -rf "$ICONSET"
+
+cat > "$CONTENTS/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>Mycol</string>
+    <key>CFBundleDisplayName</key><string>Mycol</string>
+    <key>CFBundleIdentifier</key><string>io.github.biosustain.mycol</string>
+    <key>CFBundleVersion</key><string>$VERSION</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleExecutable</key><string>Mycol</string>
+    <key>CFBundleIconFile</key><string>Mycol</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>LSMinimumSystemVersion</key><string>11.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <!-- The UI is a WebView window, not a background service. -->
+    <key>LSBackgroundOnly</key><false/>
+</dict>
+</plist>
+PLIST
+
+echo "APPL????" > "$CONTENTS/PkgInfo"
+
+# --------------------------------------------------------- 9. sign + package
+step "[9/9] Signing and packaging..."
+if [[ -n "${MYCOL_SIGN_IDENTITY:-}" ]]; then
+    detail "signing with Developer ID"
+    # --options runtime is required for notarization.
+    codesign --force --deep --options runtime --timestamp \
+        --sign "$MYCOL_SIGN_IDENTITY" "$APP"
+else
+    # arm64 binaries need at least an ad-hoc signature to execute at all.
+    detail "ad-hoc signing (set MYCOL_SIGN_IDENTITY for a distributable build)"
+    codesign --force --deep --sign - "$APP"
+fi
+codesign --verify --deep "$APP" && detail "signature verifies"
+
+if [[ "$MAKE_DMG" == "1" ]]; then
+    DMG="$DIST_DIR/mycol-macos-$ARCH-v$VERSION.dmg"
+    rm -f "$DMG"
+    detail "building $(basename "$DMG")"
+    STAGE="$BUILD_DIR/dmg"
+    rm -rf "$STAGE"; mkdir -p "$STAGE"
+    cp -R "$APP" "$STAGE/"
+    ln -s /Applications "$STAGE/Applications"      # drag-to-install target
+    hdiutil create -volname "Mycol" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
+    rm -rf "$STAGE"
+
+    if [[ -n "${MYCOL_NOTARY_PROFILE:-}" ]]; then
+        detail "submitting to Apple for notarization (this takes a few minutes)"
+        xcrun notarytool submit "$DMG" --keychain-profile "$MYCOL_NOTARY_PROFILE" --wait
+        xcrun stapler staple "$DMG"
+        detail "notarized and stapled"
     else
-        echo "Error: Launcher compilation failed."
+        detail "not notarized - Gatekeeper will block this on other Macs"
     fi
-else
-    echo "Cargo not found. Falling back to shell script."
-    LAUNCHER="$DIST_DIR/MyCol.sh"
-    cat > "$LAUNCHER" << EOF
-#!/bin/bash
-HERE="\$(dirname "\$0")"
-"\$HERE/bin/python_main/bin/python" "\$HERE/bootstrap.py" "\$@"
-EOF
-    chmod +x "$LAUNCHER"
 fi
-
-# cleanup
-rm -f "$DIST_DIR/pwa.py"
 
 echo ""
 echo "========================================"
-echo "Build Complete!"
-echo "Portable App: dist/MyCol"
-echo "Run: ./dist/MyCol/MyCol"
+echo "Build complete"
+echo "  App: $APP"
+[[ "$MAKE_DMG" == "1" ]] && echo "  DMG: ${DMG:-}"
+du -sh "$APP" | awk '{print "  Size: " $1}'
 echo "========================================"

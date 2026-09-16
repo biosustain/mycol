@@ -73,7 +73,13 @@ print('worker imports OK  torch', torch.__version__, '| numpy', numpy.__version_
 if ($LASTEXITCODE -ne 0) { $failures += "worker interpreter imports" }
 
 Write-Host "`n[5/5] App serves a page..." -ForegroundColor Yellow
-$port = 8599
+# A fixed port silently invalidates this check: anything else already listening
+# there answers the request and the bundle appears to work when it never started.
+$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+$listener.Start()
+$port = $listener.LocalEndpoint.Port
+$listener.Stop()
+Write-Host "  using port $port" -ForegroundColor Gray
 $proc = Start-Process -FilePath $mainPy -PassThru -WindowStyle Hidden `
     -WorkingDirectory $DistDir `
     -ArgumentList @(

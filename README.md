@@ -6,9 +6,9 @@ _A lightweight, human-in-the-loop microscopy image analysis app._
 
 **[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Preprint](https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1)
 
-### [⬇ Download Mycol for Windows](https://github.com/biosustain/mycol/releases/latest)
+### [⬇ Download Mycol](https://github.com/biosustain/mycol/releases/latest)
 
-<sub>No Python installation required &nbsp;&middot;&nbsp; unzip and double-click &nbsp;&middot;&nbsp; [other install options](#installation)</sub>
+<sub>**Windows** and **macOS** &nbsp;&middot;&nbsp; no Python installation required &nbsp;&middot;&nbsp; [install options](#installation)</sub>
 
 </div>
 
@@ -311,6 +311,43 @@ Run **`mycol_debug.exe`** instead: it is the same program with a console window,
 ```
 
 Please include that log when [opening an issue](https://github.com/biosustain/mycol/issues).
+
+</details>
+
+---
+
+## Download for macOS
+
+> **No Python, uv or git required.** The app contains everything it needs, including the Cellpose and MobileSAM model weights, and uses your Mac's GPU through Metal.
+
+**1.** Download the disk image for your Mac from the [latest release](https://github.com/biosustain/mycol/releases/latest):
+
+| Your Mac | File |
+| --- | --- |
+| Apple Silicon (M1 and later) | `mycol-macos-arm64.dmg` |
+| Intel | `mycol-macos-x86_64.dmg` |
+
+Not sure? Click  > **About This Mac**. "Chip" means Apple Silicon; "Processor" means Intel.
+
+**2.** Open the `.dmg` and drag **Mycol** into **Applications**.
+
+**3.** Open Mycol from Applications.
+
+> [!NOTE]
+> macOS may say Mycol *"cannot be opened because it is from an unidentified developer"*. Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Mycol message. You only do this once.
+
+<details>
+<summary><b>The app didn't start</b></summary>
+
+<br>
+
+A log of the last run is written to:
+
+```
+~/Library/Logs/Mycol/mycol.log
+```
+
+Open it with Console.app, or run `open ~/Library/Logs/Mycol/mycol.log`. Please include it when [opening an issue](https://github.com/biosustain/mycol/issues).
 
 </details>
 

@@ -1,12 +1,18 @@
-# Building the Windows bundle
+# Building the desktop bundles
 
-The bundle is a self-contained folder: it carries its own Python interpreters,
-all dependencies, and the model weights, so the target machine needs no Python,
-pip, uv or git.
+Each bundle is self-contained: it carries its own Python interpreters, all
+dependencies, and the model weights, so the target machine needs no Python, pip,
+uv or git.
+
+A bundle can only be built on the platform — and on macOS the architecture — it
+targets, because it embeds a real interpreter and architecture-specific wheels.
+Windows is covered first; [macOS](#macos) is further down.
+
+# Windows
 
 ## Prerequisites
 
-Building (not running) needs three things on the build machine:
+Building (not running) needs four things on the build machine:
 
 - **Windows** — the bundle embeds Windows Python builds, so it must be built on Windows.
 - **PowerShell 7+** — `winget install Microsoft.PowerShell`
@@ -155,8 +161,89 @@ CUDA is opt-in, either through `-Variant cuda` here or, in a source checkout:
 uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 ```
 
-## macOS and Linux
+# macOS
 
-`scripts/macos/make_dist.sh` is **not** release-ready — see the warning at the top of
-that file. Building distributable macOS artifacts needs a relocatable interpreter,
-a real `.app` bundle, and Apple notarization, none of which that script does yet.
+`scripts/macos/make_dist.sh` builds `Mycol.app` and a `.dmg`. It needs **uv** and
+**Rust** on the build machine, and must run on the architecture it targets —
+there is no cross-compiling, because the Python wheels are architecture-specific.
+
+```bash
+./scripts/macos/make_dist.sh --version 0.2.0        # builds for this Mac's architecture
+./scripts/macos/verify_dist.sh dist/Mycol.app
+```
+
+Output:
+
+```
+dist/Mycol.app
+dist/mycol-macos-arm64-v0.2.0.dmg     (~1 GB; the .app is ~2.2 GB unpacked)
+```
+
+### Fast iteration: the dev app
+
+A full `make_dist.sh` run takes minutes, which is far too slow to sit in an
+edit-test loop. `scripts/macos/dev_app.sh` builds a bundle that **symlinks** `src/`,
+`app.py` and `bootstrap.py` back to the working tree, and keeps the interpreters
+and model weights in a cache under `build/dev/`:
+
+```bash
+./scripts/macos/dev_app.sh              # build (or refresh) and launch
+./scripts/macos/dev_app.sh --no-open    # build only
+./scripts/macos/dev_app.sh --reset      # discard the cached environment and rebuild
+```
+
+- **First run** adopts the environment from an existing `dist/Mycol.app` if there
+  is one. The copy uses `cp -c`, which clones on APFS — measured at 0 MB of real
+  disk for a 140 MB tree, so the cache is effectively free.
+- **Later runs** take about 0.1 s.
+- **Code edits need no rebuild at all.** The dev bundle carries a `.devmode`
+  marker that makes `bootstrap.py` start Streamlit with `--server.runOnSave` and
+  the polling file watcher, so saving a file reloads the running app in ~2 s.
+
+Rerun the script only after changing the Rust launcher or the dependency list.
+The dev app has its own bundle identifier (`…mycol.dev`) and shows as
+**Mycol (dev)**, so macOS never confuses it with a release build.
+
+> [!NOTE]
+> `poll` rather than the default watcher is deliberate: watchdog does not
+> reliably see changes through the symlinked source tree.
+
+### Why not `uv venv`
+
+The interpreters are copied from uv's **managed** (python-build-standalone)
+installs, not created with `uv venv`. A virtualenv only symlinks back to the
+Python that built it, so a bundle made that way runs on the build machine and
+nowhere else. A python-build-standalone copy references its own dylib through
+`@rpath`, so `sys.prefix` follows the bundle wherever it goes. `verify_dist.sh`
+asserts this, because the failure is invisible until someone else opens the app.
+
+The copy also has its `EXTERNALLY-MANAGED` marker removed, or uv refuses to
+install into it.
+
+### Signing and notarization
+
+Unsigned, the app is ad-hoc signed: it runs on the machine that built it, but
+Gatekeeper blocks it anywhere else. For a distributable build, set both:
+
+```bash
+export MYCOL_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)"
+export MYCOL_NOTARY_PROFILE="notarytool-profile"
+./scripts/macos/make_dist.sh --version 0.2.0
+```
+
+This requires an Apple Developer Program membership. In CI the same values come
+from the `MACOS_SIGN_IDENTITY` and `MACOS_NOTARY_PROFILE` secrets, with the
+certificate in `MACOS_CERT_P12` / `MACOS_CERT_PASSWORD`. Without them the build
+still succeeds and still produces a DMG — it just carries the Gatekeeper warning
+documented in the README.
+
+### macOS CI
+
+[`.github/workflows/release-macos.yml`](../.github/workflows/release-macos.yml)
+mirrors the Windows workflow: branch pushes build Apple Silicon only and upload
+the DMG as an artifact; a `v*` tag builds both architectures on `macos-14`
+(arm64) and `macos-13` (Intel) and attaches them to the same draft release.
+
+# Linux
+
+There is no Linux bundle. Run from source with `uv sync`.

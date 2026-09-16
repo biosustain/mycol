@@ -137,6 +137,9 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
     env["PYTHONUNBUFFERED"] = "1"
     _bundled_model_env(root_dir, env)
 
+    # Marker written by scripts/macos/dev_app.sh, whose src/ is symlinked to the repo.
+    dev_mode = (root_dir / ".devmode").exists()
+
     port = _free_port()
     cmd = [
         sys.executable,
@@ -147,11 +150,23 @@ def _run(root_dir: Path, log_file: Path, log_fh) -> int:
         "--server.headless", "true",
         "--server.port", str(port),
         "--server.address", "127.0.0.1",
-        # A packaged app never edits its own source.
-        "--server.fileWatcherType", "none",
         # Keeps first launch off the network on locked-down machines.
         "--browser.gatherUsageStats", "false",
     ]
+    if dev_mode:
+        # "poll": watchdog does not see through the dev bundle's symlinked src.
+        cmd += [
+            "--server.fileWatcherType", "poll",
+            "--server.runOnSave", "true",
+        ]
+        # bin/ holds the interpreters; watching it makes Streamlit reload the
+        # stdlib, which breaks importlib and every later import.
+        for folder in ("bin", "models"):
+            cmd += ["--server.folderWatchBlacklist", str(root_dir / folder)]
+        print("[Bootstrap] DEV MODE: watching source, edits reload automatically")
+    else:
+        # A packaged app never edits its own source.
+        cmd += ["--server.fileWatcherType", "none"]
 
     print(f"[Bootstrap] Starting Streamlit on port {port}...")
     # The child needs a real fileno(), which the tee does not have.
