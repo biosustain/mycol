@@ -1,4 +1,16 @@
 #!/bin/bash
+# WARNING: this script is NOT release-ready and is not parity with make_dist.ps1.
+#
+# It builds a *virtualenv*, not a self-contained runtime: bin/python_main/bin/python
+# is a symlink to whichever Python built it, so the output only runs on the build
+# machine. Shipping macOS artifacts additionally needs a relocatable interpreter,
+# a real .app bundle, and Apple notarization.
+#
+# It also does not copy logo.png (app.py needs it) or pre-bake model weights, and
+# the .streamlit config append below writes a literal "\n" that makes the file
+# invalid TOML.
+#
+# Use it for local experimentation only. See docs/BUILDING.md.
 set -e
 
 VERSION="${1:-0.1.0}"

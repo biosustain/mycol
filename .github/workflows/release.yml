@@ -1,0 +1,145 @@
+name: Build Windows release
+
+# Three ways in:
+#   - push to a work branch   -> CPU bundle only, artifact, no release (fast feedback)
+#   - push a v* tag           -> both bundles, attached to a draft release
+#   - manual dispatch         -> pick the variant (only available once this file is on
+#                                the default branch; GitHub hides the button otherwise)
+on:
+  push:
+    branches:
+      - main
+      - windows_local
+      - "release/**"
+    paths-ignore:
+      - "manuscript/**"
+      - "manuscript_figures/**"
+      - "case_study_*/**"
+      - "notebooks/**"
+      - "docs/**"
+      - "**/*.md"
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Which bundle(s) to build"
+        type: choice
+        options: [cpu, cuda, both]
+        default: cpu
+
+permissions:
+  contents: write
+
+# A newer push to the same branch makes an in-flight Windows build pointless.
+# Tags are never cancelled, since those produce release artifacts.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.pick.outputs.variants }}
+      version: ${{ steps.pick.outputs.version }}
+      prerelease: ${{ steps.pick.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # Seconds on Linux, and it catches the resolution failures that otherwise
+      # only surface 20 minutes into a Windows build.
+      - name: Check Windows wheel coverage
+        run: uv run --no-project --with packaging python scripts/windows/check_wheels.py
+
+      - name: Decide what to build
+        id: pick
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            variants='["cpu","cuda"]'
+            version="${GITHUB_REF_NAME#v}"
+            # A hyphen marks a pre-release tag, e.g. v0.2.0-rc1.
+            if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            case "${{ inputs.variant }}" in
+              both) variants='["cpu","cuda"]' ;;
+              *)    variants='["${{ inputs.variant }}"]' ;;
+            esac
+            version="0.0.0-dev"
+            prerelease=true
+          else
+            # Branch push: CPU only. It exercises every build step except the
+            # CUDA overlay, in roughly half the time.
+            variants='["cpu"]'
+            version="0.0.0-${GITHUB_SHA::7}"
+            prerelease=true
+          fi
+          {
+            echo "variants=$variants"
+            echo "version=$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $variants at version $version"
+
+  build:
+    needs: setup
+    runs-on: windows-latest
+    strategy:
+      # Separate runners: together the two variants exceed the disk a single
+      # Windows runner has free, and one failing should not hide the other.
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.setup.outputs.variants) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build bundle
+        shell: pwsh
+        run: |
+          ./scripts/windows/make_dist.ps1 -Version "${{ needs.setup.outputs.version }}" -Variant "${{ matrix.variant }}"
+
+      - name: Verify bundle
+        shell: pwsh
+        run: ./scripts/windows/verify_dist.ps1 -DistDir "dist/mycol-windows-${{ matrix.variant }}"
+
+      - name: Show bundle size
+        shell: pwsh
+        run: Get-ChildItem dist/*.zip | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,0)}}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mycol-windows-${{ matrix.variant }}
+          path: dist/*.zip
+          retention-days: 14
+          compression-level: 0  # already a zip
+
+      - name: Attach to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          draft: true
+          prerelease: ${{ needs.setup.outputs.prerelease }}
+          generate_release_notes: true
+          body: |
+            ## Download
+
+            **Most users want `mycol-windows-cpu-v${{ needs.setup.outputs.version }}.zip`.**
+            Unzip it anywhere and double-click `mycol.exe`. No Python, pip, uv or
+            git needed.
+
+            Pick the `cuda` build only if the machine has an NVIDIA GPU — it is
+            around 2.5 GB larger and needs a driver supporting CUDA 12.6.
+
+            Windows will warn that it "protected your PC" because these builds
+            are not code-signed. Choose **More info → Run anyway**.
