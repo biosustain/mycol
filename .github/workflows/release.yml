@@ -59,7 +59,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            variants='["cpu","cuda"]'
+            # CPU only: a real CUDA bundle is ~5.7 GB, over GitHub's 2 GiB
+            # asset limit, so attaching it fails every time. Build it on
+            # demand with workflow_dispatch and host it elsewhere.
+            variants='["cpu"]'
             version="${GITHUB_REF_NAME#v}"
             # A hyphen marks a pre-release tag, e.g. v0.2.0-rc1.
             if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
@@ -138,8 +141,9 @@ jobs:
             Unzip it anywhere and double-click `mycol.exe`. No Python, pip, uv or
             git needed.
 
-            Pick the `cuda` build only if the machine has an NVIDIA GPU — it is
-            around 2.5 GB larger and needs a driver supporting CUDA 12.6.
+            For an NVIDIA GPU, install from source and overlay the CUDA build:
+            `uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126`
+            The prebuilt CUDA bundle is too large to attach to a release.
 
             Windows will warn that it "protected your PC" because these builds
             are not code-signed. Choose **More info → Run anyway**.

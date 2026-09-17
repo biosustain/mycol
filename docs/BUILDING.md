@@ -119,6 +119,13 @@ you do, `releases/latest` shows nothing — drafts are invisible to everyone els
 > The build needs **Settings → Actions → General → Workflow permissions** set to
 > *Read and write*, or the release cannot be created.
 
+> [!IMPORTANT]
+> Tagged releases build the **CPU bundle only**. A working CUDA bundle is ~5.7 GB
+> and GitHub caps a release asset at 2 GiB, so attaching it always fails. Build
+> one on demand with `workflow_dispatch` (variant `cuda`) and host it elsewhere,
+> or point GPU users at a source install:
+> `uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126`
+
 > [!WARNING]
 > GitHub caps a single release asset at 2 GiB. The CUDA bundle can approach that;
 > `make_dist.ps1` warns when a zip exceeds it. If that happens, host the CUDA
