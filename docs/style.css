@@ -5,22 +5,27 @@
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Palette follows the app: .streamlit/config.toml (navy primary and text,
+   blue-gray secondary background) and the nav colours in
+   src/helpers/nav_styles.py (TINT, LINE, MUTED). Token names are kept from the
+   original scheme so the pages need no changes; "gray" is now a navy-tinted
+   neutral, as the app has no true grays. */
 :root {
-  --blue-50:  #E9F2FF;
-  --blue-100: #c7dcff;
-  --blue-500: #2563eb;
-  --blue-600: #1d4ed8;
-  --blue-700: #1e40af;
-  --gray-50:  #f6f7f9;
-  --gray-100: #eef0f3;
-  --gray-300: #cbd5e1;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-900: #0f172a;
+  --blue-50:  #E9F2FF;  /* app TINT */
+  --blue-100: #C9DCEF;  /* app LINE */
+  --blue-500: #1A5A96;  /* links, gradient end: a lifted navy */
+  --blue-600: #004280;  /* app primaryColor */
+  --blue-700: #00325F;  /* gradient start, group titles */
+  --gray-50:  #F5F8FC;  /* page background, behind white cards */
+  --gray-100: #EBF1F7;  /* app secondaryBackgroundColor */
+  --gray-300: #C9DCEF;  /* app LINE */
+  --gray-600: #4A6A8F;  /* secondary text: app MUTED, darkened to pass WCAG AA */
+  --gray-700: #004280;  /* body text: app textColor */
+  --gray-900: #002A52;  /* headings */
   --white:    #ffffff;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
-  --shadow-md: 0 4px 18px rgba(0,0,0,.12);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
+  --shadow-sm: 0 2px 8px rgba(0,66,128,.08);
+  --shadow-md: 0 4px 18px rgba(0,66,128,.12);
+  --shadow-lg: 0 12px 40px rgba(0,66,128,.12);
   --radius:   14px;
   --radius-sm: 8px;
 }
@@ -95,7 +100,7 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--gray-100);
-  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+  box-shadow: 0 2px 12px rgba(0,66,128,.06);
 }
 
 .section-nav-inner {
@@ -128,10 +133,11 @@ body {
 
 .section-nav a:hover { background: var(--gray-50); color: var(--blue-700); }
 
+/* filled navy pill with an inverted badge, as in the app's top nav */
 .section-nav a.active {
-  background: var(--blue-50);
-  border-color: var(--blue-100);
-  color: var(--blue-700);
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+  color: var(--white);
 }
 
 .section-nav a i {
@@ -148,7 +154,7 @@ body {
   font-weight: 800;
 }
 
-.section-nav a.active i { background: var(--blue-600); color: var(--white); }
+.section-nav a.active i { background: var(--white); color: var(--blue-600); }
 
 /* ── Main content ── */
 main {
@@ -197,7 +203,7 @@ main {
 }
 
 .page-banner.utility {
-  background: linear-gradient(120deg, var(--gray-900) 0%, #33415a 100%);
+  background: linear-gradient(120deg, var(--gray-900) 0%, var(--blue-600) 100%);
 }
 
 .page-num {
