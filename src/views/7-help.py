@@ -33,6 +33,11 @@ _, body, _ = st.columns([1, 6, 1])
 
 with body:
 
+    st.info(
+        "**App looks too cramped or too small?** Adjust your browser's zoom.",
+        icon=":material/zoom_in:",
+    )
+
     for col, (icon, title, text, url, label) in zip(st.columns(3), GUIDES):
         with col, st.container(border=True, height="stretch"):
             st.markdown(f"### :material/{icon}: {title}")
@@ -40,14 +45,6 @@ with body:
             # Fill the card's spare height so every button sits on the bottom edge.
             st.space("stretch")
             st.link_button(label, url, icon=":material/open_in_new:", type="primary", width="stretch")
-
-    st.space("small")
-    st.info(
-        "**App looks too cramped or too small?** Change your browser's zoom: "
-        "press **Ctrl** (**Cmd** on a Mac) with **−** to zoom out or **+** to zoom in, "
-        "and **Ctrl/Cmd + 0** to reset.",
-        icon=":material/zoom_in:",
-    )
 
     st.space("medium")
     st.markdown("#### More resources")
