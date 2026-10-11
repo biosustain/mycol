@@ -104,7 +104,7 @@ body {
 }
 
 .section-nav-inner {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0.6rem 2rem;
   display: flex;
@@ -114,6 +114,11 @@ body {
 }
 
 .section-nav-inner::-webkit-scrollbar { display: none; }
+
+/* centre the pills; auto margins (unlike justify-content: center) keep the
+   first pill reachable when the row overflows and scrolls on narrow screens */
+.section-nav-inner > :first-child { margin-left: auto; }
+.section-nav-inner > :last-child { margin-right: auto; }
 
 .section-nav a {
   flex: none;
@@ -158,7 +163,7 @@ body {
 
 /* ── Main content ── */
 main {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 3rem 2rem 5rem;
   display: flex;
@@ -240,7 +245,6 @@ main {
 .page-banner p {
   font-size: 0.89rem;
   color: rgba(255,255,255,0.85);
-  max-width: 62ch;
   margin: 0;
 }
 
@@ -254,6 +258,7 @@ main {
 
 /* ── Widget groups ── */
 .group { margin-top: 1.9rem; }
+.group[id] { scroll-margin-top: 4.5rem; }  /* clear the sticky nav when linked to */
 
 .group-title {
   font-size: 0.78rem;

@@ -131,37 +131,6 @@
     .tag.assisted { background: var(--blue-50); color: var(--blue-700); border: 1.5px solid var(--blue-100); }
     .tag.manual   { border: 1.5px solid var(--blue-100); color: var(--gray-600); }
 
-    /* training settings: two columns under the step's main content */
-    .settings {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 2.25rem;
-      margin-top: 1.75rem;
-      padding-top: 1.25rem;
-      border-top: 2px solid var(--blue-100);
-    }
-
-    .settings-intro {
-      grid-column: 1 / -1;
-      font-size: 0.88rem;
-      color: var(--gray-600);
-      margin-bottom: 0.75rem;
-    }
-
-    .settings-intro span {
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--blue-700);
-      margin-right: 0.4rem;
-    }
-
-    @media (max-width: 760px) {
-      .settings { grid-template-columns: 1fr; }
-      .settings .split-text + .split-text { margin-top: 1rem; }
-    }
-
     /* neutral note, e.g. what a model learns from */
     .tag.plain    { border: 1.5px solid var(--blue-100); color: var(--gray-600); }
 
@@ -459,71 +428,9 @@
             <div class="ratio"></div>
           </div>
         </div>
-        <div class="settings">
-          <div class="settings-intro"><span>Settings</span> The defaults suit most datasets.</div>
-          <div class="split-text">
-            <div class="tool-group-head"><span>Cellpose</span></div>
-            <ul class="input-optional">
-              <li>
-                <strong>Base model</strong><span class="exts"><code>cyto2</code></span><br />
-                The pretrained model to start from: <em>cyto</em> models for whole cells, <em>nuclei</em> for nuclei.
-              </li>
-              <li>
-                <strong>Max epochs</strong><span class="exts"><code>100</code></span><br />
-                How many training iterations (epochs) to run over your images.
-              </li>
-              <li>
-                <strong>Learning rate</strong><span class="exts"><code>0.1</code></span><br />
-                How much the model changes at each epoch. Lower values are give slower but more stable learning.
-              </li>
-              <li>
-                <strong>Weight decay</strong><span class="exts"><code>0.0001</code></span><br />
-                Discourages the model from memorising your training images.
-              </li>
-              <li>
-                <strong>Min cells per image</strong><span class="exts"><code>5</code></span><br />
-                Images fewer masks than this threshold are ignored.
-              </li>
-              <li>
-                <strong>Batch size</strong><span class="exts"><code>8</code></span><br />
-                Images per training epoch. Larger is allows the model to learn more but uses more memory - which can cause your computer to slow.
-              </li>
-              <li>
-                <strong>Images per epoch</strong><span class="exts"><code>All</code></span><br />
-                <em>All</em> uses every image once per epoch. A number samples that many at random each epoch.
-              </li>
-              <li>
-                <strong>Optimise hyperparameters</strong><span class="exts"><code>On</code></span><br />
-                After training, finds the segmentation settings that best reproduce your masks and applies them on the Annotations page. Optimising these paramters can significantly improve model performance!
-              </li>
-              <li>
-                <strong>Optimisation iterations</strong><span class="exts"><code>20</code></span><br />
-                Combinations of hyperparameters to try (10-30). More gives a better chance of finding optimal settings but is slower.
-              </li>
-              <li>
-                <strong>Train / test split</strong><span class="exts"><code>80 / 20</code></span><br />
-                The ratio of training to test images. Training images are used to train the model, while test images are used to evaluate its performance.
-              </li>
-            </ul>
-          </div>
-          <div class="split-text">
-            <div class="tool-group-head"><span>DenseNet</span></div>
-            <ul class="input-optional">
-              <li>
-                <strong>Input size</strong><span class="exts"><code>64</code></span><br />
-                Each cell is scaled to fit a square of this pixel length (64, 96 or 128). Larger keeps more detail.
-              </li>
-              <li>
-                <strong>Batch size</strong><span class="exts"><code>32</code></span><br />
-                Cells seen by the model per step. Smaller batches use less memory but can take longer to converge.
-              </li>
-              <li>
-                <strong>Max epochs</strong><span class="exts"><code>100</code></span><br />
-                Upper limit of training epochs. Training will stop early if there are 30 epochs without improvement.
-              </li>
-            </ul>
-          </div>
-        </div>
+        <p class="page-intro">
+          <a href="functionality.html#train-settings">What each training setting does →</a>
+        </p>
       </div>
 
     </div>
