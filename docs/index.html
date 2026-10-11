@@ -86,33 +86,142 @@
       .overview-img { width: calc(100% + 2.5rem); margin: 1.25rem -1.25rem 0; }
     }
 
-
-    /* ── Link through to the matching controls reference ── */
-    .see-also {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      margin-top: 1.25rem;
-      font-size: 0.86rem;
-      font-weight: 600;
-      color: var(--blue-600);
-      text-decoration: none;
-      background: var(--blue-50);
-      border: 1.5px solid var(--blue-100);
-      border-radius: 999px;
-      padding: 0.35rem 0.9rem;
-      transition: background 0.15s, border-color 0.15s;
-    }
-
-    .see-also:hover {
-      background: var(--blue-100);
-      border-color: var(--blue-500);
-      text-decoration: none;
-    }
-
     @media (max-width: 760px) {
       .split { grid-template-columns: 1fr; gap: 1.5rem; }
     }
+
+    .page-intro {
+      font-size: 1rem;
+      color: var(--gray-700);
+      margin: 1.5rem 0 0;
+    }
+
+    /* ── Required vs optional inputs ── */
+    .tag {
+      display: inline-block;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 0.1rem 0.55rem;
+      margin-left: 0.4rem;
+      vertical-align: 0.12em;
+    }
+
+    .exts { margin-left: 0.5rem; }
+    .split-text code,
+    .input-required code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--gray-700);
+      background: var(--gray-100);
+      border-radius: 4px;
+      padding: 0.05rem 0.3rem;
+    }
+    .exts code { margin-right: 0.2rem; white-space: nowrap; }
+    .input-required code { background: var(--white); }
+
+    .tag.required { background: var(--blue-600); color: var(--white); }
+    .tag.optional { border: 1.5px solid var(--blue-100); color: var(--gray-600); }
+
+    /* how much of the work a tool does for you */
+    /* a scale: solid = the model does it, tinted = you guide it, outline = you do it */
+    .tag.auto     { background: var(--blue-600); color: var(--white); border: 1.5px solid var(--blue-600); }
+    .tag.assisted { background: var(--blue-50); color: var(--blue-700); border: 1.5px solid var(--blue-100); }
+    .tag.manual   { border: 1.5px solid var(--blue-100); color: var(--gray-600); }
+
+    /* training settings: two columns under the step's main content */
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 2.25rem;
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 2px solid var(--blue-100);
+    }
+
+    .settings-intro {
+      grid-column: 1 / -1;
+      font-size: 0.88rem;
+      color: var(--gray-600);
+      margin-bottom: 0.75rem;
+    }
+
+    .settings-intro span {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--blue-700);
+      margin-right: 0.4rem;
+    }
+
+    @media (max-width: 760px) {
+      .settings { grid-template-columns: 1fr; }
+      .settings .split-text + .split-text { margin-top: 1rem; }
+    }
+
+    /* neutral note, e.g. what a model learns from */
+    .tag.plain    { border: 1.5px solid var(--blue-100); color: var(--gray-600); }
+
+    /* one headed list per task (segmentation, classification) */
+    .tool-group + .tool-group {
+      margin-top: 1.1rem;
+      padding-top: 1.1rem;
+      border-top: 2px solid var(--blue-100);
+    }
+
+    .tool-group-head {
+      font-size: 0.88rem;
+      color: var(--gray-600);
+      margin-bottom: 0.15rem;
+    }
+
+    .tool-group-head span {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--blue-700);
+      margin-right: 0.4rem;
+    }
+
+
+
+    .input-required {
+      background: var(--blue-50);
+      border-left: 4px solid var(--blue-600);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .input-required p { margin: 0; font-size: 0.97rem; color: var(--gray-700); }
+    .input-required strong { color: var(--gray-900); }
+
+    .input-heading {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--gray-600);
+      margin-bottom: 0.25rem;
+    }
+
+    .split-text ul.input-optional {
+      list-style: none;
+      padding-left: 0;
+      margin-top: 0;
+    }
+
+    .split-text ul.input-optional li {
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--gray-100);
+      margin: 0;
+    }
+
+    .split-text ul.input-optional li:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -121,8 +230,7 @@
 <section class="hero" id="top">
   <h1>Welcome to <span>Mycol</span></h1>
   <p>
-    An interactive platform for exploring, segmenting, and classifying microscopy images -
-    powered by AI and designed to streamline your analysis workflow.
+    An interactive platform that helps you integrate ML tools for segmentation and classification into your image analysis workflows.
   </p>
   <div class="badge-row">
     <a href="index.html" class="badge current">Workflow</a>
@@ -132,18 +240,6 @@
   </div>
 </section>
 
-<!-- ══════════════ STICKY NAV ══════════════ -->
-<nav class="section-nav">
-  <div class="section-nav-inner">
-    <a href="#workflow"><i>◆</i> Overview</a>
-    <a href="#upload"><i>1</i> Upload</a>
-    <a href="#annotate"><i>2</i> Annotate</a>
-    <a href="#train"><i>3</i> Train</a>
-    <a href="#analyze"><i>4</i> Visualize</a>
-    <a href="#downloads"><i>5</i> Downloads</a>
-  </div>
-</nav>
-
 <!-- ══════════════ MAIN ══════════════ -->
 <main>
 
@@ -152,18 +248,18 @@
     <header class="page-banner utility" data-mark="◆">
       <div class="page-num">◆</div>
       <div>
-        <h2>Mycol helps you build, deploy and verify automated image analysis pipelines in minutes</h2>
-        <p>From raw microscopy images to trained models and quantitative cell-level insights - each stage builds on the last.</p>
+        <h2>Mycol Image Analysis Workflows</h2>
+        <p>From raw microscopy images to trained models and quantitative cell-level insights.</p>
       </div>
     </header>
     <div class="page-body">
 
       <div class="group">
         <p class="overview-p">
-          Mycol guides you through a clear, step-by-step pipeline - from raw microscopy images to trained AI models and quantitative cell-level insights. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
+          Mycol guides you through a step-by-step pipeline from raw microscopy images to trained AI models and quantitative cell descriptors. Each stage builds on the last, but you can enter or exit at any point depending on what you already have.
         </p>
         <p class="overview-p">
-          Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to segment cells automatically with Cellpose or MobileSAM, correct any errors interactively, and classify cells manually or with a DenseNet model. If you want better automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data - newly trained models feed directly back into annotation. Finally, the <strong>analysis</strong> page lets you visualize and export cell population statistics across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
+          Start by <strong>uploading</strong> your images and any existing masks or models. Move to the <strong>annotation</strong> page to manually or automatically segment and classify cells using Cellpose or MobileSAM (segmentation) and DenseNet (classification) models. If you want to improve the automated results, use the <strong>training</strong> page to fine-tune a Cellpose or DenseNet model on your own annotated data. Newly trained models can be instantly used on the annotation page to annotate more images. Finally, the <strong>phenotypes</strong> page lets you visualize and export cell population statistics (shape, size and colour descriptors) across classes and experiments. At any point you can <strong>download</strong> your annotated data, trained models, or a full session restore file for reuse and publication.
         </p>
 
         <img src="pipeline_overview_correct.svg" alt="The Mycol workflow: mask a few cells by hand or with MobileSAM, train a Cellpose model and improve it by correcting and retraining; then label some cells, train a DenseNet121 classifier and improve it the same way; finally compare cell descriptors between classes and download the results." class="overview-img" />
@@ -177,48 +273,54 @@
     <header class="page-banner" data-mark="1">
       <div class="page-num">1</div>
       <div>
-        <div class="page-kicker">Step 1 &middot; Upload Models and Data</div>
+        <div class="page-kicker">Step 1</div>
         <h2>Upload Your Data</h2>
-        <p>Where your analysis begins. Everything goes into one uploader and Mycol sorts it out.</p>
+        <p>Import your images into Mycol, along with other files from earlier work.</p>
       </div>
     </header>
     <div class="page-body">
 
+      <p class="page-intro">
+        Every session starts here by dropping files into the uploader. Mycol sorts
+        them for you and lists uploaded images with associated masks.
+      </p>
+
       <div class="group">
+        <div class="input-required">
+          <p>
+            <strong>Images</strong><span class="tag required">Required</span><span class="exts"><code>.tif</code><code>.tiff</code><code>.png</code><code>.jpg</code><code>.jpeg</code></span><br />
+            The biological images you want to analyse, the only thing you need to start. Although the Cellpose models support 3D image analysis, this funcitonality is not supported here - only 2D images are accepted.
+            Mycol also processes all images in a session assuming they have the same magnification - analyze images with different magnifications in separate sessions.
+          </p>
+        </div>
         <div class="split">
           <div class="split-text">
-            <p>Upload the key files Mycol will use in later steps:</p>
-            <ul>
-              <li><strong>Images</strong> <em>(required)</em> - the microscopy or sample images you want to analyze.</li>
-              <li><strong>Masks</strong> <em>(optional)</em> - segmentation masks that outline cells or regions of interest.</li>
+            <div class="input-heading">Optional uploads:</div>
+            <ul class="input-optional">
               <li>
-                <strong>Cellpose model</strong> <em>(optional)</em> - a trained model for automatic cell segmentation.
+                <strong>Masks</strong><span class="tag optional">Optional</span><span class="exts"><code>.tif</code><code>.tiff</code><code>.npy</code></span><br />
+                A file containing previously generated cell outlines for an uploaded image. Use a labelled TIFF
+                file from Mycol or a Cellpose <code>.npy</code> file.
+              </li>
+              <li>
+                <strong>Cellpose model</strong><span class="tag optional">Optional</span><span class="exts"><code>.pt</code><code>.pth</code></span><br />
+                A previously trained segmentation model. Without one, Mycol uses out-of-the box Cellpose models.
                 <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Learn about Cellpose →</a>
               </li>
               <li>
-                <strong>DenseNet model</strong> <em>(optional)</em> - a classification model for labeling segmented cells.
+                <strong>DenseNet model</strong><span class="tag optional">Optional</span><span class="exts"><code>.pt</code><code>.pth</code></span><br />
+                A previously trained cell classification model. Without one, you can label cells by hand or train a model in Mycol.
                 <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
               </li>
               <li>
-                <strong>Cellpose settings CSV</strong> <em>(optional)</em> - the inference hyperparameters
-                saved alongside a downloaded model, which reapply a previous segmentation setup without
-                re-entering each value by hand.
+                <strong>Cellpose settings</strong><span class="tag optional">Optional</span><span class="exts"><code>.csv</code></span><br />
+                Segmentation settings are automatically optimised when a model is trained. They can also be manuall edited. Restore them by uploading this csv.
               </li>
               <li>
-                <strong>Saved session</strong> <em>(optional)</em> - a session zip downloaded earlier,
-                which restores your images, masks, labels, models and settings exactly as you left them.
+                <strong>Saved session</strong><span class="tag optional">Optional</span><span class="exts"><code>.zip</code></span><br />
+                Upload a saved_session zip file (don't unzip it) to restart a session exactly where you left off.
               </li>
             </ul>
-            <p style="margin-top:1rem;">
-              Images and masks are paired by filename, and model files are identified from their
-              contents. Once uploaded, a <strong>summary table</strong> shows which images have
-              masks linked, how many cells are highlighted in each, and any models you've provided.
-            </p>
-            <p>
-              No data of your own to hand? <strong>Use demo data</strong> loads an example set so
-              you can try the full workflow first.
-            </p>
-            <a class="see-also" href="functionality.html#upload">Every control on this page →</a>
           </div>
           <div class="split-media">
             <video autoplay muted loop playsinline>
@@ -236,35 +338,55 @@
     <header class="page-banner" data-mark="2">
       <div class="page-num">2</div>
       <div>
-        <div class="page-kicker">Step 2 &middot; Annotate Images</div>
+        <div class="page-kicker">Step 2</div>
         <h2>Segment and Classify Your Cells</h2>
-        <p>The central workspace, where annotated datasets are produced.</p>
+        <p>Identify the cells in your images, then sort them into classes.</p>
       </div>
     </header>
     <div class="page-body">
 
+      <p class="page-intro">
+        This is your main workspace. Navigate through your images and use a range of tools to create, edit and classify masks. Masks come first: a cell
+        needs one before it can be classified or measured.
+      </p>
+
       <div class="group">
         <div class="split">
           <div class="split-text">
-            <p>Here you can:</p>
-            <ul>
-              <li><strong>View images</strong> overlaid with their associated cell masks.</li>
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Segmentation</span> Create and edit masks</div>
+            <ul class="input-optional">
               <li>
-                <strong>Generate new masks</strong> automatically with
-                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Cellpose</a>
-                or <a href="https://github.com/ChaoningZhang/MobileSAM" target="_blank" rel="noopener">MobileSAM</a>.
+                <strong>Cellpose</strong><span class="tag auto">Automatic</span><br />
+                Outlines every cell in an image. You can correct results and retrain this model with one click to improve the accuracy.
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Learn about Cellpose →</a>
               </li>
-              <li><strong>Manually edit or correct masks</strong> - add, remove, split, join, or adjust individual cells.</li>
               <li>
-                <strong>Classify cells</strong> using an uploaded DenseNet model for automated classification,
-                or by clicking directly on cells in the image for manual labeling.
+                <strong>MobileSAM</strong><span class="tag assisted">Assisted</span><br />
+                Draw a box around a cell and MobileSAM outlines it. Useful for cells Cellpose misses.
+                <a href="https://github.com/ChaoningZhang/MobileSAM" target="_blank" rel="noopener">Learn about MobileSAM →</a>
+              </li>
+              <li>
+                <strong>Editing tools</strong><span class="tag manual">Manual</span><br />
+                Draw outlines freehand or as ellipses, split or join touching masks and remove incorrect ones.
               </li>
             </ul>
-            <p style="margin-top:1rem;">
-              Once ready, download your dataset - images, masks and tabulated cell counts - or move
-              on to phenotypic comparison or training new models.
-            </p>
-            <a class="see-also" href="functionality.html#annotate">Every control on this page →</a>
+            </div>
+
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Classification</span> Classify identified cell masks</div>
+            <ul class="input-optional">
+              <li>
+                <strong>DenseNet</strong><span class="tag auto">Automatic</span><br />
+                Classifies every cell with a trained model, either uploaded in step 1 or trained in step 3.
+                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
+              </li>
+              <li>
+                <strong>By hand</strong><span class="tag manual">Manual</span><br />
+                Create your classes, then click cells to assign them.
+              </li>
+            </ul>
+            </div>
           </div>
           <div class="split-media stack" id="annotate-videos">
             <video class="active" autoplay muted playsinline><source src="demo0.mp4" type="video/mp4" /></video>
@@ -283,38 +405,123 @@
     <header class="page-banner" data-mark="3">
       <div class="page-num">3</div>
       <div>
-        <div class="page-kicker">Step 3 &middot; Train Models</div>
+        <div class="page-kicker">Step 3</div>
         <h2>Train Your Own Analysis Models</h2>
-        <p>Use the datasets you've created to fine-tune models that suit your own images.</p>
+        <p>Fine-tune a model on your annotated images so it works better on your data.</p>
       </div>
     </header>
     <div class="page-body">
 
+      <p class="page-intro">
+        Select annotated images to train a model on, then check how well it
+        performs. The default settings suit most datasets, so you can usually just click train.
+      </p>
+
       <div class="group">
         <div class="split">
           <div class="split-text">
-            <p>Choose from:</p>
-            <ul>
-              <li><strong>Cellpose segmentation model</strong> - improve or customize how cells are automatically detected and outlined.</li>
-              <li><strong>DenseNet classification model</strong> - fine-tune how cells are categorized based on their features.</li>
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Train</span> Choose a model to fine-tune</div>
+            <ul class="input-optional">
+              <li>
+                <strong>Cellpose</strong><span class="tag plain">Learns from masks</span><br />
+                Learns to identify your cells Train on images where every cell is outlined - partially labelled images will confuse the model.
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Learn about Cellpose →</a>
+              </li>
+              <li>
+                <strong>DenseNet</strong><span class="tag plain">Learns from labels</span><br />
+                Learns to classify your cells. Needs at least two classes with labelled cells.
+                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">Learn about DenseNet →</a>
+              </li>
             </ul>
-            <p style="margin-top:1rem;">
-              Sensible default parameters are provided, but you can also run
-              <strong>hyperparameter optimization</strong> to explore how different settings
-              affect model performance.
-            </p>
-            <p>
-              After training, performance plots show training progress, accuracy, loss, and
-              validation metrics. Trained models can be <strong>used immediately</strong> in
-              the annotation page or <strong>downloaded</strong> for reuse.
-            </p>
-            <a class="see-also" href="functionality.html#train">Every control on this page →</a>
+            </div>
+
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Review</span> Check the model before you use it</div>
+            <ul class="input-optional">
+              <li>
+                <strong>Performance plots</strong><br />
+                See how the model scores on images held back from training. Check,
+                <em>How do I interpret these graphs?</em> in the app to understand each plot.
+              </li>
+              <li>
+                <strong>Use or download</strong><br />
+                The new model appears as <em>Fine-tuned Model</em> in the Annotations page as soon as training completes. It can
+                be downloaded from the Downloads page for use outside of Mycol.
+              </li>
+            </ul>
+            </div>
           </div>
           <div class="split-media stack" id="train-videos">
             <video class="active" autoplay muted playsinline><source src="training_demo1.mp4" type="video/mp4" /></video>
             <video muted playsinline><source src="training_demo2.mp4" type="video/mp4" /></video>
             <video muted playsinline><source src="training_demo3.mp4" type="video/mp4" /></video>
             <div class="ratio"></div>
+          </div>
+        </div>
+        <div class="settings">
+          <div class="settings-intro"><span>Settings</span> The defaults suit most datasets.</div>
+          <div class="split-text">
+            <div class="tool-group-head"><span>Cellpose</span></div>
+            <ul class="input-optional">
+              <li>
+                <strong>Base model</strong><span class="exts"><code>cyto2</code></span><br />
+                The pretrained model to start from: <em>cyto</em> models for whole cells, <em>nuclei</em> for nuclei.
+              </li>
+              <li>
+                <strong>Max epochs</strong><span class="exts"><code>100</code></span><br />
+                How many training iterations (epochs) to run over your images.
+              </li>
+              <li>
+                <strong>Learning rate</strong><span class="exts"><code>0.1</code></span><br />
+                How much the model changes at each epoch. Lower values are give slower but more stable learning.
+              </li>
+              <li>
+                <strong>Weight decay</strong><span class="exts"><code>0.0001</code></span><br />
+                Discourages the model from memorising your training images.
+              </li>
+              <li>
+                <strong>Min cells per image</strong><span class="exts"><code>5</code></span><br />
+                Images fewer masks than this threshold are ignored.
+              </li>
+              <li>
+                <strong>Batch size</strong><span class="exts"><code>8</code></span><br />
+                Images per training epoch. Larger is allows the model to learn more but uses more memory - which can cause your computer to slow.
+              </li>
+              <li>
+                <strong>Images per epoch</strong><span class="exts"><code>All</code></span><br />
+                <em>All</em> uses every image once per epoch. A number samples that many at random each epoch.
+              </li>
+              <li>
+                <strong>Optimise hyperparameters</strong><span class="exts"><code>On</code></span><br />
+                After training, finds the segmentation settings that best reproduce your masks and applies them on the Annotations page. Optimising these paramters can significantly improve model performance!
+              </li>
+              <li>
+                <strong>Optimisation iterations</strong><span class="exts"><code>20</code></span><br />
+                Combinations of hyperparameters to try (10-30). More gives a better chance of finding optimal settings but is slower.
+              </li>
+              <li>
+                <strong>Train / test split</strong><span class="exts"><code>80 / 20</code></span><br />
+                The ratio of training to test images. Training images are used to train the model, while test images are used to evaluate its performance.
+              </li>
+            </ul>
+          </div>
+          <div class="split-text">
+            <div class="tool-group-head"><span>DenseNet</span></div>
+            <ul class="input-optional">
+              <li>
+                <strong>Input size</strong><span class="exts"><code>64</code></span><br />
+                Each cell is scaled to fit a square of this pixel length (64, 96 or 128). Larger keeps more detail.
+              </li>
+              <li>
+                <strong>Batch size</strong><span class="exts"><code>32</code></span><br />
+                Cells seen by the model per step. Smaller batches use less memory but can take longer to converge.
+              </li>
+              <li>
+                <strong>Max epochs</strong><span class="exts"><code>100</code></span><br />
+                Upper limit of training epochs. Training will stop early if there are 30 epochs without improvement.
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -327,33 +534,57 @@
     <header class="page-banner" data-mark="4">
       <div class="page-num">4</div>
       <div>
-        <div class="page-kicker">Step 4 &middot; Compare Phenotypes</div>
-        <h2>Get to Know Your Data</h2>
-        <p>Explore and summarize the quantitative results of your analyses.</p>
+        <div class="page-kicker">Step 4</div>
+        <h2>Compare Phenotypes</h2>
+        <p>Plot morphological and colour phenotypes by class to compare classes.</p>
       </div>
     </header>
     <div class="page-body">
 
+      <p class="page-intro">
+        Choose the images, classes and measurements to compare, then generate plots. Cells without an assigned class are grouped as <em>Unlabelled</em>.
+      </p>
+
       <div class="group">
         <div class="split">
           <div class="split-text">
-            <p>
-              Create and download plots of <strong>cell population statistics</strong> - such as
-              cell area, perimeter, and other morphological features - grouped by
-              <strong>cell class</strong>.
-            </p>
-            <p>Select which classes and characteristics to include, and Mycol generates plots that help you:</p>
-            <ul>
-              <li>Compare cell features across classes or conditions.</li>
-              <li>Identify trends in cell populations across multiple images or experiments.</li>
-              <li>Quantify variability and relationships among measured features.</li>
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Measure</span> Descriptors for every cell</div>
+            <ul class="input-optional">
+              <li>
+                <strong>Size</strong><span class="tag plain">Pixels or real units</span><br />
+                Area, perimeter, major and minor axis length, and Feret diameter.
+              </li>
+              <li>
+                <strong>Shape</strong><span class="tag plain">No units</span><br />
+                Circularity, roundness, eccentricity, solidity and extent.
+              </li>
+              <li>
+                <strong>Colour</strong><span class="tag plain">No units</span><br />
+                Redness, greenness and blueness.
+              </li>
             </ul>
-            <p style="margin-top:1rem;">
-              Downloadable results include <strong>per-image cell counts by class</strong>, a
-              <strong>per-cell metrics table</strong> holding every shape and colour descriptor for
-              every segmented cell, and <strong>publication-ready plots</strong>.
-            </p>
-            <a class="see-also" href="functionality.html#metrics">Every control on this page →</a>
+            <a href="faq.html#descriptors">What each descriptor means →</a>
+            </div>
+
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Plot</span> Choose how to show it</div>
+            <ul class="input-optional">
+              <li>
+                <strong>Plot type</strong><br />
+                <em>Violin</em> shows the full spread of values in each class; <em>Bar</em> shows
+                the mean, with error bars for the standard deviation.
+              </li>
+              <li>
+                <strong>Overlay datapoints</strong><br />
+                Overlays each cell on the plot, so you can see the true distribution of values.
+              </li>
+              <li>
+                <strong>Convert to distance</strong><br />
+                Enter the pixel size of your images to report values in distance units (e.g. &micro;m). The optional resizing on upload is taken into account when calculating these values.
+              </li>
+            </ul>
+            </div>
           </div>
           <div class="split-media">
             <video autoplay muted loop playsinline>
@@ -371,41 +602,52 @@
     <header class="page-banner" data-mark="5">
       <div class="page-num">5</div>
       <div>
-        <div class="page-kicker">Downloads</div>
+        <div class="page-kicker">Step 5</div>
         <h2>Export Your Results</h2>
-        <p>Package and export everything produced during your session.</p>
+        <p>Save your annotated images, models and session.</p>
       </div>
     </header>
     <div class="page-body">
 
+      <p class="page-intro">
+        select what you want to download, click <strong>Prepare Download</strong>, then <strong>Download Files</strong>.
+        Everything comes in a single zip. Only <em>Save Session</em> is ticked by default.
+      </p>
+
       <div class="group">
         <div class="split">
           <div class="split-text">
-            <p>Choose exactly what to include before preparing the zip:</p>
-            <ul>
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Results</span> For analysis and figures</div>
+            <ul class="input-optional">
               <li>
-                <strong>Images &amp; Masks</strong> - export your images with colored mask overlays,
-                optional per-image class count labels, intensity-normalized images, and cropped
-                <strong>cell patch images</strong> for every individual segmented cell.
+                <strong>Images and masks</strong><br />
+                Optionally with coloured overlays, class counts printed on each image, and a cropped image of every cell.
               </li>
               <li>
-                <strong>Tables</strong> - CSV files with per-image cell counts and full
-                <strong>cell metrics</strong> (area, circularity, elongation, and more) for every cell.
+                <strong>Per-image cell counts</strong><span class="exts"><code>.csv</code></span><br />
+                Auto-generated counts of each class in every image.
               </li>
               <li>
-                <strong>Trained Models</strong> - fine-tuned Cellpose or DenseNet weights together
-                with the training dataset, loss curves, and evaluation metrics.
-              </li>
-              <li>
-                <strong>Session Restore</strong> - save a zip you can re-upload to pick up exactly
-                where you left off in a future session.
+                <strong>Cell metrics</strong><span class="exts"><code>.csv</code></span><br />
+                Every descriptor for every identified cell.
               </li>
             </ul>
-            <p style="margin-top:1rem;">
-              Click <strong>Prepare Download</strong> to build the zip, then
-              <strong>Download Files</strong> to save it locally.
-            </p>
-            <a class="see-also" href="functionality.html#downloads">Every control on this page →</a>
+            </div>
+
+            <div class="tool-group">
+            <div class="tool-group-head"><span>Reuse</span> For later sessions</div>
+            <ul class="input-optional">
+              <li>
+                <strong>Trained models</strong><span class="exts"><code>.zip</code></span><br />
+                Each fine-tuned model with the exact training data, results and settings.
+              </li>
+              <li>
+                <strong>Saved session</strong><span class="exts"><code>.zip</code></span><br />
+                Reupload this on the <strong>Uploads</strong> page, without unzipping, to pick up where you left off.
+              </li>
+            </ul>
+            </div>
           </div>
           <div class="split-media">
             <img src="export_summary.svg" alt="Export options summary" />
@@ -417,34 +659,3 @@
   </section>
 
 </main>
-
-<!-- ══════════════ FOOTER ══════════════ -->
-<footer>
-  <p>Mycol - Interactive microscopy analysis platform &nbsp;&middot;&nbsp;
-    <a href="faq.html">FAQ</a> &nbsp;&middot;&nbsp;
-    <a href="functionality.html">Functionality Guide</a> &nbsp;&middot;&nbsp;
-    <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener">GitHub</a>
-  </p>
-</footer>
-
-<script src="site.js"></script>
-<script>
-  // Cross-fade through each stack of demo videos, one after the other.
-  document.querySelectorAll('.split-media.stack').forEach((stack) => {
-    const videos = [...stack.querySelectorAll('video')];
-    if (videos.length < 2) return;
-    let current = 0;
-
-    videos.forEach(v => v.addEventListener('ended', () => {
-      videos[current].classList.remove('active');
-      current = (current + 1) % videos.length;
-      const next = videos[current];
-      next.currentTime = 0;
-      next.play();
-      next.classList.add('active');
-    }));
-  });
-</script>
-
-</body>
-</html>
