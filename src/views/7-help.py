@@ -41,6 +41,14 @@ with body:
             st.space("stretch")
             st.link_button(label, url, icon=":material/open_in_new:", type="primary", width="stretch")
 
+    st.space("small")
+    st.info(
+        "**App looks too cramped or too small?** Change your browser's zoom: "
+        "press **Ctrl** (**Cmd** on a Mac) with **−** to zoom out or **+** to zoom in, "
+        "and **Ctrl/Cmd + 0** to reset.",
+        icon=":material/zoom_in:",
+    )
+
     st.space("medium")
     st.markdown("#### More resources")
     c1, c2 = st.columns(2)
