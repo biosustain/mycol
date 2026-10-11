@@ -17,11 +17,12 @@ DEFAULT_STYLE = "numbered_pills"
 
 # (path, title, material icon name)
 PAGE_SPECS = [
-    ("src/views/2-upload-data.py", "Upload Data", "upload_file"),
-    ("src/views/3-create-and-edit-masks.py", "Annotate Images", "draw"),
-    ("src/views/4-fine-tune-models.py", "Train Models", "model_training"),
-    ("src/views/5-cell-metrics.py", "Compare Phenotypes", "analytics"),
+    ("src/views/2-upload-data.py", "Upload", "upload_file"),
+    ("src/views/3-create-and-edit-masks.py", "Annotate", "draw"),
+    ("src/views/4-fine-tune-models.py", "Train", "model_training"),
+    ("src/views/5-cell-metrics.py", "Phenotypes", "analytics"),
     ("src/views/6-downloads.py", "Downloads", "download"),
+    ("src/views/7-help.py", "Help", "help"),
 ]
 
 # Palette pulled from .streamlit/config.toml so the tabs stay on-theme.
@@ -47,6 +48,18 @@ FADED_DIVIDER_CSS = f"""
         0 8px 28px rgba({NAVY_RGB}, 0.22),
         0 3px 8px rgba({NAVY_RGB}, 0.12) !important;
 }}
+"""
+
+# --------------------------------------------------------------------------- #
+# Shared add-on for the numbered styles: Help sits outside the pipeline, so its
+# badge shows "?" rather than step number 6. Matched on the link's URL, which
+# Streamlit derives from 7-help.py by dropping the numeric prefix. Appended for
+# any style flagged "numbered": True.
+# --------------------------------------------------------------------------- #
+HELP_BADGE_CSS = """
+.stAppHeader [data-testid="stTopNavLink"][href$="/help"]::before {
+    content: "?";
+}
 """
 
 # --------------------------------------------------------------------------- #
@@ -332,6 +345,7 @@ SECTION_GROUPS = {
     "": [0],
     "Segment & Train": [1, 2],
     "Analyze": [3, 4],
+    "Help": [5],
 }
 
 SECTIONS_CSS = f"""
@@ -509,7 +523,7 @@ STYLES = {
     "classic": {"icons": False, "css": CLASSIC_CSS},
     "underline": {"icons": False, "css": UNDERLINE_CSS},
     "pills": {"icons": False, "css": PILLS_CSS},
-    "stepper": {"icons": False, "css": STEPPER_CSS},
+    "stepper": {"icons": False, "css": STEPPER_CSS, "numbered": True},
     "icons": {"icons": True, "css": ICONS_CSS},
     "folder": {"icons": False, "css": FOLDER_CSS},
     "sections": {"icons": False, "css": SECTIONS_CSS, "groups": SECTION_GROUPS},
@@ -517,6 +531,7 @@ STYLES = {
         "icons": False,
         "css": NUMBERED_PILLS_CSS,
         "divider": True,
+        "numbered": True,
     },
 }
 
@@ -532,6 +547,8 @@ def build_navigation():
     css = style["css"]
     if style.get("divider"):
         css += FADED_DIVIDER_CSS
+    if style.get("numbered"):
+        css += HELP_BADGE_CSS
     st.html(f"<style>{css}</style>")
 
     pages = [

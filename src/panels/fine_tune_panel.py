@@ -325,7 +325,7 @@ def render_cellpose_params():
             ss["cp_do_gridsearch"] = st.checkbox(
                 "Optimise hyperparameters",
                 value=bool(ss["cp_do_gridsearch"]),
-                help="Gain a small performance bonus by also optmising Cellpose hyperparameters. Remember to set these when using the fine-tuned model later in the 'Annotate Images' page.",
+                help="Gain a small performance bonus by also optmising Cellpose hyperparameters. Remember to set these when using the fine-tuned model later on the Annotate page.",
             )
 
         with subcol2:

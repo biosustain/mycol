@@ -407,7 +407,7 @@ def load_model(name: str, data: bytes) -> str:
         ss["cellpose_model_name"] = name
         return (
             f"Loaded Cellpose model: {name}. Remember to upload the hyperparameters csv (from training) or set them on "
-            "the Annotate Images page for high prediction accuracy."
+            "the Annotate page for high prediction accuracy."
         )
 
     raise ValueError(f"Could not identify model type for: {name}")

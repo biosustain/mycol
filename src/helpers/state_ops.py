@@ -176,7 +176,7 @@ def require_images():
             """<div style="background:rgba(255,135,0,0.12);border-left:4px solid #ff8700;border-radius:0 8px 8px 0;padding:14px 18px;">
             <p style="margin:0;font-size:1rem;color:#ff8700;font-weight:600;letter-spacing:0.05em;">NO IMAGES UPLOADED</p>
             <p style="margin:4px 0 0;font-size:1.5rem;font-weight:700;">Upload data first</p>
-            <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;">Please upload images on the 'Upload Models and Data' tab.</p>
+            <p style="margin:2px 0 0;font-size:1.1rem;opacity:0.75;">Please upload images on the Upload tab.</p>
             </div>""",
             unsafe_allow_html=True,
         )
