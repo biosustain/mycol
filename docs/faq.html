@@ -262,6 +262,7 @@
     <a href="index.html" class="badge">Workflow</a>
     <a href="faq.html" class="badge current">FAQ</a>
     <a href="functionality.html" class="badge">Functionality Guide</a>
+    <a href="https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1" target="_blank" rel="noopener" class="badge">Preprint</a>
     <a href="https://github.com/biosustain/mycol" target="_blank" rel="noopener" class="badge">GitHub</a>
   </div>
 </section>
@@ -291,7 +292,7 @@
             <h3>Images <em>(required)</em></h3>
             <p>
               The microscopy or sample images you want to analyse. Standard formats such as TIFF, PNG,
-              and JPEG are supported. Every other file type is optional and supplementary: images are
+              and JPEG are supported. Every other upload type is optional and supplementary: images are
               the only thing you must upload to start working.
             </p>
 
@@ -302,15 +303,15 @@
               and background pixels are zero. Uploading existing masks lets you skip the automatic
               segmentation step and jump straight to classification or analysis, or to continue
               refining masks you created in a previous session. You can upload the Cellpose .npy format
-              or a tiff where each cell is a different integer value.
+              or a tiff (format in Mycol downloads) where each cell is a different integer value.
             </p>
 
             <h3>Cellpose model <em>(optional)</em></h3>
             <p>
               A trained segmentation model as a <code>.pt</code> or <code>.pth</code> file, either
               fine-tuned in Mycol and downloaded earlier or trained elsewhere. It then replaces the
-              default model everywhere segmentation runs. Without one, Mycol falls back to its built-in
-              pre-trained model, which is usually a reasonable starting point.
+              default model everywhere segmentation runs. Without one, Mycol falls back to previously published
+              pre-trained Cellpose models.
             </p>
 
             <h3>DenseNet model <em>(optional)</em></h3>
@@ -333,7 +334,7 @@
 
             <h3>Saved Session <em>(optional)</em></h3>
             <p>
-              A zip archive produced by the <strong>Session Restore</strong> download option.
+              A zip file produced by the <strong>Session Restore</strong> download option.
               Uploading it reloads a previous Mycol session in full: all images, masks, class labels,
               trained models, and settings are restored exactly as they were when the session was saved.
               This is the recommended way to pause and resume long annotation or training projects,
@@ -346,7 +347,7 @@
                 <strong>Masks are paired to images by filename.</strong> A mask is named after its image
                 plus a suffix, <code>_masks</code> by default, so <code>plate1.tif</code> pairs with
                 <code>plate1_masks.tif</code>. The suffix can be changed next to the uploader. A mask
-                with no matching image is skipped and reported.
+                with no matching image is skipped.
               </li>
               <li>
                 <strong>Images are resized to fit within 512 x 512 by default</strong>, to keep the app responsive
@@ -354,22 +355,62 @@
                 and lengths always refer to your original image. Untick the box beside the uploader to
                 keep full resolution.
               </li>
-              <li>
-                <strong>The limit is 512 MB per file.</strong> Larger sets are fine, just add them in
-                batches; later uploads extend your session rather than replacing it.
-              </li>
-              <li>
-                <strong>You do not need your own data to start.</strong> <em>Use demo data</em> loads a
-                small example set so you can walk through the whole workflow first.
-              </li>
             </ul>
 
           </div>
         </div>
       </div>
 
-      <!-- ── 7. Training tips ── -->
+      <div class="faq-card" id="magnification">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Upload</span>
+          <span class="faq-q-text">Can I mix images taken at different magnifications?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              We recommend analysing each magnification in its own session as several settings assume one
+              scale for every image:
+            </p>
+            <ul>
+              <li>
+                <strong>Segmentation</strong> - <em>Mean cell diameter</em> and <em>Minimum cell
+                size</em> are set in pixels and apply to every image, and a Cellpose model trained at
+                one magnification sees cells at another as a different size.
+              </li>
+              <li>
+                <strong>Measurements</strong> - <em>Convert to distance</em> uses a single pixel size
+                for all images, so sizes from mixed magnifications cannot all be converted correctly.
+              </li>
+            </ul>
+            <p>
+              Use <em>Save Session</em> on the Downloads page to keep each session, and upload it again
+              to carry on.
+            </p>
+          </div>
+        </div>
+      </div>
 
+
+      <div class="faq-card" id="image-types">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Upload</span>
+          <span class="faq-q-text">Which kinds of images can I use?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              Mycol works with 2D images. 3D images, such as z-stacks, are not supported.
+            </p>
+            <p>
+              Both greyscale and colour images, including fluorescence images, are supported for
+              segmentation and classification.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -392,53 +433,29 @@
         <div class="faq-answer">
           <div class="faq-answer-inner">
             <p>
-              <strong>Cellpose</strong> is a deep-learning model purpose-built for biological cell and nucleus segmentation.
-              Rather than predicting a simple foreground/background mask, it learns to predict
-              <strong>gradient flows</strong> - vectors that point from every pixel toward the center of the nearest cell.
-              A simple post-processing step then follows those gradients to group pixels into individual cell instances,
-              making it remarkably robust to cells of different sizes, shapes, and imaging conditions.
+              <strong>Cellpose</strong> is a deep-learning model built to segment cells and nuclei. 
+              For every pixel it predicts the direction to the centre of
+              its cell, allowing touching cells to be distinguished.
             </p>
-
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/segmentation_task.svg" style="width:72%"
-                   alt="Diagram: a raw image of four cells, and the same image with one mask outlining each cell" />
-              <p class="desc-caption">
-                The aim of segmentation: turn a raw image into one mask per cell. Predicting a centre for
-                every cell is what lets touching neighbours be split apart rather than fused into a
-                single blob, and separate masks are what make counting and per-cell measurement possible.
-              </p>
-            </div>
             <p>
-              Cellpose is pre-trained on a large, diverse collection of microscopy images and generalises
-              well out of the box. When your images differ significantly from the training data (unusual stains,
-              atypical morphology, low magnification), fine-tuning on a small set of your own annotated images
-              - which Mycol supports directly - can dramatically improve results.
+              It is pre-trained on a large, varied set of microscopy images and often works well out of
+              the box. If your images differ from these,
+              fine-tuning it on a few of your own annotated images can improve performance.
             </p>
-
-            <h3>Versions used in Mycol</h3>
             <ul>
               <li>
-                <strong>Cellpose 2</strong> introduced a human-in-the-loop training workflow,
-                allowing users to correct segmentation errors and immediately improve the model with very few
-                additional annotations.
-                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">
-                  Read the Cellpose 2 paper (Nature Methods, 2022) &rarr;
-                </a>
+                <a href="https://www.nature.com/articles/s41592-022-01663-4" target="_blank" rel="noopener">Cellpose 2 paper (Nature Methods, 2022) &rarr;</a>
+                introduced training with user corrections.
               </li>
               <li>
-                <strong>Cellpose 3</strong> is the version Mycol runs, and provides the <em>cyto3</em> model.
-                <a href="https://www.nature.com/articles/s41592-024-02215-8" target="_blank" rel="noopener">
-                  Read the Cellpose 3 paper (Nature Methods, 2024) &rarr;
-                </a>
+                <a href="https://www.nature.com/articles/s41592-024-02215-8" target="_blank" rel="noopener">Cellpose 3 paper (Nature Methods, 2024) &rarr;</a>
+                the version Mycol runs.
+              </li>
+              <li>
+                <a href="https://www.cellpose.org/" target="_blank" rel="noopener">cellpose.org &rarr;</a>
+                official website and documentation.
               </li>
             </ul>
-
-            <div class="tip-box">
-              <p>
-                Official website and documentation:
-                <a href="https://www.cellpose.org/" target="_blank" rel="noopener">cellpose.org</a>
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -456,17 +473,15 @@
             <p>
               <strong>MobileSAM</strong> is a compact version of Meta AI's Segment Anything Model (SAM),
               a general-purpose segmentation model. Unlike Cellpose, which was trained specifically on
-              microscopy images, SAM was trained on an enormous and diverse collection of natural images.
+              microscopy images, SAM was trained on a huge collection of natural images.
               Its strength is <strong>promptable segmentation</strong>: given a point, bounding box, or
               rough outline supplied by the user, it predicts a precise mask for the object at that location.
-              MobileSAM keeps SAM's mask decoder but distils its image encoder down to about 6 million
-              parameters, so it runs comfortably on a laptop without a GPU.
             </p>
             <p>
               In Mycol, MobileSAM is used as an <strong>interactive segmentation tool</strong>.
               Instead of running fully automatically across the whole image, you highlight a cell
               with a box and MobileSAM will generate a high-quality mask for that cell.
-              This makes it especially useful for:
+              This makes it useful for:
             </p>
             <ul>
               <li>Segmenting unusual cell types or objects where Cellpose may struggle.</li>
@@ -499,57 +514,22 @@
         <div class="faq-answer">
           <div class="faq-answer-inner">
             <p>
-              <strong>DenseNet</strong> (Densely Connected Convolutional Network) is a convolutional neural
-              network architecture designed for image classification.
-              Its key idea is that <strong>every layer is directly connected to every other layer</strong> within
-              a dense block: the input to each layer is the concatenation of the feature maps from all preceding
-              layers, not just the previous one.
+              <strong>DenseNet</strong> is a widely used neural network for image classification. Mycol
+              uses <strong>DenseNet-121</strong> to classify cells one at a time: each segmented cell is
+              cropped out as a small image and assigned one of the classes you define.
             </p>
             <p>
-              This dense connectivity has two practical benefits:
+              Because your classes are your own, the model always needs training on your labelled cells,
+              or you can upload one trained earlier. Model training starts from a network already trained on over a
+              million everyday photos and only learns in Mycol across a few new final layers, which is why tens of labelled
+              cells per class can be enough rather than thousands.
             </p>
             <ul>
               <li>
-                <strong>Feature reuse</strong> - early low-level features (edges, textures) remain
-                accessible to later layers without having to be re-learned, so the network extracts richer
-                representations with fewer parameters.
-              </li>
-              <li>
-                <strong>Gradient flow</strong> - during training, gradients can travel directly from
-                the loss back to the earliest layers, which prevents the &ldquo;vanishing gradient&rdquo;
-                problem and makes training more stable, especially on small datasets.
+                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf" target="_blank" rel="noopener">DenseNet paper (CVPR, 2017) &rarr;</a>
+                Huang et al., <em>Densely Connected Convolutional Networks</em>.
               </li>
             </ul>
-            <p>
-              Mycol uses <strong>DenseNet-121</strong>, applied at the <strong>individual cell level</strong>:
-              each segmented cell is cropped out as its own small patch and classified into one of your
-              user-defined classes.
-            </p>
-
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/classification_task.svg" style="width:72%"
-                   alt="Diagram: masked but unlabelled cells cropped into patches, each assigned a class" />
-              <p class="desc-caption">
-                Classification picks up where segmentation stops. Masks locate the cells but say nothing
-                about them, so each one is cropped out and judged on its own appearance. The classes mean
-                whatever you decide they mean, which is why this step always needs a model trained on
-                your labels.
-              </p>
-            </div>
-            <p>
-              Training never starts from scratch. Mycol begins from a backbone pre-trained on ImageNet
-              and trains only a few small new final layers sized to your classes, so the low-level features
-              above are already learned before it sees a single cell of yours. That is why a useful
-              classifier needs tens of labelled cells per class rather than thousands. You can also skip
-              training entirely and upload a checkpoint trained earlier.
-            </p>
-            <div class="tip-box">
-              <p>
-                Original paper: Huang et al., <em>Densely Connected Convolutional Networks</em>, CVPR 2017.
-                <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_Densely_Connected_Convolutional_CVPR_2017_paper.pdf"
-                   target="_blank" rel="noopener">Read the paper &rarr;</a>
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -580,10 +560,10 @@
             <p>
               A trained model is not a program that understands cells. It is a statistical mapping,
               fitted to the exact examples you gave it, from patterns of pixels to an output.
-              It has no concept of what a cell <em>is</em>. Nearly every disappointing result traces
+             Nearly every disappointing result traces
               back to the same root cause: <strong>the images or the labels used for training did not
               match what the model was later asked to do</strong>. The sections below cover the ways
-              that happens, and how to avoid them.
+              that can happen, and how to avoid them.
             </p>
 
             <h3>A model learns to be good at exactly what you trained it on</h3>
@@ -596,43 +576,33 @@
             </p>
             <p>
               This is why a model that worked perfectly last week can fail on today&rsquo;s plate while
-              the task looks completely unchanged to you. The task <em>is</em> unchanged; the input
-              statistics moved.
+              the task looks completely unchanged to you. The task is unchanged but the input
+              statistics have moved.
             </p>
 
             <h3>What counts as a &ldquo;different&rdquo; image</h3>
             <p>
-              Far more than most people expect. Any of the following can be enough to degrade a model,
-              even when the biology and the question are identical:
+              Far more than most people expect. Any of the following can be enough to degrade model performance:
             </p>
             <ul>
               <li>
                 <strong>Lighting and exposure</strong> - a different lamp setting, a change in
-                illumination angle, ambient room light, or automatic white balance on the camera.
+                illumination angle or automatic white balance on the camera.
               </li>
               <li>
-                <strong>A different microscope, camera, or objective</strong> - even two instruments
-                of the same model can differ enough to matter.
+                <strong>A different microscope, camera, or objective</strong>.
               </li>
               <li>
                 <strong>Magnification and pixel size</strong> - a cell 30 px across is a different
-                object to the model than the same cell at 90 px. For Cellpose this also means the
-                <em>diameter</em> setting used at inference has to match what the model was trained for.
+                object to the model than the same cell at 90 px.
               </li>
-              <li><strong>Focus, motion blur, and noise levels.</strong></li>
+              <li><strong>Focus or motion blur.</strong></li>
               <li>
                 <strong>Background</strong> - a different agar or medium colour, a different plate
                 or slide, condensation, scratches, or a clean background where training images had a
                 textured one.
-              </li>
-              <li><strong>Stain, channel, or contrast method.</strong></li>
-              <li>
                 <strong>The sample itself</strong> - a new strain, a different growth stage,
                 higher density, or colonies touching where training images had isolated ones.
-              </li>
-              <li>
-                <strong>File handling</strong> - JPEG compression artefacts, 16-bit versus 8-bit,
-                resizing or downscaling, or a different export pipeline from the acquisition software.
               </li>
             </ul>
             <div class="tip-box">
@@ -645,144 +615,16 @@
               </p>
             </div>
 
-            <h3>Augmentation helps, but it cannot invent data</h3>
-            <p>
-              During training, Mycol shows the model randomly altered copies of your examples. Cell
-              patches are mirrored, rotated by up to 15 degrees, nudged in brightness and contrast, and
-              slightly blurred; Cellpose applies its own random flips, rotations and rescaling internally.
-              This is called <strong>augmentation</strong>, and it buys some tolerance for free: you do
-              not need to worry about which way round your cells happen to lie, or about small
-              exposure and focus differences between images.
-            </p>
-            <p>
-              What augmentation cannot do is invent data. It only perturbs the examples you supplied,
-              so it will never conjure up a lighting rig, a magnification, or a morphology you never
-              imaged. Genuine diversity in the training set is what buys generalisation; augmentation
-              just smooths the edges of it.
-            </p>
-
-            <h3>When training Cellpose, outline <em>every</em> cell in the image</h3>
-            <p>
-              This is the single most common annotation mistake, and it is easy to make because nothing
-              warns you about it. Cellpose trains on the <strong>whole image</strong>. Anything not
-              inside an outline is not treated as &ldquo;unknown&rdquo; or &ldquo;skipped&rdquo; -
-              it is an explicit example of <strong>background</strong>. A cell you did not get around
-              to outlining is therefore active training data teaching the model that things which look
-              like that are not cells.
-            </p>
-
-            <div class="desc-figure">
-              <img src="descriptor_diagrams/unlabelled_cells.svg" style="width:72%"
-                   alt="Diagram: two cells outlined and one missed; the missed cell becomes a background example" />
-              <p class="desc-caption">
-                Segmentation training has no &ldquo;unlabelled&rdquo; category. A cell left without an
-                outline is not ignored - it teaches the model that such cells are background.
-              </p>
-            </div>
-
-            <p>In practice this means:</p>
-            <ul>
-              <li>
-                Skipping the faint, small, clumped, or unusual cells teaches the model to ignore exactly
-                those cells - the hard cases you most wanted help with. The easy ones it could
-                probably already find.
-              </li>
-              <li>
-                A half-annotated dense image is worse than no image at all: every cell left unoutlined
-                contributes a wrong signal, and dense images contain many of them.
-              </li>
-              <li>
-                Be consistent about cells cut off at the image border. Decide a rule - always
-                outline partial cells, or always leave them - and apply it to every image.
-                Doing it both ways teaches the model that such objects are sometimes cells and sometimes
-                not, and it will hedge accordingly.
-              </li>
-            </ul>
-            <p>
-              <strong>Rule of thumb:</strong> ten fully annotated images beat fifty partly annotated ones.
-              If an image is too dense to finish, crop a region you <em>can</em> annotate completely and
-              train on that instead. Mycol&rsquo;s <em>min cells per image</em> setting (default 5) drops
-              near-empty images from training, but do not rely on it to catch partial annotations -
-              an image with twenty of its forty cells outlined passes that filter easily.
-            </p>
-
-            <h3>Classification labels behave differently - partial is fine, inconsistent is not</h3>
-            <p>
-              DenseNet classifies individual cell patches, so a cell you never assigned a class to is
-              simply left out of the training set. It is not taught as a wrong answer. Partial labelling
-              is therefore safe for classification, unlike segmentation, and you can label as many or as
-              few cells as you have patience for.
-            </p>
-            <p>
-              What does hurt is <strong>inconsistency</strong>. If you call borderline cells one thing at
-              the start of a session and the opposite thing two hours later, or two people apply subtly
-              different criteria, the model receives contradictory examples of the same appearance and
-              learns the boundary between your classes as noise. Write down your criteria for the
-              ambiguous cases before you start, and treat &ldquo;I cannot tell&rdquo; as a legitimate
-              answer - leaving a cell unlabelled is much better than guessing.
-            </p>
-
-            <h3>Watch out for imbalanced classes</h3>
-            <p>
-              If 95% of your labelled cells are &ldquo;normal&rdquo; and 5% are &ldquo;abnormal&rdquo;,
-              a model that answers &ldquo;normal&rdquo; for every single cell scores 95% accuracy while
-              being completely useless. A headline accuracy figure hides this entirely.
-            </p>
-            <p>
-              After training, read the <strong>confusion matrix</strong> rather than the accuracy figure.
-              Each row shows what actually happened to the cells of one class, so a rare class the model
-              never predicts shows up immediately as a row whose counts have all drifted into the wrong
-              column. The macro-averaged precision, recall, and F1 that Mycol reports alongside it also
-              help, because they weight every class equally rather than by how many cells it has.
-              Aim for a roughly similar number of labelled cells per class; if the interesting class
-              genuinely is rare, deliberately go and find more examples of it to label, and judge the
-              model on how it handles that class.
-            </p>
 
             <h3>Good numbers on your own data are not proof that it works</h3>
             <p>
               During training, part of your data is held back as a <strong>validation set</strong> and the
-              reported scores are measured on it. That is a real check that the model has not simply
-              memorised its training examples - but it is a weak one, because the held-back data
-              came from the same session, the same plates, and the same imaging setup as everything else.
-              It tells you the model generalises to more of the same. It does not tell you it will
-              generalise to next month&rsquo;s plates.
-            </p>
-            <p>
-              The only test that counts is running the model on a fresh batch of images it has never seen
-              - ideally acquired on a different day, ideally by a different person - and
-              looking at the output yourself. Set a few such images aside at the very beginning and never
-              train on them.
-            </p>
-            <p>
-              Beware repeated tuning, too. If you re-train several times with different settings and keep
-              whichever version scored best, you have quietly started fitting to the validation set as
-              well. The more times you consult that number to make a decision, the less it means.
+              reported scores are measured on it. This is a real check that the model has not simply
+              memorised its training examples. It tells you the model generalises to more of the same. It does not tell you it will
+              generalise to new types of cells/images.
             </p>
 
-            <h3>More images only help if they are <em>different</em> images</h3>
-            <p>
-              Two hundred fields from one plate on one afternoon are, as far as the model is concerned,
-              close to a single image repeated two hundred times. They mostly make training slower.
-              Twenty images spanning three lighting conditions, two magnifications, and a range of cell
-              densities teach far more.
-            </p>
-            <p>
-              When choosing what to annotate next, the most informative images are the ones your current
-              model gets wrong. Run it, find the failures, correct those, and add them - the
-              <a href="#tips">annotate &rarr; train &rarr; correct &rarr; repeat</a> cycle is efficient
-              precisely because it keeps steering your training set towards what the model still lacks.
-            </p>
 
-            <div class="tip-box" style="margin-top:0.75rem;">
-              <p>
-                <strong>Before trusting a model, check:</strong> does the training set contain examples of
-                every condition you intend to run it on? Is every cell outlined in every Cellpose training
-                image? Are the class labels consistent and roughly balanced? Has it been tested on images
-                from a different day that were never used in training? A &ldquo;no&rdquo; to any of these
-                predicts the direction in which the model will fail.
-              </p>
-            </div>
 
           </div>
         </div>
@@ -825,6 +667,68 @@
               are balanced (similar numbers per class).
             </p>
 
+            <h3>When training Cellpose, outline <em>every</em> cell in the image</h3>
+            <p>
+              This is the single most common annotation mistake. Cellpose trains on the <strong>whole image</strong>. Anything not
+              inside an outline is treated as <strong>background</strong>. A cell you did not get around
+              to outlining is therefore training data teaching the model that things which look
+              like that are not cells.
+            </p>
+
+            <div class="desc-figure">
+              <img src="descriptor_diagrams/unlabelled_cells.svg" style="width:72%"
+                   alt="Diagram: two cells outlined and one missed; the missed cell becomes a background example" />
+              <p class="desc-caption">
+                Segmentation training has no &ldquo;unlabelled&rdquo; category. A cell left without an
+                outline is not ignored - it teaches the model that such cells are background.
+              </p>
+            </div>
+
+            <p>In practice this means:</p>
+            <ul>
+              <li>
+                Skipping the faint, small, clumped, or unusual cells teaches the model to ignore exactly
+                those cells - the hard cases you most wanted help with. The easy ones it could
+                probably already find.
+              </li>
+              <li>
+                A half-annotated dense image is worse than no image at all: every cell left unoutlined
+                contributes a wrong signal, and dense images contain many of them.
+              </li>
+              <li>
+                Be consistent about cells cut off at the image border. Decide a rule - always
+                outline partial cells, or always leave them - and apply it to every image.
+                Doing it both ways teaches the model that such objects are sometimes cells and sometimes
+                not, and it will just learn noise.
+              </li>
+            </ul>
+
+            <h3>Classification labels behave differently - labelling just some masks in an image is fine, inconsistently labelling masks is not</h3>
+            <p>
+              DenseNet classifies individual cell patches, so a cell you never assigned a class is
+              simply left out of the training set. It is not taught as a wrong answer. Partial labelling
+              is therefore safe for classification (unlike segmentation) and you can label as many or as
+              few cells as you like.
+            </p>
+            <p>
+              What does impact performance is <strong>inconsistency</strong>. Be consistent with your criteria for the
+              ambiguous cases, and treat &ldquo;I cannot tell&rdquo; as a legitimate
+              answer - leaving a cell mask unlabelled is much better than guessing in this case.
+            </p>
+
+            <h3>Watch out for imbalanced classes</h3>
+            <p>
+              If 95% of your labelled cells are &ldquo;normal&rdquo; and 5% are &ldquo;abnormal&rdquo;,
+              a model that answers &ldquo;normal&rdquo; for every single cell scores 95% accuracy while
+              being completely useless. A headline accuracy figure hides this entirely.
+            </p>
+            <p>
+              After training, read the <strong>confusion matrix</strong> rather than the accuracy figure.
+              Each row shows what actually happened to the cells of one class, so a rare class the model
+              never predicts shows up immediately as a row whose counts have all drifted into the wrong
+              column. Aim for a roughly similar number of labelled cells per class.
+            </p>
+
             <h3>Cover the diversity in your data</h3>
             <p>
               Training images should represent the full range of conditions you will encounter:
@@ -832,6 +736,14 @@
               A model trained only on the &ldquo;easy&rdquo; images will struggle with the harder ones.
               This matters more than almost anything else - see
               <a href="#ml-caveats">why models fail on images that look obvious to you</a>.
+            </p>
+
+            <h3>More images only help if they are <em>different</em> images</h3>
+            <p>
+              Two hundred very similar images are, as far as the model is concerned,
+              close to a single image repeated two hundred times. They mostly make training slower.
+              Training on twenty images spanning the lighting conditions, magnifications, and a range of cell
+              densities and morphologies will yield much more robust models.
             </p>
 
             <h3>Watch the loss curves</h3>
@@ -851,6 +763,11 @@
               images back to your training set, and re-train. This cycle of
               <em>annotate &rarr; train &rarr; correct &rarr; repeat</em> is the most efficient
               way to improve a model without needing thousands of images up front.
+            </p>
+            <p>
+              When choosing what to annotate next, the most informative images are the ones your current
+              model gets wrong. Run it, find the failures, correct those, and add them - this keeps
+              steering your training set towards what the model still lacks.
             </p>
 
 
@@ -890,43 +807,22 @@
         <div class="faq-answer">
           <div class="faq-answer-inner">
             <p>
-              When Mycol measures a cell - its area, perimeter, diameter, and so on - the raw
-              number is always in <strong>pixels</strong>, because that is what the image is made of.
-              A pixel has no inherent physical size; it depends entirely on your microscope&rsquo;s
-              magnification and camera settings.
+              When Mycol measures a cell, e.g. area, perimeter, diameter, etc., the raw
+              number is in <strong>pixels</strong>.
             </p>
             <p>
               The <strong>pixel-to-distance conversion</strong> lets you express measurements in
-              real-world units by supplying a single number: <strong>how much physical distance one pixel
+              distance units by supplying a single number: <strong>how much physical distance one pixel
               represents</strong> in your images (the <em>pixel size</em> or <em>image scale</em>, often
               found in your microscope software or image metadata). Turn it on with the
               <em>Convert to distance</em> option on the <strong>Phenotypes</strong> page,
-              then enter the pixel size and its unit. The unit is only a label, so any text works; it
-              defaults to &micro;m and labels the plot axes. The exported table uses the same converted values.
+              then enter the pixel size and its unit.
             </p>
             <p>For example:</p>
             <ul>
               <li>If 1 pixel = 0.5 &micro;m and a cell has an area of 400 px&sup2;, its physical area is 400 &times; 0.5&sup2; = <strong>100 &micro;m&sup2;</strong>.</li>
               <li>Linear measurements (perimeter, diameter) scale by the factor directly: 40 px &times; 0.5 = <strong>20 &micro;m</strong>.</li>
             </ul>
-            <p>
-              Without a conversion factor, Mycol reports sizes in pixels. Either way this touches only the
-              descriptors that carry a unit: area, perimeter, the two axis lengths and the Feret diameter.
-              Ratios such as circularity, solidity and eccentricity are dimensionless and never converted.
-            </p>
-            <p>
-              Pixels are fine for comparing cells within one experiment, but cross-experiment or
-              publication comparisons need physical units. Enter the pixel size of your
-              <strong>original</strong> images: if resize-on-upload was left on, Mycol has already
-              converted every measurement back to original-image pixels.
-            </p>
-            <div class="tip-box">
-              <p>
-                <strong>How to find your pixel size:</strong> check the metadata embedded in the image file
-                (e.g. the TIFF tags), your microscope acquisition software, or ask your facility&rsquo;s
-                imaging staff for the calibration value at the magnification you used.
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -1156,6 +1052,36 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="page" id="general">
+    <header class="page-banner" data-mark="?">
+      <div class="page-num">?</div>
+      <div>
+        <h2>General</h2>
+        <p>Using the app day to day.</p>
+      </div>
+    </header>
+    <div class="page-body">
+
+      <div class="faq-card" id="display-size">
+        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+          <span class="faq-q-label">Display</span>
+          <span class="faq-q-text">The app looks too small or too cramped. How do I fix it?</span>
+          <span class="faq-chevron">&#9660;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>
+              Mycol runs in your web browser, so you can zoom out if it looks cramped, or zoom in if
+              it looks too small, using your browser's zoom. This only changes how the app is
+              displayed; your images and measurements are unaffected.
+            </p>
           </div>
         </div>
       </div>
