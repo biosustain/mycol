@@ -46,9 +46,9 @@ jobs:
         id: pick
         run: |
           set -euo pipefail
-          # macos-14 is Apple Silicon, macos-13 is the last Intel image.
+          # macos-14 is Apple Silicon; macos-15-intel replaced the retired macos-13.
           arm='{"arch":"arm64","runner":"macos-14"}'
-          intel='{"arch":"x86_64","runner":"macos-13"}'
+          intel='{"arch":"x86_64","runner":"macos-15-intel"}'
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             runners="[$arm,$intel]"
             version="${GITHUB_REF_NAME#v}"

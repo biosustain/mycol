@@ -249,7 +249,7 @@ documented in the README.
 [`.github/workflows/release-macos.yml`](../.github/workflows/release-macos.yml)
 mirrors the Windows workflow: branch pushes build Apple Silicon only and upload
 the DMG as an artifact; a `v*` tag builds both architectures on `macos-14`
-(arm64) and `macos-13` (Intel) and attaches them to the same draft release.
+(arm64) and `macos-15-intel` (Intel) and attaches them to the same draft release.
 
 # Linux
 
