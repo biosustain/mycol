@@ -424,24 +424,22 @@ def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
     _refocus_main_document()
 
 
-def _handle_join_mask_mode(
+def _handle_lasso_select_mode(
     rec: Record,
     base_img: ImageArray,
     disp_w: int,
     disp_h: int,
     key_ns: str,
+    name: str,
+    apply,
 ) -> None:
-    """Handle interactions when in 'Join masks' mode.
+    """Handle 'Join masks' / 'Group clear' modes: each drawn lasso is rasterized to
+    a full-res region and passed to ``apply(rec, region)``."""
 
-    The user draws a lasso; every mask lying completely inside the selection is
-    joined with any other selected mask it touches (touching masks form groups).
-    """
+    def handle(xs, ys) -> None:
+        apply(rec, polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"]))
 
-    def join(xs, ys) -> None:
-        region = polygon_xy_to_full_mask(xs, ys, rec["H"], rec["W"])
-        join_in_lasso(rec, region)
-
-    _lasso_chart(base_img, disp_w, disp_h, key_ns, "join", join)
+    _lasso_chart(base_img, disp_w, disp_h, key_ns, name, handle)
 
 
 # -----------------------------------------------------#
@@ -594,6 +592,31 @@ def remove_clicked():
     ss["remove_click"] = False  # prevent reprocessing on rerun
 
 
+def _masks_inside(m: MaskArray, region: MaskArray) -> set:
+    """Ids of the masks lying completely within ``region``."""
+    return set(np.unique(m[region])) - set(np.unique(m[~region])) - {0}
+
+
+def _commit_compacted(rec: Record, out: MaskArray) -> None:
+    """Snapshot for undo, then store ``out`` with ids compacted and labels remapped."""
+    snapshot_for_undo(rec)
+    uniq, inv = np.unique(out, return_inverse=True)
+    rec["masks"] = inv.reshape(out.shape).astype(out.dtype)
+    remap = {int(old): new for new, old in enumerate(uniq)}
+    rec["labels"] = {
+        remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
+    }
+
+
+def clear_in_lasso(rec: Record, region: MaskArray) -> None:
+    """Remove every mask that lies completely inside the lasso region."""
+    m = rec["masks"]
+    selected = _masks_inside(m, region)
+    if selected:
+        _commit_compacted(rec, np.where(np.isin(m, list(selected)), 0, m))
+    st.toast(f"Removed {len(selected)} masks.")
+
+
 def join_in_lasso(rec: Record, region: MaskArray) -> None:
     """Join groups of touching masks that lie completely inside the lasso region.
 
@@ -602,9 +625,7 @@ def join_in_lasso(rec: Record, region: MaskArray) -> None:
     lowest id. Instance ids and labels are then compacted.
     """
     m = rec["masks"]
-    inside = set(np.unique(m[region])) - {0}
-    outside = set(np.unique(m[~region]))
-    selected = inside - outside  # masks lying completely within the selection
+    selected = _masks_inside(m, region)
 
     merged_n = 0  # how many masks were combined
     groups = 0  # how many merged masks they became
@@ -622,16 +643,8 @@ def join_in_lasso(rec: Record, region: MaskArray) -> None:
                 merged_n += int(ids.size)
                 groups += 1
 
-        if merged_n:
-            # a real merge happened -> take the single undo snapshot now
-            snapshot_for_undo(rec)
-            # compact ids to a contiguous range and remap labels to match
-            uniq, inv = np.unique(out, return_inverse=True)
-            rec["masks"] = inv.reshape(m.shape).astype(m.dtype)
-            remap = {int(old): new for new, old in enumerate(uniq)}
-            rec["labels"] = {
-                remap[k]: v for k, v in rec.get("labels", {}).items() if remap.get(k, 0)
-            }
+        if merged_n:  # a real merge happened -> take the single undo snapshot now
+            _commit_compacted(rec, out)
 
     st.toast(f"Joined {merged_n} masks in {groups}.")
 
@@ -843,8 +856,10 @@ def render_common_tools_fragment(key_ns="tools"):
     # get current record
     rec = get_current_rec()
 
+    r1, r2 = st.columns([1, 1])
+
     # button to set mode to remove masks or boxes by clicking on them
-    st.button(
+    r1.button(
         "Remove",
         width="stretch",
         key=f"{key_ns}_remove",
@@ -852,6 +867,17 @@ def render_common_tools_fragment(key_ns="tools"):
         help="Click masks or boxes to remove them (shortcut: D)",
         on_click=_set_mode,
         args=("Remove",),
+    )
+
+    # button to set mode to removing every mask inside a drawn lasso
+    r2.button(
+        "Group clear",
+        width="stretch",
+        key=f"{key_ns}_group_clear",
+        shortcut="C",
+        help="Draw a lasso to remove all masks completely inside it (shortcut: C)",
+        on_click=_set_mode,
+        args=("Group clear",),
     )
 
     row = st.container()
@@ -1113,13 +1139,9 @@ def render_display_and_interact_fragment(key_ns="edit"):
             key_ns=key_ns,
         )
     elif mode == "Join masks":
-        _handle_join_mask_mode(
-            rec=rec,
-            base_img=base_img,
-            disp_w=disp_w,
-            disp_h=disp_h,
-            key_ns=key_ns,
-        )
+        _handle_lasso_select_mode(rec, base_img, disp_w, disp_h, key_ns, "join", join_in_lasso)
+    elif mode == "Group clear":
+        _handle_lasso_select_mode(rec, base_img, disp_w, disp_h, key_ns, "clear", clear_in_lasso)
     elif mode == "Remove":
         _handle_remove_mask_mode(
             base_img=base_img,
