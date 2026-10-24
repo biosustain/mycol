@@ -55,7 +55,6 @@ _DEFAULTS = {
     "cp_diameter": 0,
 
     # densenet training
-    "dn_input_size": 64,
     "dn_batch_size": 32,
     "dn_max_epoch": 100,
     "dn_val_split": 0.2,

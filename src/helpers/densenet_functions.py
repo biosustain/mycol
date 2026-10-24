@@ -49,9 +49,12 @@ def get_device():
 # -------------------------------
 
 
-def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 64):
+PATCH_SIZE = 64  # cell patch side for training, classification and download
+
+
+def generate_cell_patch(image: np.ndarray, mask: np.ndarray):
     """Crop the mask's bounding box out of `image` and return it as a square
-    patch_size patch, background blacked out. `mask` must have at least one pixel set."""
+    PATCH_SIZE patch, background blacked out. `mask` must have at least one pixel set."""
     # extract bounding box crop
     im, m = np.asarray(image), np.asarray(mask, bool)
 
@@ -70,7 +73,7 @@ def generate_cell_patch(image: np.ndarray, mask: np.ndarray, patch_size: int = 6
         crop = crop[..., :3]
 
     # resize to patch size
-    crop = resize_with_aspect_ratio(crop, patch_size)
+    crop = resize_with_aspect_ratio(crop, PATCH_SIZE)
     return crop.astype(np.float32)
 
 
@@ -114,7 +117,7 @@ def resize_with_aspect_ratio(
     return canvas
 
 
-def generate_patches_with_ids(rec, patch_size=64):
+def generate_patches_with_ids(rec):
     """returns list of cell patches and patch ids from input record"""
     M = rec.get("masks")
     # one pass over the label image yields the bounding-box slice for every id
@@ -122,7 +125,7 @@ def generate_patches_with_ids(rec, patch_size=64):
     for iid, sl in enumerate(ndimage.find_objects(M), start=1):
         if sl is None:  # id absent (gap left by a merge/cut)
             continue
-        patches.append(generate_cell_patch(rec["image"][sl], M[sl] == iid, patch_size))
+        patches.append(generate_cell_patch(rec["image"][sl], M[sl] == iid))
         keep_ids.append(iid)
 
     return patches, keep_ids
@@ -325,7 +328,7 @@ def build_densenet(num_classes=2):
     return model
 
 
-def load_labeled_patches(patch_size: int = 64):
+def load_labeled_patches():
     """
     Build X, y from all loaded images with labels.
     """
@@ -350,13 +353,13 @@ def load_labeled_patches(patch_size: int = 64):
             cname = labs.get(iid)
             if not cname or cname == "No label":
                 continue
-            patch = generate_cell_patch(img[sl], M[sl] == iid, patch_size)
+            patch = generate_cell_patch(img[sl], M[sl] == iid)
             X.append(patch)
             y.append(name_to_idx[cname])
 
     if not X:
         return (
-            np.zeros((0, patch_size, patch_size, 3), dtype=np.float32),
+            np.zeros((0, PATCH_SIZE, PATCH_SIZE, 3), dtype=np.float32),
             np.zeros((0,), dtype=np.int64),
             all_classes,
         )
@@ -366,9 +369,9 @@ def load_labeled_patches(patch_size: int = 64):
     return X, y, all_classes
 
 
-def start_densenet_training(input_size, batch_size, epochs, val_split):
+def start_densenet_training(batch_size, epochs, val_split):
     """Starts DenseNet training asynchronously using a worker subprocess"""
-    X, y, classes = load_labeled_patches(patch_size=input_size)
+    X, y, classes = load_labeled_patches()
     if X.shape[0] < 2 or len(np.unique(y)) < 2:
         st.warning("Need at least 2 samples and 2 classes. Add more labeled cells.")
         return None
@@ -387,7 +390,6 @@ def start_densenet_training(input_size, batch_size, epochs, val_split):
             val_split=val_split,
         ),
         metadata={
-            "input_size": input_size,
             "num_samples": X.shape[0],
             "classes": classes,
         },
@@ -448,11 +450,11 @@ def array_to_png_bytes(arr: np.ndarray) -> bytes:
     return bio.getvalue()
 
 
-def _write_patchset(zf, patch_size: int = 64) -> int:
+def _write_patchset(zf) -> int:
     """Write cell-patch PNGs and their labels CSV directly into an open ZipFile.
 
     Returns the number of patches written (0 when there are no labelled cells)."""
-    X, y, classes = load_labeled_patches(patch_size=patch_size)
+    X, y, classes = load_labeled_patches()
     if X.shape[0] == 0:
         return 0
 
@@ -472,10 +474,9 @@ def _write_patchset(zf, patch_size: int = 64) -> int:
     return X.shape[0]
 
 
-def write_densenet_param_csvs(zf, input_size=None) -> None:
+def write_densenet_param_csvs(zf) -> None:
     """Write the DenseNet training hyperparameters CSV into `zf`."""
     params = {
-        "input_size": int(input_size) if input_size is not None else ss.get("dn_input_size", 64),
         "batch_size": ss.get("dn_batch_size", 32),
         "max_epoch": ss.get("dn_max_epoch", 100),
         "val_split": ss.get("dn_val_split", 0.2),
@@ -490,19 +491,19 @@ def densenet_model_bytes(model) -> bytes:
     return buf.getvalue()
 
 
-def build_densenet_zip_bytes(psize):
+def build_densenet_zip_bytes():
     """Assemble the DenseNet training ZIP from session state."""
 
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zout:
         # patches are written into the final zip 
-        if _write_patchset(zout, psize) == 0:
+        if _write_patchset(zout) == 0:
             return None
 
         if ss.get("densenet_model") is not None:
             zout.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
 
-        write_densenet_param_csvs(zout, input_size=psize)
+        write_densenet_param_csvs(zout)
 
         add_plotly_as_png_to_zip(
             "densenet_training_losses", zout, "plots/densenet_training_losses.png"

@@ -61,7 +61,7 @@ def build_download_zip(images, ok) -> tuple[bytes, str]:
                 zf.writestr("cellpose_training.zip", cp_bytes, compress_type=ZIP_STORED)
 
         if ss.get("dl_include_densenet", True) and (ss.get("dn_zip_bytes") or ss.get("densenet_model") is not None):
-            dn_bytes = ss.get("dn_zip_bytes") or build_densenet_zip_bytes(ss.get("dn_input_size"))
+            dn_bytes = ss.get("dn_zip_bytes") or build_densenet_zip_bytes()
             if dn_bytes:
                 zf.writestr("densenet_training.zip", dn_bytes, compress_type=ZIP_STORED)
 

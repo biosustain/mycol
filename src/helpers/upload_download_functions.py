@@ -197,7 +197,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
                 io.StringIO(zf.read("densenet_training_hyperparameters.csv").decode())
             )
             p = dict(zip(df["parameter"], df["value"]))
-            ss["dn_input_size"] = _cast(p.get("input_size"), int, 64)
             ss["dn_batch_size"] = _cast(p.get("batch_size"), int, 32)
             ss["dn_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
             ss["dn_val_split"] = _cast(p.get("val_split"), float, 0.2)

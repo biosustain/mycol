@@ -72,20 +72,15 @@ def render_densenet_image_selection():
 
 def render_densenet_params():
     """Step 3 (classifier): training hyperparameters."""
-    c1, c2, c4 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
     # options for densenet training with defaults already set
-    ss["dn_input_size"] = c1.selectbox(
-        "Input size",
-        options=[64, 96, 128],
-        index=[64, 96, 128].index(ss["dn_input_size"]),
-    )
-    ss["dn_batch_size"] = c2.selectbox(
+    ss["dn_batch_size"] = c1.selectbox(
         "Batch size",
         options=[8, 16, 32, 64],
         index=[8, 16, 32, 64].index(ss["dn_batch_size"]),
     )
 
-    ss["dn_max_epoch"] = c4.number_input(
+    ss["dn_max_epoch"] = c2.number_input(
         "Max epochs",
         min_value=1,
         max_value=500,
@@ -95,7 +90,7 @@ def render_densenet_params():
     )
 
     render_train_split_slider(
-        c4, "dn_val_split", unit="labelled cells", held_out="validation"
+        c3, "dn_val_split", unit="labelled cells", held_out="validation"
     )
 
 
@@ -152,7 +147,6 @@ def render_densenet_train_fragment():
     cp_job = ss.get("cp_training_job")
 
     # Read hyperparameter options from session
-    input_size = int(ss.get("dn_input_size"))
     batch_size = int(ss.get("dn_batch_size"))
     epochs = int(ss.get("dn_max_epoch"))
     val_split = float(ss.get("dn_val_split", 0.2))
@@ -199,7 +193,6 @@ def render_densenet_train_fragment():
 
     # Start async training
     start_densenet_training(
-        input_size=input_size,
         batch_size=batch_size,
         epochs=epochs,
         val_split=val_split,
@@ -575,7 +568,7 @@ def render_densenet_status_fragment():
         st.success("Finalizing DenseNet training...")
         st.balloons()  # cool as f*ck
 
-        ss["dn_zip_bytes"] = build_densenet_zip_bytes(dn_job["input_size"])
+        ss["dn_zip_bytes"] = build_densenet_zip_bytes()
         ss.pop("dn_training_job", None)
         st.rerun()
     elif status == "failed":
