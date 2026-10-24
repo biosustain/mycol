@@ -35,6 +35,7 @@ from src.helpers.state_ops import (
     write_image_to_zip,
     write_mask_to_zip,
     SESSION_PLOT_KEYS,
+    _DEFAULTS,
 )
 
 from src.helpers.state_ops import normalize_image
@@ -69,16 +70,26 @@ def _cast(v, t, default):
         return default
 
 
+def _apply_params(p: dict, prefix: str, **types) -> None:
+    """Set ss[prefix + name] from p, falling back to the app default if missing."""
+    for name, t in types.items():
+        ss[prefix + name] = _cast(p.get(name), t, _DEFAULTS[prefix + name])
+
+
 def apply_cellpose_inference_params(p: dict) -> bool:
     """Set the Cellpose inference hyperparameters from a {parameter: value} mapping.
     Returns True if the mapping contained inference keys."""
     if not {"diameter", "cellprob_threshold", "flow_threshold", "min_size", "niter"} & set(p):
         return False
-    ss["cp_diameter"] = _cast(p.get("diameter"), int, 0)
-    ss["cp_cellprob_threshold"] = _cast(p.get("cellprob_threshold"), float, 0.0)
-    ss["cp_flow_threshold"] = _cast(p.get("flow_threshold"), float, 0.0)
-    ss["cp_min_size"] = _cast(p.get("min_size"), int, 0)
-    ss["cp_niter"] = _cast(p.get("niter"), int, 500)
+    _apply_params(
+        p,
+        "cp_",
+        diameter=int,
+        cellprob_threshold=float,
+        flow_threshold=float,
+        min_size=int,
+        niter=int,
+    )
     return True
 
 
@@ -177,29 +188,33 @@ def restore_session(zip_bytes: bytes) -> str | None:
             df = pd.read_csv(
                 io.StringIO(zf.read("cellpose_training_hyperparameters.csv").decode())
             )
-            p = dict(zip(df["parameter"], df["value"]))
-            ss["cp_base_model"] = _cast(p.get("base_model"), str, "cyto3")
-            ss["cp_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
-            ss["cp_learning_rate"] = _cast(p.get("learning_rate"), float, 0.01)
-            ss["cp_weight_decay"] = _cast(p.get("weight_decay"), float, 0.0001)
-            ss["cp_batch_size"] = _cast(p.get("batch_size"), int, 8)
-            ss["cp_nimg_per_epoch"] = _cast(p.get("nimg_per_epoch"), int, None)
-            ss["cp_min_cells_per_image"] = _cast(p.get("min_cells_per_image"), int, 1)
-            ss["cp_test_split"] = _cast(p.get("test_split"), float, 0.2)
-            ss["cp_do_gridsearch"] = _cast(
-                p.get("do_gridsearch"), lambda v: str(v).lower() == "true", True
+            _apply_params(
+                dict(zip(df["parameter"], df["value"])),
+                "cp_",
+                base_model=str,
+                max_epoch=int,
+                learning_rate=float,
+                weight_decay=float,
+                batch_size=int,
+                nimg_per_epoch=int,
+                min_cells_per_image=int,
+                test_split=float,
+                do_gridsearch=lambda v: str(v).lower() == "true",
+                n_trials=int,
             )
-            ss["cp_n_trials"] = _cast(p.get("n_trials"), int, 20)
 
         # ── DenseNet training hyperparameters ─────────────────────────────────
         if "densenet_training_hyperparameters.csv" in names:
             df = pd.read_csv(
                 io.StringIO(zf.read("densenet_training_hyperparameters.csv").decode())
             )
-            p = dict(zip(df["parameter"], df["value"]))
-            ss["dn_batch_size"] = _cast(p.get("batch_size"), int, 32)
-            ss["dn_max_epoch"] = _cast(p.get("max_epoch"), int, 100)
-            ss["dn_val_split"] = _cast(p.get("val_split"), float, 0.2)
+            _apply_params(
+                dict(zip(df["parameter"], df["value"])),
+                "dn_",
+                batch_size=int,
+                max_epoch=int,
+                val_split=float,
+            )
 
         # ── Models (Cellpose / DenseNet) ──────────────────────────────────────
         for model_entry in ("cellpose_model.pt", "densenet_model.pth"):

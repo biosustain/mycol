@@ -46,7 +46,16 @@ _DEFAULTS = {
     # cellpose model training
     "train_losses": [],
     "test_losses": [],
+    "cp_base_model": "cyto2",
+    "cp_max_epoch": 300,
+    "cp_learning_rate": 0.1,
+    "cp_weight_decay": 1e-4,
+    "cp_batch_size": 8,
+    "cp_nimg_per_epoch": None,          # None = all training images
+    "cp_min_cells_per_image": 5,
     "cp_test_split": 0.2,               # fraction of images held out from training
+    "cp_do_gridsearch": True,
+    "cp_n_trials": 20,
     # cellpose inference
     "cp_min_size": 0,
     "cp_niter": 500,
@@ -56,7 +65,7 @@ _DEFAULTS = {
 
     # densenet training
     "dn_batch_size": 32,
-    "dn_max_epoch": 100,
+    "dn_max_epoch": 300,
     "dn_val_split": 0.2,
 
     # densenet model

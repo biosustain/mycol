@@ -236,15 +236,6 @@ def render_cellpose_params():
     # --- show training options ---
     c1, c2, c3 = st.columns(3)
 
-    # Defaults
-    ss.setdefault("cp_base_model", "cyto3")
-    ss.setdefault("cp_max_epoch", 100)
-    ss.setdefault("cp_learning_rate", 0.1)
-    ss.setdefault("cp_weight_decay", 1e-4)
-    ss.setdefault("cp_batch_size", 8)
-    ss.setdefault("cp_nimg_per_epoch", None)
-    ss.setdefault("cp_min_cells_per_image", 5)
-
     ss["cp_base_model"] = c1.selectbox(
         "Base model",
         options=["cyto", "cyto2", "cyto3", "nuclei", "scratch"],
@@ -314,7 +305,6 @@ def render_cellpose_params():
         subcol1, subcol2 = st.columns([2, 3])
         with subcol1:
 
-            ss.setdefault("cp_do_gridsearch", True)
             ss["cp_do_gridsearch"] = st.checkbox(
                 "Optimise hyperparameters",
                 value=bool(ss["cp_do_gridsearch"]),
