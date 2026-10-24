@@ -122,14 +122,14 @@ def get_cellpose_model():
     tag = (
         hashlib.sha1(ss["cellpose_model_bytes"]).hexdigest()[:12]
         if ss.get("cellpose_model_bytes")
-        else "cyto2"
+        else "cyto3"
     )
 
     if ss.get("cellpose_model_obj") is not None and ss.get("cellpose_model_tag") == tag:
         return ss["cellpose_model_obj"]
 
     weights_path = get_cellpose_weights()
-    model_type = "cyto2"
+    model_type = "cyto3"
     if weights_path:
         model_type = weights_path
 

@@ -244,7 +244,7 @@ def render_cellpose_params():
     c1, c2, c3 = st.columns(3)
 
     # Defaults
-    ss.setdefault("cp_base_model", "cyto2")
+    ss.setdefault("cp_base_model", "cyto3")
     ss.setdefault("cp_max_epoch", 100)
     ss.setdefault("cp_learning_rate", 0.1)
     ss.setdefault("cp_weight_decay", 1e-4)
