@@ -155,6 +155,8 @@ function Build-Bundle {
         Copy-Item -Path "example_session.zip" -Destination "$DistDir\example_session.zip"
     }
     Copy-Item -Path "LICENSE" -Destination "$DistDir\LICENSE"
+    # The help page shows this as the app version.
+    Set-Content -Path "$DistDir\VERSION" -Value $Version
 
     if (Test-Path ".streamlit") {
         Copy-Item -Recurse -Path ".streamlit" -Destination "$DistDir\.streamlit"

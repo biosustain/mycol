@@ -1,7 +1,12 @@
+from pathlib import Path
+
 import streamlit as st
 
 DOCS_URL = "https://biosustain.github.io/mycol"
 REPO_URL = "https://github.com/biosustain/mycol"
+# make_dist writes the release number beside app.py; a source checkout has none.
+VERSION_FILE = Path(__file__).resolve().parents[2] / "VERSION"
+VERSION = VERSION_FILE.read_text().strip() if VERSION_FILE.exists() else "development build"
 
 # (icon, title, description, url, button label)
 GUIDES = [
@@ -61,3 +66,6 @@ with body:
         icon=":material/bug_report:",
         width="stretch",
     )
+
+    st.space("medium")
+    st.markdown(f"Mycol version {VERSION}")

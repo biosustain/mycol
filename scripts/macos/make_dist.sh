@@ -124,6 +124,8 @@ cp logo.png "$RESOURCES/logo.png"
 # load_demo_data() expects this beside app.py.
 [[ -f example_session.zip ]] && cp example_session.zip "$RESOURCES/example_session.zip"
 cp LICENSE "$RESOURCES/LICENSE"
+# The help page shows this as the app version.
+printf '%s\n' "$VERSION" > "$RESOURCES/VERSION"
 
 if [[ -d .streamlit ]]; then
     cp -R .streamlit "$RESOURCES/.streamlit"
