@@ -7,6 +7,7 @@ import hashlib
 import numpy as np
 import tifffile as tiff
 import streamlit as st
+from scipy import ndimage
 from zipfile import ZipFile
 from pathlib import Path
 from PIL import ImageDraw
@@ -539,8 +540,10 @@ def write_masks_images_to_zip(
             mask = rec.get("masks")
             labels = rec.get("labels", {})
 
-            unique_ids = [i for i in np.unique(mask) if i != 0]
-            for iid in unique_ids:
+            # one pass over the label image yields the bounding-box slice for every id
+            for iid, sl in enumerate(ndimage.find_objects(mask), start=1):
+                if sl is None:  # id absent (gap left by a merge/cut)
+                    continue
                 cname = labels.get(iid)
                 cname_str = (
                     "No_label"
@@ -550,9 +553,7 @@ def write_masks_images_to_zip(
                 # extract patch (background blacked out, square-padded) using
                 # the same routine as the DenseNet training pipeline so the
                 # downloaded patches match the ones used for training
-                if not np.any(mask == iid):
-                    continue
-                patch = generate_cell_patch(image=rec["image"], mask=(mask == iid))
+                patch = generate_cell_patch(rec["image"][sl], mask[sl] == iid)
                 # write patch to zip
                 patch_filename = f"patches/{name}_id{iid}_{cname_str}.png"
                 zf.writestr(patch_filename, array_to_png_bytes(patch))
