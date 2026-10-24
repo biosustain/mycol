@@ -23,7 +23,14 @@ def _n_labelled(rec) -> int:
     return sum(1 for v in labels.values() if v not in (None, "No label"))
 
 
-DISPLAY_COLS = ["No.", "Image", "Mask Present", "Number of Masks", "Labelled Masks"]
+DISPLAY_COLS = [
+    "No.",
+    "Image",
+    "Dimensions",
+    "Mask Present",
+    "Number of Masks",
+    "Labelled Masks",
+]
 
 
 def _build_image_table(keys) -> pd.DataFrame:
@@ -38,6 +45,7 @@ def _build_image_table(keys) -> pd.DataFrame:
                 "_key": k,
                 "No.": i,
                 "Image": rec.get("name", k),
+                "Dimensions": f"{rec['W']}×{rec['H']}",
                 "Mask Present": "✅" if n > 0 else "❌",
                 "Number of Masks": n,
                 "Labelled Masks": f"{nl}/{n}",

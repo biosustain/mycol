@@ -254,7 +254,7 @@ def process_uploads(files, mask_suffix):
     mask_suffix_len = len(mask_suffix)
     imgs = [(f) for f in files if not stem(f.name).endswith(mask_suffix)]
     masks = [f for f in files if stem(f.name).endswith(mask_suffix)]
-    resize = ss.get("resize_on_upload", True)
+    resize = ss.get("resize_on_upload", False)
 
     # process images
     for f in imgs:

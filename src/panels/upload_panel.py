@@ -77,7 +77,7 @@ def render_main():
         with resize_col:
             resize_on_upload = st.checkbox(
                 "Resize (512x512)",
-                value=ss.get("resize_on_upload", True),
+                value=ss.get("resize_on_upload", False),
                 key="resize_on_upload_checkbox",
                 help="Resize images & masks while uploading to 512x512. Recommended for large images, "
                 "but may cause quality loss. Calculated cell properties will still be correct for the "
