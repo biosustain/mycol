@@ -7,20 +7,15 @@ def eager_load_heavy_libs():
     --> moves the loading time to the inital app startup
     """
 
-    with st.spinner("Loading AI libraries (Torch, Cellpose, MobileSAM)..."):
-
-
+    with st.spinner("Loading MobileSAM and image tools..."):
 
         # IO and Components
-
         try:
             import streamlit_image_coordinates
         except ImportError:
             pass
 
-
         try:
             from mobile_sam import SamPredictor, sam_model_registry
         except ImportError:
             pass
-
