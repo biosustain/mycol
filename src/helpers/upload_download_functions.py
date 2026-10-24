@@ -9,7 +9,6 @@ import tifffile as tiff
 import streamlit as st
 from zipfile import ZipFile
 from pathlib import Path
-from zipfile import ZIP_DEFLATED
 from PIL import ImageDraw
 import pandas as pd
 from PIL import UnidentifiedImageError
@@ -445,125 +444,120 @@ def render_images_form():
 # --------------------------------------
 
 
-def build_masks_images_zip(
+def write_masks_images_to_zip(
+    zf,
     state_images,
     key_order,
+    include_images: bool,
     include_overlay: bool,
     include_counts: bool,
     include_patches: bool,
     include_summary: bool,
-) -> bytes:
-    """Build a ZIP file with masks, images (optionally with overlays), and summary CSV.
-    Return the ZIP file as bytes."""
+) -> None:
+    """Write masks, images (optionally with overlays), cell patches and the summary
+    CSV directly into the open ZipFile `zf`. With include_images False only the
+    summary CSV is written; overlays, counts and patches need include_images."""
 
-    buf = io.BytesIO()
-    with ZipFile(buf, mode="w", compression=ZIP_DEFLATED) as zf:
-        # Class color palette (only if overlays requested)
-        palette = (
-            create_colour_palette(
-                ss.setdefault("all_classes", ["No label"])
+    # Class color palette (only if overlays requested)
+    palette = (
+        create_colour_palette(ss.setdefault("all_classes", ["No label"]))
+        if include_overlay
+        else None
+    )
+
+    # --- prep columns & rows for summary.csv
+    counts_df, class_cols = build_per_image_counts(key_order)
+    counts_by_key = {r["_key"]: r for r in counts_df.to_dict("records")}
+    summary_rows = []
+    mask_suffix = ss["mask_suffix"]
+
+    # iterate through records
+    for k in key_order:
+        rec = state_images[k]
+        name = Path(rec.get("name", f"{k}")).stem
+        crow = counts_by_key.get(k, {})
+        counts = {c: int(crow.get(c, 0)) for c in class_cols}
+
+        # capture a row for the CSV
+        row = {"image": name}
+        row.update({c: int(counts.get(c, 0)) for c in class_cols})
+        row["total"] = int(crow.get("Total masks", 0))
+        summary_rows.append(row)
+
+        if not include_images:
+            continue
+
+        # write mask
+        write_mask_to_zip(zf, name, rec.get("masks"), mask_suffix)
+
+        # write image
+        img = np.asarray(rec["image"])
+
+        # optionally normalize image
+        if ss["dl_normalize_download"]:
+            img = normalize_image(img)
+
+        # optional overlay (colored masks) for image
+        if include_overlay:
+            classes_map = classes_map_from_labels(
+                rec.get("masks"), rec.get("labels", {})
             )
-            if include_overlay
-            else None
-        )
+            img = create_image_mask_overlay(
+                img, rec.get("masks"), classes_map, palette, alpha=0.35
+            )
 
-        # --- prep columns & rows for summary.csv
-        counts_df, class_cols = build_per_image_counts(key_order)
-        counts_by_key = {r["_key"]: r for r in counts_df.to_dict("records")}
-        summary_rows = []
-        mask_suffix = ss["mask_suffix"]
+        # optionally annotate image with class counts
+        if include_counts:
+            lines = [f"{cls}: {cnt}" for cls, cnt in sorted(counts.items())]
+            if lines:
+                txt = "\n".join(lines)
+                pil = Image.fromarray(img)
+                d = ImageDraw.Draw(pil)
 
-        # iterate through records
+                # measure text height
+                _, _, _, th = d.multiline_textbbox((0, 0), txt)
+
+                # create space on top
+                new_img = Image.new("RGB", (pil.width, pil.height + th + 10), "white")
+                new_img.paste(pil, (0, th + 10))
+
+                # centered text
+                d = ImageDraw.Draw(new_img)
+                tw = d.multiline_textbbox((0, 0), txt)[2]
+                d.multiline_text(((new_img.width - tw) // 2, 5), txt, fill="black")
+
+                img = np.array(new_img)
+
+        # write processed image to zip file
+        write_image_to_zip(zf, name, img)
+
+    # optionally write cell patches into zip
+    if include_images and include_patches:
         for k in key_order:
             rec = state_images[k]
             name = Path(rec.get("name", f"{k}")).stem
-            crow = counts_by_key.get(k, {})
-            counts = {c: int(crow.get(c, 0)) for c in class_cols}
+            mask = rec.get("masks")
+            labels = rec.get("labels", {})
 
-            # write mask
-            write_mask_to_zip(zf, name, rec.get("masks"), mask_suffix)
-
-            # write image
-            img = np.asarray(rec["image"])
-
-            # optionally normalize image
-            if ss["dl_normalize_download"]:
-                img = normalize_image(img)
-
-            # optional overlay (colored masks) for image
-            if include_overlay:
-                classes_map = classes_map_from_labels(
-                    rec.get("masks"), rec.get("labels", {})
+            unique_ids = [i for i in np.unique(mask) if i != 0]
+            for iid in unique_ids:
+                cname = labels.get(iid)
+                cname_str = (
+                    "No_label"
+                    if cname in (None, "", -1)
+                    else str(cname).replace(" ", "_")
                 )
-                img = create_image_mask_overlay(
-                    img, rec.get("masks"), classes_map, palette, alpha=0.35
-                )
+                # extract patch (background blacked out, square-padded) using
+                # the same routine as the DenseNet training pipeline so the
+                # downloaded patches match the ones used for training
+                if not np.any(mask == iid):
+                    continue
+                patch = generate_cell_patch(image=rec["image"], mask=(mask == iid))
+                # write patch to zip
+                patch_filename = f"patches/{name}_id{iid}_{cname_str}.png"
+                zf.writestr(patch_filename, array_to_png_bytes(patch))
 
-            # optionally annotate image with class counts
-            if include_counts:
-                lines = [f"{cls}: {cnt}" for cls, cnt in sorted(counts.items())]
-                if lines:
-                    txt = "\n".join(lines)
-                    pil = Image.fromarray(img)
-                    d = ImageDraw.Draw(pil)
-
-                    # measure text height
-                    _, _, _, th = d.multiline_textbbox((0, 0), txt)
-
-                    # create space on top
-                    new_img = Image.new(
-                        "RGB", (pil.width, pil.height + th + 10), "white"
-                    )
-                    new_img.paste(pil, (0, th + 10))
-
-                    # centered text
-                    d = ImageDraw.Draw(new_img)
-                    tw = d.multiline_textbbox((0, 0), txt)[2]
-                    d.multiline_text(((new_img.width - tw) // 2, 5), txt, fill="black")
-
-                    img = np.array(new_img)
-
-            # capture a row for the CSV
-            row = {"image": name}
-            row.update({c: int(counts.get(c, 0)) for c in class_cols})
-            row["total"] = int(crow.get("Total masks", 0))
-            summary_rows.append(row)
-
-            # write processed image to zip file
-            write_image_to_zip(zf, name, img)
-
-        # optionally write cell patches into zip
-        if include_patches:
-            for k in key_order:
-                rec = state_images[k]
-                name = Path(rec.get("name", f"{k}")).stem
-                mask = rec.get("masks")
-                labels = rec.get("labels", {})
-
-                unique_ids = [i for i in np.unique(mask) if i != 0]
-                for iid in unique_ids:
-                    cname = labels.get(iid)
-                    cname_str = (
-                        "No_label"
-                        if cname in (None, "", -1)
-                        else str(cname).replace(" ", "_")
-                    )
-                    # extract patch (background blacked out, square-padded) using
-                    # the same routine as the DenseNet training pipeline so the
-                    # downloaded patches match the ones used for training
-                    if not np.any(mask == iid):
-                        continue
-                    patch = generate_cell_patch(image=rec["image"], mask=(mask == iid))
-                    # write patch to zip
-                    patch_filename = f"patches/{name}_id{iid}_{cname_str}.png"
-                    zf.writestr(patch_filename, array_to_png_bytes(patch))
-
-        if include_summary:
-
-            # --- write summary.csv into the zip (image + per-class + total)
-            df = pd.DataFrame(summary_rows, columns=["image"] + class_cols + ["total"])
-            csv_buf = io.StringIO()
-            df.to_csv(csv_buf, index=False)
-            zf.writestr("cell_counts_per_image.csv", csv_buf.getvalue())
-
-    return buf.getvalue()
+    if include_summary:
+        # --- write summary.csv into the zip (image + per-class + total)
+        df = pd.DataFrame(summary_rows, columns=["image"] + class_cols + ["total"])
+        zf.writestr("cell_counts_per_image.csv", df.to_csv(index=False))

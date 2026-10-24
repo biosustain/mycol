@@ -11,7 +11,7 @@ from src.helpers.state_ops import (
     write_mask_to_zip,
     SESSION_PLOT_KEYS,
 )
-from src.helpers.upload_download_functions import build_masks_images_zip
+from src.helpers.upload_download_functions import write_masks_images_to_zip
 from src.helpers.cell_metrics_functions import build_cell_metrics_csv
 from src.helpers.cellpose_functions import (
     build_cellpose_zip_bytes,
@@ -34,22 +34,19 @@ def build_download_zip(images, ok) -> tuple[bytes, str]:
     buf = io.BytesIO()
     with ZipFile(buf, "w", ZIP_DEFLATED) as zf:
 
-        if images and ss.get("dl_include_images", True):
-            inner = build_masks_images_zip(
+        include_images = ss.get("dl_include_images", True)
+        include_summary = ss.get("dl_include_summary", True)
+        if images and (include_images or include_summary):
+            write_masks_images_to_zip(
+                zf,
                 images,
                 ok,
+                include_images,
                 ss.get("dl_include_overlay", True),
                 ss.get("dl_include_counts", False),
                 ss.get("dl_include_patches", False),
-                ss.get("dl_include_summary", True),
+                include_summary,
             )
-            with ZipFile(io.BytesIO(inner)) as inner_zf:
-                for name in inner_zf.namelist():
-                    zf.writestr(name, inner_zf.read(name))
-        elif images and ss.get("dl_include_summary", True):
-            inner = build_masks_images_zip(images, ok, False, False, False, True)
-            with ZipFile(io.BytesIO(inner)) as inner_zf:
-                zf.writestr("cell_counts_per_image.csv", inner_zf.read("cell_counts_per_image.csv"))
 
         if images and ss.get("dl_include_cell_metrics", True):
             zf.writestr(
