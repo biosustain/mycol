@@ -8,7 +8,7 @@ GUIDES = [
     (
         "menu_book",
         "User guide",
-        "Start here. Understand what Mycol does and what worklows it supports, "
+        "Start here. Understand what Mycol does and what workflows it supports, "
         "from uploading images to exporting results.",
         f"{DOCS_URL}/index.html",
         "Open user guide",
