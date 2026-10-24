@@ -31,7 +31,6 @@ _DEFAULTS = {
     "next_ord": 1,                      # next order_key to assign
     "cellpose_model_bytes": None,
     "cellpose_model_name": None,
-    "densenet_ckpt_bytes": None,
     "densenet_ckpt_name": None,
     "side_new_label": "",
     "show_overlay": True,
@@ -45,7 +44,6 @@ _DEFAULTS = {
     "zoom": 1.0,
 
     # cellpose model training
-    "cyto_to_train": "cyto3",
     "train_losses": [],
     "test_losses": [],
     "cp_test_split": 0.2,               # fraction of images held out from training

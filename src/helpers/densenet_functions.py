@@ -415,7 +415,6 @@ def check_densenet_training_status():
         ss["densenet_confusion_matrix"] = plot_confusion_matrix(cm, classes)
 
         job["history"] = history
-        job["val_loader"] = None  # TODO: FIX can't serialize DataLoader
         job["classes"] = classes
 
     return check_worker_job_status("dn_training_job", _on_complete)
