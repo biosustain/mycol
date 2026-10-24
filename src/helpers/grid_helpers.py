@@ -81,6 +81,9 @@ def render_image_selection_table(namespace: str, default_all: bool = True) -> li
     event = st.dataframe(
         df[DISPLAY_COLS],
         hide_index=True,
+        column_config={
+            c: st.column_config.Column(alignment="center") for c in DISPLAY_COLS
+        },
         width="stretch",
         height=min(400, 38 + 35 * len(ids)),
         on_select="rerun",
