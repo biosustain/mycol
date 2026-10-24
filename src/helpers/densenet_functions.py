@@ -225,6 +225,9 @@ def densenet_mapping_fragment():
     ss["densenet_class_map"] = class_map
 
 
+CLASSIFY_BATCH_SIZE = 512  # cell patches per DenseNet forward pass
+
+
 def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
     """Classify segmented cell masks in `rec` using a DenseNet-121 model.
 
@@ -241,16 +244,19 @@ def classify_cells_with_densenet(rec: dict, *, snapshot: bool = True) -> None:
 
     patches, keep_ids = generate_patches_with_ids(rec)
 
-    X_list = [patch_to_tensor(p) for p in patches]
-
-    if not X_list:
+    if not patches:
         return
 
-    X_batch = imagenet_normalize(torch.stack(X_list)).to(device)
-
+    # chunked so an image with thousands of cells cannot exhaust device memory
+    preds = []
     with torch.no_grad():
-        outputs = model(X_batch)
-        preds = torch.argmax(outputs, dim=1).cpu().numpy()
+        for start in range(0, len(patches), CLASSIFY_BATCH_SIZE):
+            chunk = patches[start : start + CLASSIFY_BATCH_SIZE]
+            X_batch = imagenet_normalize(
+                torch.stack([patch_to_tensor(p) for p in chunk])
+            ).to(device)
+            preds.append(torch.argmax(model(X_batch), dim=1).cpu().numpy())
+    preds = np.concatenate(preds)
 
     class_map = ensure_densenet_class_map()
     all_classes = ss.setdefault("all_classes", ["No label"])
