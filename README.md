@@ -11,7 +11,7 @@ _A lightweight, human-in-the-loop microscopy image analysis app._
 [![Download for macOS](https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge)](https://github.com/biosustain/mycol/releases/latest/download/mycol-macos-arm64.dmg)
 
 <sub>No Python installation required &nbsp;&middot;&nbsp; unzip and run</sub>
-<sub>Intel Mac or NVIDIA GPU? &nbsp;[see all downloads](https://github.com/biosustain/mycol/releases/latest)</sub>
+<sub>Apple Silicon Macs only &nbsp;&middot;&nbsp; NVIDIA GPU? [see release notes](https://github.com/biosustain/mycol/releases/latest)</sub>
 
 </div>
 

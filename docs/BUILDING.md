@@ -248,8 +248,9 @@ documented in the README.
 
 [`.github/workflows/release-macos.yml`](../.github/workflows/release-macos.yml)
 mirrors the Windows workflow: branch pushes build Apple Silicon only and upload
-the DMG as an artifact; a `v*` tag builds both architectures on `macos-14`
-(arm64) and `macos-15-intel` (Intel) and attaches them to the same draft release.
+the DMG as an artifact; a `v*` tag builds on `macos-14` and attaches the DMG to
+the same draft release. Builds are Apple Silicon only: torch has no Intel macOS
+wheels after 2.2, so an x86_64 build cannot resolve the locked dependencies.
 
 # Linux
 

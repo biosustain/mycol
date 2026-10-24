@@ -1,10 +1,13 @@
 name: Build macOS release
 
 # Mirrors the Windows workflow:
-#   - push to a work branch -> Apple Silicon build only, artifact, no release
-#   - push a v* tag         -> both architectures, attached to a draft release
-#   - manual dispatch       -> pick the architecture (needs this file on the
-#                              default branch before the button appears)
+#   - push to a work branch -> build, artifact, no release
+#   - push a v* tag         -> build, attached to a draft release
+#   - manual dispatch       -> build, artifact (needs this file on the default
+#                              branch before the button appears)
+#
+# Apple Silicon only. torch dropped Intel macOS wheels after 2.2, so an x86_64
+# build cannot resolve the locked dependencies.
 on:
   push:
     branches:
@@ -20,12 +23,6 @@ on:
       - "**/*.md"
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      arch:
-        description: "Which architecture(s) to build"
-        type: choice
-        options: [arm64, x86_64, both]
-        default: arm64
 
 permissions:
   contents: write
@@ -46,23 +43,14 @@ jobs:
         id: pick
         run: |
           set -euo pipefail
-          # macos-14 is Apple Silicon; macos-15-intel replaced the retired macos-13.
-          arm='{"arch":"arm64","runner":"macos-14"}'
-          intel='{"arch":"x86_64","runner":"macos-15-intel"}'
+          # macos-14 is Apple Silicon.
+          runners='[{"arch":"arm64","runner":"macos-14"}]'
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            runners="[$arm,$intel]"
             version="${GITHUB_REF_NAME#v}"
             if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            case "${{ inputs.arch }}" in
-              both)   runners="[$arm,$intel]" ;;
-              x86_64) runners="[$intel]" ;;
-              *)      runners="[$arm]" ;;
-            esac
             version="0.0.0-dev"; prerelease=true
           else
-            # Branch push: Apple Silicon only. It exercises every build step.
-            runners="[$arm]"
             version="0.0.0-${GITHUB_SHA::7}"; prerelease=true
           fi
           {
