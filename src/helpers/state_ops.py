@@ -37,10 +37,6 @@ _DEFAULTS = {
     "show_normalized": True,
     "interaction_mode": "Remove",
     "skipped_files": [],
-    "remove_click": False,
-    "class_click": False,
-    "last_class_xy": None,
-    "last_remove_xy": None,
     "zoom": 1.0,
 
     # cellpose model training

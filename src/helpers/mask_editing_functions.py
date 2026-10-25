@@ -2,7 +2,6 @@
 
 import base64
 import io
-from streamlit_image_coordinates import streamlit_image_coordinates
 import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
@@ -196,15 +195,20 @@ def _background_source(base_img: ImageArray, token: str) -> str:
     if slot is not None and slot[0] == token:
         return slot[1]
 
+    uri = _data_uri(base_img)
+    ss["_bg_uri_slot"] = (token, uri)
+    return uri
+
+
+def _data_uri(img: ImageArray) -> str:
+    """Base64 data-URI of an image, encoded as ``_BG_FORMAT``."""
     buf = io.BytesIO()
-    im = Image.fromarray(base_img).convert("RGB")
+    im = Image.fromarray(img).convert("RGB")
     if _BG_FORMAT == "jpeg":
         im.save(buf, format="JPEG", quality=90)
     else:
         im.save(buf, format="PNG", compress_level=1)
-    uri = f"data:image/{_BG_FORMAT};base64," + base64.b64encode(buf.getvalue()).decode()
-    ss["_bg_uri_slot"] = (token, uri)
-    return uri
+    return f"data:image/{_BG_FORMAT};base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def _chart_bg(base_img: ImageArray, key_ns: str, name: str) -> tuple[str, str]:
@@ -371,21 +375,78 @@ def _handle_draw_box_mode(
     )
 
 
-def _draw_boxes_on(img: ImageArray, rec: Record) -> ImageArray:
-    """Return a copy of img with the record's boxes drawn as red rectangles.
+# Clickable image. Clicks are queued with sequence numbers and
+# sent as state; Python acks the last one handled, so clicks made mid-rerun aren't lost.
+_CLICK_IMAGE = st.components.v2.component(
+    "mycol_click_image",
+    html="""
+<div id="wrap"><img id="img" draggable="false"><svg id="boxes"></svg></div>
+""",
+    css="""
+#wrap { position: relative; display: inline-block; line-height: 0; }
+#img { cursor: crosshair; user-select: none; }
+#wrap.stretch { display: block; }
+#wrap.stretch #img { width: 100%; height: auto; }
+#boxes { position: absolute; inset: 0; pointer-events: none; }
+rect { fill: rgba(255, 0, 0, 0.15); stroke: red; stroke-width: 2; }
+""",
+    js="""
+export default function ({ data, parentElement, setStateValue }) {
+  const img = parentElement.querySelector("#img")
+  const svg = parentElement.querySelector("#boxes")
+  parentElement.querySelector("#wrap").classList.toggle("stretch", data.stretch)
+  if (img.getAttribute("src") !== data.src) img.src = data.src  // keeps old image until it changes
+  img.width = data.w
+  img.height = data.h
+  svg.setAttribute("viewBox", `0 0 ${data.w} ${data.h}`)
+  svg.innerHTML = data.boxes
+    .map(([x0, y0, x1, y1]) => `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}"/>`)
+    .join("")
+  img.queue = (img.queue || []).filter((c) => c.n > data.ack)
+  img.seq = Math.max(img.seq || 0, data.ack)
+  img.onclick = (e) => {
+    const r = img.getBoundingClientRect()
+    img.queue.push({
+      n: ++img.seq,
+      x: ((e.clientX - r.left) * data.w) / r.width,
+      y: ((e.clientY - r.top) * data.h) / r.height,
+    })
+    setStateValue("clicks", [...img.queue])
+  }
+}
+""",
+)
 
-    Boxes are stored in full-res image coords; they're scaled to img's size so
-    they can be seen and clicked in 'Remove' mode."""
-    boxes = rec.get("boxes", [])
-    if not boxes:
-        return img
-    im = Image.fromarray(img).convert("RGB")
-    d = ImageDraw.Draw(im)
-    for x0, y0, x1, y1 in boxes:
-        dx0, dy0 = full_to_disp(x0, y0)
-        dx1, dy1 = full_to_disp(x1, y1)
-        d.rectangle([dx0, dy0, dx1, dy1], outline=(255, 0, 0), width=2)
-    return np.array(im)
+
+def _click_image(
+    src: str,
+    w: int,
+    h: int,
+    key: str,
+    on_click,
+    boxes=(),
+    stretch: bool = False,
+) -> None:
+    """Show data-URI ``src`` at w x h and dispatch each click to ``on_click(x, y)``.
+
+    Clicks and ``boxes`` (x0, y0, x1, y1) are in w x h pixel units; ``stretch`` fills
+    the column width instead. Keyed widget identity stays fixed across edits (unlike
+    a Plotly chart, whose id hashes the figure), so no click is lost to a rerun."""
+    ack_key = f"{key}_ack"
+
+    def handle() -> None:
+        for c in ss[key].get("clicks") or []:
+            if c["n"] > ss.get(ack_key, 0):
+                ss[ack_key] = c["n"]
+                on_click(c["x"], c["y"])
+
+    _CLICK_IMAGE(
+        key=key,
+        data={"src": src, "w": w, "h": h, "boxes": list(boxes), "stretch": stretch, "ack": ss.get(ack_key, 0)},
+        # reserve space before the JS sizes the img, so the page doesn't jump
+        height="content" if stretch else h,
+        on_clicks_change=handle,
+    )
 
 
 def _refocus_main_document() -> None:
@@ -400,28 +461,23 @@ def _refocus_main_document() -> None:
     )
 
 
-def _handle_remove_mask_mode(base_img: ImageArray, disp_w: int, rec: Record) -> None:
+def _handle_remove_mask_mode(
+    rec: Record,
+    base_img: ImageArray,
+    disp_w: int,
+    disp_h: int,
+    key_ns: str,
+) -> None:
     """Handle interactions when in 'Remove' mode (click a mask or box to delete it)."""
-
-    streamlit_image_coordinates(
-        _draw_boxes_on(base_img, rec),
-        key="remove_click",
-        width=disp_w,
-        on_click=remove_clicked,
-    )
-    _refocus_main_document()
+    boxes = [(*full_to_disp(x0, y0), *full_to_disp(x1, y1)) for x0, y0, x1, y1 in rec.get("boxes", [])]
+    bg = _background_source(base_img, view_token())
+    _click_image(bg, disp_w, disp_h, f"{key_ns}_remove_click", remove_clicked, boxes)
 
 
-def _handle_assign_class_mode(base_img: ImageArray, disp_w: int) -> None:
+def _handle_assign_class_mode(base_img: ImageArray, disp_w: int, disp_h: int, key_ns: str) -> None:
     """Handle interactions when in 'Assign class' mode."""
-
-    streamlit_image_coordinates(
-        base_img,
-        key="class_click",
-        width=disp_w,
-        on_click=assign_clicked,
-    )
-    _refocus_main_document()
+    bg = _background_source(base_img, view_token())
+    _click_image(bg, disp_w, disp_h, f"{key_ns}_class_click", assign_clicked)
 
 
 def _handle_lasso_select_mode(
@@ -537,39 +593,20 @@ def cut_masks_along_barrier(rec: Record, barrier: MaskArray) -> None:
     st.toast(f"Split {split_n} mask{'s' if split_n != 1 else ''}.")
 
 
-def remove_clicked():
-    """Remove the mask or box at the clicked location."""
-
-    # check if there was a click
-    if not ss["remove_click"]:
-        return
-
-    # get current record
+def remove_clicked(dx: float, dy: float):
+    """Remove the mask or box at the clicked display location."""
     rec = get_current_rec()
 
-    # map click (viewport) to full-res image coords
-    fx, fy = disp_to_full(ss["remove_click"]["x"], ss["remove_click"]["y"])
-    xy = (
-        int(min(max(round(fx), 0), rec["W"] - 1)),
-        int(min(max(round(fy), 0), rec["H"] - 1)),
-    )
+    # map click (display) to full-res image coords
+    fx, fy = disp_to_full(dx, dy)
+    x = int(min(max(round(fx), 0), rec["W"] - 1))
+    y = int(min(max(round(fy), 0), rec["H"] - 1))
 
-    # ignore click from previous run
-    if xy == ss["last_remove_xy"]:
-        return
-
-    # store last click
-    ss["last_remove_xy"] = xy
-
-    # remove the box or mask at the clicked location (boxes take priority)
-    x, y = xy
-
-    # remove the first box that contains the click, if any
+    # remove the first box that contains the click, if any (boxes take priority)
     for i, (bx0, by0, bx1, by1) in enumerate(rec.get("boxes", [])):
         if bx0 <= x <= bx1 and by0 <= y <= by1:
             snapshot_for_undo(rec)
             rec["boxes"].pop(i)
-            ss["remove_click"] = False
             return
 
     # no box here -> remove the mask at the click and compact the ids above it
@@ -588,8 +625,6 @@ def remove_clicked():
             for k, v in rec.get("labels", {}).items()
             if k != iid
         }
-
-    ss["remove_click"] = False  # prevent reprocessing on rerun
 
 
 def _masks_inside(m: MaskArray, region: MaskArray) -> set:
@@ -649,32 +684,16 @@ def join_in_lasso(rec: Record, region: MaskArray) -> None:
     st.toast(f"Joined {merged_n} masks in {groups}.")
 
 
-def assign_clicked():
-    """Assign class to mask at clicked location."""
-
-    # check if there was a click
-    if not ss["class_click"]:
-        return
-
-    # get current record
+def assign_clicked(dx: float, dy: float):
+    """Assign class to mask at the clicked display location."""
     rec = get_current_rec()
 
-    # map click (viewport) to full-res image coords
-    fx, fy = disp_to_full(ss["class_click"]["x"], ss["class_click"]["y"])
-    xy = (
-        int(min(max(round(fx), 0), rec["W"] - 1)),
-        int(min(max(round(fy), 0), rec["H"] - 1)),
-    )
-
-    # ignore click from previous run
-    if xy == ss["last_class_xy"]:
-        return
-
-    # store last click
-    ss["last_class_xy"] = xy
+    # map click (display) to full-res image coords
+    fx, fy = disp_to_full(dx, dy)
+    x = int(min(max(round(fx), 0), rec["W"] - 1))
+    y = int(min(max(round(fy), 0), rec["H"] - 1))
 
     # assign class to mask at clicked location
-    x, y = xy
     m = rec.get("masks")
 
     iid = int(m[y, x])
@@ -689,8 +708,6 @@ def assign_clicked():
         labels.pop(iid, None)
     else:
         labels[iid] = cur
-
-    ss["class_click"] = False  # prevent reprocessing on rerun
 
 
 # -----------------------------------------------------#
@@ -987,28 +1004,10 @@ def _render_minimap(rec: Record) -> None:
         width=2,
     )
 
-    streamlit_image_coordinates(
-        np.array(thumb),
-        key="minimap_click",
-        use_column_width="always",
-        on_click=_minimap_clicked,
-    )
+    def recentre(x, y):
+        ss["pan_cx"], ss["pan_cy"] = x / sx, y / sy
 
-
-def _minimap_clicked():
-    """Recentre the zoomed view on the point clicked in the minimap."""
-    click = ss.get("minimap_click")
-    if not click or click.get("unix_time") == ss.get("_minimap_last_t"):
-        return
-    ss["_minimap_last_t"] = click.get("unix_time")
-    rec = get_current_rec()
-    if rec is None:
-        return
-    rw = float(click.get("width") or 1)
-    rh = float(click.get("height") or 1)
-    ss["pan_cx"] = click["x"] * rec["W"] / rw
-    ss["pan_cy"] = click["y"] * rec["H"] / rh
-    ss["_refocus_after_zoom"] = True
+    _click_image(_data_uri(np.array(thumb)), thumb_w, thumb_h, "minimap", recentre, stretch=True)
 
 
 def _render_nudge_pad(rec: Record, key_ns: str = "tools") -> None:
@@ -1144,12 +1143,16 @@ def render_display_and_interact_fragment(key_ns="edit"):
         _handle_lasso_select_mode(rec, base_img, disp_w, disp_h, key_ns, "clear", clear_in_lasso)
     elif mode == "Remove":
         _handle_remove_mask_mode(
+            rec=rec,
             base_img=base_img,
             disp_w=disp_w,
-            rec=rec,
+            disp_h=disp_h,
+            key_ns=key_ns,
         )
     elif mode == "Assign class":
         _handle_assign_class_mode(
             base_img=base_img,
             disp_w=disp_w,
+            disp_h=disp_h,
+            key_ns=key_ns,
         )
