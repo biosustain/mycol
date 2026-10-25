@@ -122,6 +122,12 @@ def cached_image_mask_overlay(
     return out
 
 
+def display_size(W: int, H: int, viewport: int = 800) -> tuple[int, int]:
+    """Constant on-screen size of the image display (fits the whole image at zoom 1)."""
+    fit = min(viewport / W, viewport / H)
+    return max(1, int(W * fit)), max(1, int(H * fit))
+
+
 def create_image_display(rec, viewport=800):
     """Render a zoomed crop of the image (with overlay) into a fixed-size viewport.
 
@@ -140,9 +146,7 @@ def create_image_display(rec, viewport=800):
     ox = max(0, min(int(round(cx - cw / 2)), W - cw))
     oy = max(0, min(int(round(cy - ch / 2)), H - ch))
 
-    # constant on-screen size (fits the whole image at zoom 1)
-    fit = min(viewport / W, viewport / H)
-    disp_w, disp_h = max(1, int(W * fit)), max(1, int(H * fit))
+    disp_w, disp_h = display_size(W, H, viewport)
     ss["view"] = (ox, oy, cw / disp_w)  # (crop origin, full-res px per display px)
     ss["disp_h"] = disp_h  # read by the box-drawing callback to flip Plotly's y axis
 

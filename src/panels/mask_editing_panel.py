@@ -59,7 +59,7 @@ def render_segment_sidebar(*, key_ns: str = "side"):
             model_options = list(model_type_map)
             finetuned_available = ss["cellpose_model_bytes"] is not None
             default_index = (
-                model_options.index("Fine-tuned Model") if finetuned_available else 0
+                model_options.index("Fine-tuned Model" if finetuned_available else "Cyto2")
             )
             model_family = st.selectbox(
                 "Select model", model_options, index=default_index
@@ -155,7 +155,7 @@ def render_main(*, key_ns: str = "edit"):
     render_display_and_interact_fragment(key_ns=key_ns)
 
 
-def render_zoom_panel(*, key_ns: str = "zoom"):
+def render_zoom_panel(*, key_ns: str = "zoom", height: int | None = None):
     """Zoom + pan controls in their own panel (rendered to the right of the image)."""
-    with st.container(border=True, width="stretch"):
+    with st.container(border=True, width="stretch", height=height or "content"):
         render_zoom_controls(key_ns)

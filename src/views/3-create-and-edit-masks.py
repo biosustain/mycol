@@ -1,5 +1,6 @@
 import streamlit as st
 from src.panels import mask_editing_panel
+from src.helpers.mask_editing_functions import display_size
 from src.helpers.state_ops import (
     ordered_keys,
     set_current_by_index,
@@ -12,20 +13,25 @@ ss = st.session_state
 require_images()
 
 with st.spinner("Loading Annotator..."):
+    ok = ordered_keys()
+    names = [ss.images[k]["name"] for k in ok]
+
+    # --- Ensure we have a current key ---
+    if (
+        "current_key" not in ss
+        or ss.current_key not in ok
+    ):
+        ss.current_key = ok[0]
+
+    # control panels match the image's on-screen height, but never shrink below what
+    # the controls need (short landscape images would otherwise clip them)
+    _rec = ss.images[ss.current_key]
+    panel_h = max(display_size(_rec["W"], _rec["H"])[1], 770)
+
     col1, col2, col3 = st.columns([2, 4, 2], gap="large")
     with col1:
 
-        with st.container(border=True, height=770, vertical_alignment="center",):
-
-            ok = ordered_keys()
-            names = [ss.images[k]["name"] for k in ok]
-
-            # --- Ensure we have a current key ---
-            if (
-                "current_key" not in ss
-                or ss.current_key not in ok
-            ):
-                ss.current_key = ok[0]
+        with st.container(border=True, height=panel_h):
 
             reck = ss.current_key
             rec_idx = ok.index(reck) if reck in ok else 0  # 0-based index
@@ -125,7 +131,7 @@ with st.spinner("Loading Annotator..."):
     # the image column so the crop reads the updated zoom on the same run (columns are
     # positioned by creation order, executed in the order the `with` blocks appear).
     with col3:
-        mask_editing_panel.render_zoom_panel()
+        mask_editing_panel.render_zoom_panel(height=panel_h)
 
     # Page main content
     with col2:
