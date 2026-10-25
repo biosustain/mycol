@@ -976,7 +976,8 @@ def render_zoom_controls(key_ns: str = "zoom") -> None:
     )
     _free_shortcut_keys_from_sliders()
     _render_minimap(rec)
-    _render_nudge_pad(rec, key_ns)
+    with st.container(height="stretch", vertical_alignment="center"):  # pad fills the space below
+        _render_nudge_pad(rec, key_ns)
     if ss.pop("_refocus_after_zoom", False):
         _refocus_main_document()
 
