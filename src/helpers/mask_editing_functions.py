@@ -874,8 +874,8 @@ def render_common_tools_fragment(key_ns="tools"):
         "Group clear",
         width="stretch",
         key=f"{key_ns}_group_clear",
-        shortcut="C",
-        help="Draw a lasso to remove all masks completely inside it (shortcut: C)",
+        shortcut="X",
+        help="Draw a lasso to remove all masks completely inside it (shortcut: X)",
         on_click=_set_mode,
         args=("Group clear",),
     )
