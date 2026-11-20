@@ -409,6 +409,7 @@ def check_densenet_training_status():
 
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
+        ss["densenet_class_map"] = {i: str(c) for i, c in enumerate(classes)}  # the order the model was trained in
 
         train_losses = history["loss"]
         val_losses = history["val_loss"]
