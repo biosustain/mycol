@@ -78,7 +78,7 @@ runs `verify_dist.ps1` against it, and uploads the zip as a run artifact. Nothin
 is published. Open the run from the **Actions** tab and download the artifact to
 try the bundle on a real Windows machine.
 
-Doc-only changes (`docs/`, `manuscript/`, `*.md`, the case studies and notebooks)
+Doc-only changes (`docs/`, `*.md` and notebooks)
 are excluded, so they do not spend half an hour of Windows runner time.
 
 To exercise the full release path — both variants, plus the release upload —

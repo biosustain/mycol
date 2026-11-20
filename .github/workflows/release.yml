@@ -12,9 +12,6 @@ on:
       - windows_local
       - "release/**"
     paths-ignore:
-      - "manuscript/**"
-      - "manuscript_figures/**"
-      - "case_study_*/**"
       - "notebooks/**"
       - "docs/**"
       - "**/*.md"
