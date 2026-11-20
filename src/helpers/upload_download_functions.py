@@ -158,7 +158,7 @@ def restore_session(zip_bytes: bytes) -> str | None:
         # zip saved by any version loads, whatever descriptor columns it does or
         # does not carry. Keep this read restricted to labels.
         all_labels = set()
-        if "cell_metrics.csv" in names:
+        if "cell_metrics.csv" in names and zf.getinfo("cell_metrics.csv").file_size:  # empty in older zips
             stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
             df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
             if {"image", "mask #", "mask label"}.issubset(df.columns):

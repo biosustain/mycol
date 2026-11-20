@@ -555,9 +555,6 @@ def build_cell_metrics_csv(labels_selected):
     if labels_selected:
         df = df[df["mask label"].isin(labels_selected)]
 
-    if df.empty:
-        return ""
-
     pixel_size = ss.get("pixel_size")
     df = apply_pixel_scaling(df, pixel_size)
 
