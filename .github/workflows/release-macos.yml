@@ -40,8 +40,8 @@ jobs:
         id: pick
         run: |
           set -euo pipefail
-          # macos-14 is Apple Silicon.
-          runners='[{"arch":"arm64","runner":"macos-14"}]'
+          # macos-15 is Apple Silicon.
+          runners='[{"arch":"arm64","runner":"macos-15"}]'
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             version="${GITHUB_REF_NAME#v}"
             if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
