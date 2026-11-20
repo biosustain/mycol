@@ -112,8 +112,7 @@ def render_plotting_options():
                     value=ss.get("pixel_unit", "µm"),
                     key="pixel_unit_input",
                     help="Labels the plot axes, e.g. µm gives 'Area (µm²)'.",
-                ).strip()
-                or "µm"
+                ).strip()  # blank -> neutral "units" label
             )
 
     # ---- Step 5: generate and review the plots ----

@@ -709,7 +709,7 @@ def assign_clicked(dx: float, dy: float):
     cur = ss.get("side_current_class")
     labels = rec.setdefault("labels", {})
     if cur == "No label" or cur is None:
-        labels.pop(iid, None)
+        labels[iid] = None  # keep the entry: every mask id must have one
     else:
         labels[iid] = cur
 

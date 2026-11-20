@@ -1,6 +1,5 @@
 import io
 import json
-import pandas as pd
 import streamlit as st
 import plotly.io as pio
 from pathlib import Path
@@ -112,15 +111,6 @@ def build_session_zip(images, ok) -> bytes:
 
         if ss.get("densenet_model") is not None:
             zf.writestr("densenet_model.pth", densenet_model_bytes(ss["densenet_model"]))
-
-        densenet_class_map = ss.get("densenet_class_map")
-        if densenet_class_map:
-            zf.writestr(
-                "densenet_class_map.csv",
-                pd.DataFrame(
-                    [{"class_index": k, "class_name": v} for k, v in densenet_class_map.items()]
-                ).to_csv(index=False),
-            )
 
         zf.writestr(
             "cell_metrics.csv",
