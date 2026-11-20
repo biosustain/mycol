@@ -131,6 +131,8 @@ def rename_class_everywhere(old_name: str, new_name: str):
         all_classes.append(new_name)
     ss["all_classes"] = all_classes
 
+    ss["densenet_class_map"] = {i: new_name if c == old_name else c for i, c in ss.get("densenet_class_map", {}).items()}
+
     # --- Update current selection if needed ---
     if ss.get("side_current_class") == old_name:
         ss["side_current_class"] = new_name
