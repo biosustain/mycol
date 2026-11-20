@@ -30,6 +30,11 @@ def _physical_units() -> bool:
     return bool(ss.get("convert_to_distance", False) and pixel_size and pixel_size > 0)
 
 
+def _unit() -> str:
+    """Distance unit: the user's unit when converting ('units' if left blank), pixels otherwise."""
+    return (ss.get("pixel_unit") or "units") if _physical_units() else "px"
+
+
 def _axis_label(col: str) -> str:
     """Metric name with its unit - the user's unit when converting, pixels otherwise.
 
@@ -37,7 +42,7 @@ def _axis_label(col: str) -> str:
     name = col.replace("_", " ").title()
     if col not in _DIST_COLS and col not in _AREA_COLS:
         return name
-    unit = (ss.get("pixel_unit") or "µm") if _physical_units() else "px"
+    unit = _unit()
     return f"{name} ({unit}²)" if col in _AREA_COLS else f"{name} ({unit})"
 
 
@@ -556,4 +561,7 @@ def build_cell_metrics_csv(labels_selected):
     pixel_size = ss.get("pixel_size")
     df = apply_pixel_scaling(df, pixel_size)
 
-    return df.to_csv(index=False)
+    # units in the headers, so the file states what its numbers are
+    unit = _unit()
+    df = df.rename(columns={c: f"{c} ({unit})" for c in _DIST_COLS} | {c: f"{c} ({unit}²)" for c in _AREA_COLS})
+    return df.to_csv(index=False, float_format="%.10g")  # 10 sig. figs drops float noise
