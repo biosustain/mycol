@@ -468,13 +468,17 @@ def _write_patchset(zf) -> int:
 
 
 def write_densenet_param_csvs(zf) -> None:
-    """Write the DenseNet training hyperparameters CSV into `zf`."""
+    """Write the DenseNet training hyperparameters and class map CSVs into `zf`."""
     params = {
         "batch_size": ss.get("dn_batch_size", 32),
         "max_epoch": ss.get("dn_max_epoch", 300),
         "val_split": ss.get("dn_val_split", 0.2),
     }
     zf.writestr("densenet_training_hyperparameters.csv", params_to_csv(params))
+
+    # model output index -> class name; needed to read the model's predictions
+    if class_map := ss.get("densenet_class_map"):
+        zf.writestr("densenet_class_map.csv", pd.DataFrame(class_map.items(), columns=["class_index", "class_name"]).to_csv(index=False))
 
 
 def densenet_model_bytes(model) -> bytes:
