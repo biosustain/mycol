@@ -4,7 +4,7 @@
 
 _A lightweight, human-in-the-loop microscopy image analysis app._
 
-**[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Preprint](https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1)
+**[Homepage](https://biosustain.github.io/mycol/)** &nbsp;&middot;&nbsp; [FAQ](https://biosustain.github.io/mycol/faq.html) &nbsp;&middot;&nbsp; [Functionality Guide](https://biosustain.github.io/mycol/functionality.html) &nbsp;&middot;&nbsp; [Paper](https://doi.org/10.1007/s00253-026-14097-1)
 
 [![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge)](https://github.com/biosustain/mycol/releases/latest/download/mycol-windows-cpu.zip)
 &nbsp;
@@ -317,6 +317,17 @@ From inside the repository, run:
 ```bash
 uv run streamlit run app.py
 ```
+
+---
+
+## Citation
+
+If this has been helpful to you, please cite:
+
+- **Mycol:** Bradley, S.A., Webel, H., Schiesaro, G. et al. Mycol: a user-friendly app for automating object identification and classification in biological images. *Appl Microbiol Biotechnol* (2026). https://doi.org/10.1007/s00253-026-14097-1
+- **Cellpose 2 (segmentation model):** Pachitariu, M., Stringer, C. Cellpose 2.0: how to train your own model. *Nat Methods* 19, 1634–1641 (2022). https://doi.org/10.1038/s41592-022-01663-4
+- **Cellpose 3 (segmentation model):** Stringer, C., Pachitariu, M. Cellpose3: one-click image restoration for improved cellular segmentation. *Nat Methods* 22, 592–599 (2025). https://doi.org/10.1038/s41592-025-02595-5
+- **DenseNet (classification model):** Huang, G., Liu, Z., Van Der Maaten, L. et al. Densely connected convolutional networks. *2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)*, 4700–4708 (2017). https://doi.org/10.1109/CVPR.2017.243
 
 ---
 

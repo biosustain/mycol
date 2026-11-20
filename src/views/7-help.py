@@ -52,11 +52,27 @@ with body:
             st.link_button(label, url, icon=":material/open_in_new:", type="primary", width="stretch")
 
     st.space("medium")
+    st.info(
+        "**If this has been helpful to you, please cite:**\n"
+        "- **Mycol:** Bradley, S.A., Webel, H., Schiesaro, G. et al. Mycol: a user-friendly app for "
+        "automating object identification and classification in biological images. "
+        "*Appl Microbiol Biotechnol* (2026). https://doi.org/10.1007/s00253-026-14097-1\n"
+        "- **Cellpose 2 (segmentation model):** Pachitariu, M., Stringer, C. Cellpose 2.0: how to train your own model. "
+        "*Nat Methods* 19, 1634–1641 (2022). https://doi.org/10.1038/s41592-022-01663-4\n"
+        "- **Cellpose 3 (segmentation model):** Stringer, C., Pachitariu, M. Cellpose3: one-click image restoration for "
+        "improved cellular segmentation. *Nat Methods* 22, 592–599 (2025). https://doi.org/10.1038/s41592-025-02595-5\n"
+        "- **DenseNet (classification model):** Huang, G., Liu, Z., Van Der Maaten, L. et al. Densely connected "
+        "convolutional networks. *2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)*, "
+        "4700–4708 (2017). https://doi.org/10.1109/CVPR.2017.243",
+        icon=":material/format_quote:",
+    )
+
+    st.space("medium")
     st.markdown("#### More resources")
     c1, c2 = st.columns(2)
     c1.link_button(
-        "Read the preprint",
-        "https://www.biorxiv.org/content/10.64898/2026.06.02.729113v1",
+        "Read the paper",
+        "https://doi.org/10.1007/s00253-026-14097-1",
         icon=":material/article:",
         width="stretch",
     )
