@@ -517,31 +517,28 @@ def build_per_image_counts(keys=None):
     if keys is None:
         keys = ordered_keys()
 
-    # Collect all label groups across all images
-    all_labels: set[str] = set()
-    for k in keys:
-        rec = ss["images"][k]
-        for cls in (rec.get("labels") or {}).values():
-            all_labels.add("Unlabelled" if cls in (None, "No label") else cls)
-    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
-
-    rows = []
+    # count every mask id first, then take the columns from what was counted,
+    # so the class columns always sum to the total
+    rows, all_labels = [], set()
     for k in keys:
         rec = ss["images"][k]
         masks = rec.get("masks")
         ids = np.unique(masks) if masks is not None else np.zeros(0, dtype=int)
         ids = ids[ids != 0]
         label_dict = rec.get("labels") or {}
-        counts: dict[str, int] = {lab: 0 for lab in sorted_labels}
+        counts: dict[str, int] = {}
         for iid in ids:
             cls = label_dict.get(int(iid))
             lab = "Unlabelled" if cls in (None, "No label") else cls
             counts[lab] = counts.get(lab, 0) + 1
-        row = {"_key": k, "Image": rec["name"], "Total masks": int(ids.size)}
-        row.update(counts)
-        rows.append(row)
+        all_labels |= counts.keys()
+        rows.append({"_key": k, "Image": rec["name"], "Total masks": int(ids.size), **counts})
+    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
 
-    return pd.DataFrame(rows), sorted_labels
+    cols = ["_key", "Image", "Total masks", *sorted_labels]
+    df = pd.DataFrame(rows, columns=cols)
+    df[sorted_labels] = df[sorted_labels].fillna(0).astype(int)
+    return df, sorted_labels
 
 
 # --- FUNCTIONS FOR DOWNLOADING CLASS CHARACTERISTICS PLOTS
