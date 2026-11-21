@@ -30,6 +30,11 @@ def _physical_units() -> bool:
     return bool(ss.get("convert_to_distance", False) and pixel_size and pixel_size > 0)
 
 
+def _unit() -> str:
+    """Distance unit: the user's unit when converting ('units' if left blank), pixels otherwise."""
+    return (ss.get("pixel_unit") or "units") if _physical_units() else "px"
+
+
 def _axis_label(col: str) -> str:
     """Metric name with its unit - the user's unit when converting, pixels otherwise.
 
@@ -37,7 +42,7 @@ def _axis_label(col: str) -> str:
     name = col.replace("_", " ").title()
     if col not in _DIST_COLS and col not in _AREA_COLS:
         return name
-    unit = (ss.get("pixel_unit") or "µm") if _physical_units() else "px"
+    unit = _unit()
     return f"{name} ({unit}²)" if col in _AREA_COLS else f"{name} ({unit})"
 
 
@@ -517,31 +522,28 @@ def build_per_image_counts(keys=None):
     if keys is None:
         keys = ordered_keys()
 
-    # Collect all label groups across all images
-    all_labels: set[str] = set()
-    for k in keys:
-        rec = ss["images"][k]
-        for cls in (rec.get("labels") or {}).values():
-            all_labels.add("Unlabelled" if cls in (None, "No label") else cls)
-    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
-
-    rows = []
+    # count every mask id first, then take the columns from what was counted,
+    # so the class columns always sum to the total
+    rows, all_labels = [], set()
     for k in keys:
         rec = ss["images"][k]
         masks = rec.get("masks")
         ids = np.unique(masks) if masks is not None else np.zeros(0, dtype=int)
         ids = ids[ids != 0]
         label_dict = rec.get("labels") or {}
-        counts: dict[str, int] = {lab: 0 for lab in sorted_labels}
+        counts: dict[str, int] = {}
         for iid in ids:
             cls = label_dict.get(int(iid))
             lab = "Unlabelled" if cls in (None, "No label") else cls
             counts[lab] = counts.get(lab, 0) + 1
-        row = {"_key": k, "Image": rec["name"], "Total masks": int(ids.size)}
-        row.update(counts)
-        rows.append(row)
+        all_labels |= counts.keys()
+        rows.append({"_key": k, "Image": rec["name"], "Total masks": int(ids.size), **counts})
+    sorted_labels = sorted(all_labels, key=lambda x: (x != "Unlabelled", x))
 
-    return pd.DataFrame(rows), sorted_labels
+    cols = ["_key", "Image", "Total masks", *sorted_labels]
+    df = pd.DataFrame(rows, columns=cols)
+    df[sorted_labels] = df[sorted_labels].fillna(0).astype(int)
+    return df, sorted_labels
 
 
 # --- FUNCTIONS FOR DOWNLOADING CLASS CHARACTERISTICS PLOTS
@@ -553,10 +555,10 @@ def build_cell_metrics_csv(labels_selected):
     if labels_selected:
         df = df[df["mask label"].isin(labels_selected)]
 
-    if df.empty:
-        return ""
-
     pixel_size = ss.get("pixel_size")
     df = apply_pixel_scaling(df, pixel_size)
 
-    return df.to_csv(index=False)
+    # units in the headers, so the file states what its numbers are
+    unit = _unit()
+    df = df.rename(columns={c: f"{c} ({unit})" for c in _DIST_COLS} | {c: f"{c} ({unit}²)" for c in _AREA_COLS})
+    return df.to_csv(index=False, float_format="%.10g")  # 10 sig. figs drops float noise

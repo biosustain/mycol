@@ -180,22 +180,14 @@ def initialize_densenet_class_map() -> dict[int, str]:
     return class_map
 
 
-def ensure_densenet_class_map() -> dict[int, str | None]:
-    """Ensure each model class index has a valid, non-'No label' mapping."""
-    model = ss.get("densenet_model")
-    n_classes = get_densenet_num_classes(model)
+def ensure_densenet_class_map() -> dict[int, str]:
+    """Each model class index mapped to an existing class; missing classes become 'No label'."""
+    n_classes = get_densenet_num_classes(ss.get("densenet_model"))
     if n_classes is None:
         return {}
-
-    real_classes = _ensure_assignable_classes(n_classes)
-    class_map = {
-        idx: ss.get("densenet_class_map", {}).get(idx) for idx in range(n_classes)
-    }
-
-    for idx in range(n_classes):
-        if class_map[idx] not in real_classes:
-            class_map[idx] = real_classes[idx]
-
+    valid = set(ss.get("all_classes", ["No label"]))
+    old = ss.get("densenet_class_map", {})
+    class_map = {i: old.get(i) if old.get(i) in valid else "No label" for i in range(n_classes)}
     ss["densenet_class_map"] = class_map
     return class_map
 
@@ -211,7 +203,7 @@ def densenet_mapping_fragment():
 
     for idx in range(n_classes):
         current = class_map.get(idx)
-        options = [c for c in all_classes if c != "No label"]
+        options = all_classes  # includes "No label", so a missing class shows as unmapped
         if current in options:
             default_idx = options.index(current)
         else:
@@ -409,6 +401,7 @@ def check_densenet_training_status():
 
         ss["densenet_ckpt_name"] = "densenet_finetuned"
         ss["densenet_model"] = model
+        ss["densenet_class_map"] = {i: str(c) for i, c in enumerate(classes)}  # the order the model was trained in
 
         train_losses = history["loss"]
         val_losses = history["val_loss"]
@@ -475,13 +468,17 @@ def _write_patchset(zf) -> int:
 
 
 def write_densenet_param_csvs(zf) -> None:
-    """Write the DenseNet training hyperparameters CSV into `zf`."""
+    """Write the DenseNet training hyperparameters and class map CSVs into `zf`."""
     params = {
         "batch_size": ss.get("dn_batch_size", 32),
         "max_epoch": ss.get("dn_max_epoch", 300),
         "val_split": ss.get("dn_val_split", 0.2),
     }
     zf.writestr("densenet_training_hyperparameters.csv", params_to_csv(params))
+
+    # model output index -> class name; needed to read the model's predictions
+    if class_map := ss.get("densenet_class_map"):
+        zf.writestr("densenet_class_map.csv", pd.DataFrame(class_map.items(), columns=["class_index", "class_name"]).to_csv(index=False))
 
 
 def densenet_model_bytes(model) -> bytes:

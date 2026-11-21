@@ -157,11 +157,11 @@ def restore_session(zip_bytes: bytes) -> str | None:
         # every descriptor is recomputed from the masks by build_analysis_df. So a
         # zip saved by any version loads, whatever descriptor columns it does or
         # does not carry. Keep this read restricted to labels.
-        if "cell_metrics.csv" in names:
+        all_labels = set()
+        if "cell_metrics.csv" in names and zf.getinfo("cell_metrics.csv").file_size:  # empty in older zips
             stem_to_key = {Path(rec["name"]).stem: k for k, rec in ss["images"].items()}
             df = pd.read_csv(io.StringIO(zf.read("cell_metrics.csv").decode()))
             if {"image", "mask #", "mask label"}.issubset(df.columns):
-                all_labels = set()
                 for _, row in df.iterrows():
                     k = stem_to_key.get(Path(str(row["image"])).stem)
                     if k is None:
@@ -173,8 +173,6 @@ def restore_session(zip_bytes: bytes) -> str | None:
                     ss["images"][k]["labels"][int(row["mask #"])] = label
                     if label:
                         all_labels.add(label)
-                if all_labels:
-                    ss["all_classes"] = ["No label"] + sorted(all_labels)
 
         # ── Cellpose inference hyperparameters ────────────────────────────────
         if "cellpose_inference_hyperparameters.csv" in names:
@@ -234,6 +232,11 @@ def restore_session(zip_bytes: bytes) -> str | None:
                     )
                     for _, row in df.iterrows()
                 }
+
+        # ── Class list ────────────────────────────────────────────────────────
+        # labelled classes plus every class the DenseNet map names, so mapped classes with no labelled cells survive
+        if classes := (all_labels | set(ss["densenet_class_map"].values())) - {None, "No label"}:
+            ss["all_classes"] = ["No label"] + sorted(classes)
 
         # ── Training plots ────────────────────────────────────────────────────
         import plotly.io as pio

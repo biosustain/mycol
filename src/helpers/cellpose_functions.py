@@ -544,7 +544,7 @@ def check_cellpose_validation_status():
             image_names=image_names,
         )
 
-        ss["cp_zip_bytes"] = build_cellpose_zip_bytes()
+        ss["cp_zip_bytes"] = build_cellpose_zip_bytes(trained=True)
 
     return check_worker_job_status("cp_validation_job", _on_complete)
 
@@ -591,24 +591,30 @@ def write_cellpose_param_csvs(zf) -> None:
         zf.writestr("cellpose_grid_search_results.csv", grid.to_csv(index=False))
 
 
-def build_cellpose_zip_bytes():
-    """Build a zip with the fine-tuned Cellpose model, parameters, images, masks,
-    and plots. Returns the zip as bytes."""
-
-    ok = ordered_keys()
+def build_cellpose_zip_bytes(trained: bool = False):
+    """Build a zip with the Cellpose model, parameters and plots; with `trained`, also
+    the training images, masks and their train/test split. Returns the zip as bytes."""
 
     buf = IO.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("cellpose_model.pt", ss["cellpose_model_bytes"])
         write_cellpose_param_csvs(z)
 
-        # Images and masks
-        mask_suffix = ss.get("mask_suffix", "_masks")
-        for k in ok:
-            rec = ss["images"][k]
-            img_name = Path(rec.get("name")).stem
-            write_image_to_zip(z, img_name, rec["image"])
-            write_mask_to_zip(z, img_name, rec["masks"], mask_suffix)
+        # exactly the images training used, split by the workers' own function and seed
+        if trained:
+            from src.panels.fine_tune_panel import get_train_setup
+            from src.training.data_split import split_train_test
+
+            recs, *_, test_split = get_train_setup()
+            test_idx = set(split_train_test(len(recs), test_size=test_split)[1])
+            mask_suffix = ss.get("mask_suffix", "_masks")
+            split = []
+            for i, rec in enumerate(recs.values()):
+                img_name = Path(rec["name"]).stem
+                write_image_to_zip(z, img_name, rec["image"])
+                write_mask_to_zip(z, img_name, rec["masks"], mask_suffix)
+                split.append((img_name, "test" if i in test_idx else "train"))
+            z.writestr("training_split.csv", pd.DataFrame(split, columns=["image", "split"]).to_csv(index=False))
 
         # Plots
         add_plotly_as_png_to_zip(

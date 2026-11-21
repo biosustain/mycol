@@ -573,10 +573,6 @@ def render_cellpose_status_fragment():
     cp_job = ss.get("cp_training_job")
     val_job = ss.get("cp_validation_job")
 
-    from src.helpers.cellpose_functions import (
-        build_cellpose_zip_bytes,
-    )
-
     icon = _tick_icon("cp_icon_toggle")
 
     # Check Training
@@ -637,7 +633,6 @@ def render_cellpose_status_fragment():
         elif val_status == "complete":
             st.success("Finalizing validation... please stay on this page for now!")
             st.balloons()
-            ss["cp_zip_bytes"] = build_cellpose_zip_bytes()
             ss.pop("cp_validation_job", None)
             st.rerun()
         elif val_status == "failed":
